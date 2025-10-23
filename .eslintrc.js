@@ -5,9 +5,9 @@ module.exports = {
     tsconfigRootDir: __dirname,
     sourceType: 'module',
   },
-  plugins: ['@typescript-eslint/eslint-plugin'],
+  plugins: ['@typescript-eslint'],
   extends: [
-    '@typescript-eslint/recommended',
+    'plugin:@typescript-eslint/recommended',
     'plugin:prettier/recommended',
   ],
   root: true,
@@ -23,7 +23,6 @@ module.exports = {
     '@typescript-eslint/no-explicit-any': 'warn',
     '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
     '@typescript-eslint/no-empty-function': 'warn',
-    '@typescript-eslint/prefer-const': 'error',
     '@typescript-eslint/no-var-requires': 'error',
     'prefer-const': 'error',
     'no-var': 'error',
@@ -31,4 +30,3 @@ module.exports = {
     'no-debugger': 'error',
   },
 };
-

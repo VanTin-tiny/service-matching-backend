@@ -5,14 +5,13 @@ import { ConfigModule } from '@nestjs/config';
 import databaseConfig from './database.config';
 
 @Module({
-    imports: [
-        ConfigModule.forRoot({
-            isGlobal: true,
-            load: [databaseConfig, redisConfig],
-            validationSchema: validationConfig,
-            envFilePath: [
-                `.env.${process.env.NODE_ENV || 'development'}`]
-        }),
-    ],
+  imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+      load: [databaseConfig, redisConfig],
+      validationSchema: validationConfig,
+      envFilePath: [`.env.${process.env.NODE_ENV || 'development'}`],
+    }),
+  ],
 })
-export class AppConfigModule { }
+export class AppConfigModule {}
