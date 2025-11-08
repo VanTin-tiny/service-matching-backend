@@ -10,8 +10,15 @@ import databaseConfig from './database.config';
       isGlobal: true,
       load: [databaseConfig, redisConfig],
       validationSchema: validationConfig,
-      envFilePath: [`.env.${process.env.NODE_ENV || 'development'}`],
+      envFilePath: [
+        `.env.${process.env.NODE_ENV || 'development'}`,
+        '.env',
+      ],
+      validationOptions: {
+        abortEarly: false, 
+        allowUnknown: true, 
+      },
     }),
   ],
 })
-export class AppConfigModule {}
+export class AppConfigModule { }
