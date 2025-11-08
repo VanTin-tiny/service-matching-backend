@@ -25,6 +25,7 @@ module.exports = {
     '@typescript-eslint/no-empty-function': 'warn',
     '@typescript-eslint/no-var-requires': 'error',
     'prefer-const': 'error',
+    'prettier/prettier': 'off',
     'no-var': 'error',
     'no-console': 'warn',
     'no-debugger': 'error',
