@@ -48,6 +48,23 @@ exports.JWT_AUDIENCE = 'app-users';
 
 /***/ }),
 
+/***/ "./src/common/decorators/@Roles.ts":
+/*!*****************************************!*\
+  !*** ./src/common/decorators/@Roles.ts ***!
+  \*****************************************/
+/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.Roles = exports.ROLES_KEY = void 0;
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+exports.ROLES_KEY = 'roles';
+const Roles = (...roles) => (0, common_1.SetMetadata)(exports.ROLES_KEY, roles);
+exports.Roles = Roles;
+
+
+/***/ }),
+
 /***/ "./src/common/dtos/base-response.dto.ts":
 /*!**********************************************!*\
   !*** ./src/common/dtos/base-response.dto.ts ***!
@@ -259,6 +276,124 @@ exports.GlobalHttpExceptionFilter = GlobalHttpExceptionFilter = GlobalHttpExcept
     (0, common_1.Catch)(),
     __metadata("design:paramtypes", [typeof (_a = typeof core_1.HttpAdapterHost !== "undefined" && core_1.HttpAdapterHost) === "function" ? _a : Object])
 ], GlobalHttpExceptionFilter);
+
+
+/***/ }),
+
+/***/ "./src/common/guards/jwt-auth.guard.ts":
+/*!*********************************************!*\
+  !*** ./src/common/guards/jwt-auth.guard.ts ***!
+  \*********************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var _a, _b;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.JwtAuthGuard = void 0;
+const jwt_service_1 = __webpack_require__(/*! @/common/services/jwt.service */ "./src/common/services/jwt.service.ts");
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const core_1 = __webpack_require__(/*! @nestjs/core */ "@nestjs/core");
+let JwtAuthGuard = class JwtAuthGuard {
+    constructor(jwtService, reflector) {
+        this.jwtService = jwtService;
+        this.reflector = reflector;
+    }
+    canActivate(context) {
+        const request = context.switchToHttp().getRequest();
+        const authHeader = request.headers['authorization'];
+        const token = this.jwtService.extractTokenFromHeader(authHeader);
+        if (!token) {
+            throw new common_1.UnauthorizedException({
+                code: 'TOKEN_MISSING',
+                message: 'Authorization token missing',
+            });
+        }
+        try {
+            const payload = this.jwtService.verifyAccessToken(token);
+            request.user = payload;
+            return true;
+        }
+        catch {
+            throw new common_1.UnauthorizedException({
+                code: 'INVALID_OR_EXPIRED_TOKEN',
+                message: 'Access token is invalid or expired',
+            });
+        }
+    }
+};
+exports.JwtAuthGuard = JwtAuthGuard;
+exports.JwtAuthGuard = JwtAuthGuard = __decorate([
+    (0, common_1.Injectable)(),
+    __metadata("design:paramtypes", [typeof (_a = typeof jwt_service_1.JwtService !== "undefined" && jwt_service_1.JwtService) === "function" ? _a : Object, typeof (_b = typeof core_1.Reflector !== "undefined" && core_1.Reflector) === "function" ? _b : Object])
+], JwtAuthGuard);
+
+
+/***/ }),
+
+/***/ "./src/common/guards/roles.guard.ts":
+/*!******************************************!*\
+  !*** ./src/common/guards/roles.guard.ts ***!
+  \******************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var _a;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.RolesGuard = void 0;
+const _Roles_1 = __webpack_require__(/*! @/common/decorators/@Roles */ "./src/common/decorators/@Roles.ts");
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const core_1 = __webpack_require__(/*! @nestjs/core */ "@nestjs/core");
+let RolesGuard = class RolesGuard {
+    constructor(reflector) {
+        this.reflector = reflector;
+    }
+    canActivate(context) {
+        const requiredRoles = this.reflector.getAllAndOverride(_Roles_1.ROLES_KEY, [
+            context.getHandler(),
+            context.getClass(),
+        ]);
+        if (!requiredRoles || requiredRoles.length === 0)
+            return true;
+        const request = context.switchToHttp().getRequest();
+        const user = request.user;
+        if (!user?.role) {
+            throw new common_1.ForbiddenException({
+                code: 'ROLE_MISSING',
+                message: 'User role not found in token',
+            });
+        }
+        if (!requiredRoles.includes(user.role)) {
+            throw new common_1.ForbiddenException({
+                code: 'ACCESS_DENIED',
+                message: `Access denied. Requires role: ${requiredRoles.join(', ')}`,
+            });
+        }
+        return true;
+    }
+};
+exports.RolesGuard = RolesGuard;
+exports.RolesGuard = RolesGuard = __decorate([
+    (0, common_1.Injectable)(),
+    __metadata("design:paramtypes", [typeof (_a = typeof core_1.Reflector !== "undefined" && core_1.Reflector) === "function" ? _a : Object])
+], RolesGuard);
 
 
 /***/ }),
@@ -578,6 +713,7 @@ const common_module_1 = __webpack_require__(/*! @/common/common.module */ "./src
 const config_module_1 = __webpack_require__(/*! @/config/config.module */ "./src/config/config.module.ts");
 const typeorm_module_1 = __webpack_require__(/*! @/database/typeorm.module */ "./src/database/typeorm.module.ts");
 const auth_module_1 = __webpack_require__(/*! @/modules/auth/auth.module */ "./src/modules/auth/auth.module.ts");
+const post_module_1 = __webpack_require__(/*! @/modules/posts/post.module */ "./src/modules/posts/post.module.ts");
 const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
 let AppModule = class AppModule {
 };
@@ -588,6 +724,7 @@ exports.AppModule = AppModule = __decorate([
             config_module_1.AppConfigModule,
             typeorm_module_1.TypeOrmDatabaseModule,
             auth_module_1.AuthModule,
+            post_module_1.PostModule,
             common_module_1.CommonModule
         ],
         controllers: [],
@@ -1392,6 +1529,9 @@ let UserRepository = class UserRepository {
     async findByPhone(phone) {
         return this.repo.findOne({ where: { phone } });
     }
+    async findById(id) {
+        return this.repo.findOne({ where: { id } });
+    }
     async findByIdentifier(identifier) {
         return this.repo.findOne({
             where: [
@@ -1584,6 +1724,397 @@ exports.AuthService = AuthService = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [typeof (_a = typeof user_repository_1.UserRepository !== "undefined" && user_repository_1.UserRepository) === "function" ? _a : Object, typeof (_b = typeof jwt_service_1.JwtService !== "undefined" && jwt_service_1.JwtService) === "function" ? _b : Object, typeof (_c = typeof refresh_token_repository_1.RefreshTokenRepository !== "undefined" && refresh_token_repository_1.RefreshTokenRepository) === "function" ? _c : Object])
 ], AuthService);
+
+
+/***/ }),
+
+/***/ "./src/modules/posts/controllers/post.controller.ts":
+/*!**********************************************************!*\
+  !*** ./src/modules/posts/controllers/post.controller.ts ***!
+  \**********************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var __param = (this && this.__param) || function (paramIndex, decorator) {
+    return function (target, key) { decorator(target, key, paramIndex); }
+};
+var _a, _b, _c, _d;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.PostController = void 0;
+const _Roles_1 = __webpack_require__(/*! @/common/decorators/@Roles */ "./src/common/decorators/@Roles.ts");
+const user_role_enum_1 = __webpack_require__(/*! @/common/enums/user-role.enum */ "./src/common/enums/user-role.enum.ts");
+const jwt_auth_guard_1 = __webpack_require__(/*! @/common/guards/jwt-auth.guard */ "./src/common/guards/jwt-auth.guard.ts");
+const roles_guard_1 = __webpack_require__(/*! @/common/guards/roles.guard */ "./src/common/guards/roles.guard.ts");
+const authenticated_request_interface_1 = __webpack_require__(/*! @/modules/posts/interfaces/authenticated-request.interface */ "./src/modules/posts/interfaces/authenticated-request.interface.ts");
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const swagger_1 = __webpack_require__(/*! @nestjs/swagger */ "@nestjs/swagger");
+const create_post_dto_1 = __webpack_require__(/*! ../dtos/create-post.dto */ "./src/modules/posts/dtos/create-post.dto.ts");
+const post_service_1 = __webpack_require__(/*! ../services/post.service */ "./src/modules/posts/services/post.service.ts");
+let PostController = class PostController {
+    constructor(postService) {
+        this.postService = postService;
+    }
+    async getFeed(limit, cursor) {
+        const result = await this.postService.getFeed(Number(limit) || 10, cursor);
+        return result;
+    }
+    async createPost(dto, req) {
+        return this.postService.create(dto, req.user);
+    }
+};
+exports.PostController = PostController;
+__decorate([
+    (0, common_1.Get)('feed'),
+    __param(0, (0, common_1.Query)('limit')),
+    __param(1, (0, common_1.Query)('cursor')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:returntype", Promise)
+], PostController.prototype, "getFeed", null);
+__decorate([
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
+    (0, _Roles_1.Roles)(user_role_enum_1.UserRole.CUSTOMER),
+    (0, swagger_1.ApiBearerAuth)(),
+    (0, common_1.Post)(),
+    __param(0, (0, common_1.Body)()),
+    __param(1, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [typeof (_b = typeof create_post_dto_1.CreatePostDto !== "undefined" && create_post_dto_1.CreatePostDto) === "function" ? _b : Object, typeof (_c = typeof authenticated_request_interface_1.AuthenticatedRequest !== "undefined" && authenticated_request_interface_1.AuthenticatedRequest) === "function" ? _c : Object]),
+    __metadata("design:returntype", typeof (_d = typeof Promise !== "undefined" && Promise) === "function" ? _d : Object)
+], PostController.prototype, "createPost", null);
+exports.PostController = PostController = __decorate([
+    (0, swagger_1.ApiTags)('Post'),
+    (0, common_1.Controller)('post'),
+    __metadata("design:paramtypes", [typeof (_a = typeof post_service_1.PostService !== "undefined" && post_service_1.PostService) === "function" ? _a : Object])
+], PostController);
+
+
+/***/ }),
+
+/***/ "./src/modules/posts/dtos/create-post.dto.ts":
+/*!***************************************************!*\
+  !*** ./src/modules/posts/dtos/create-post.dto.ts ***!
+  \***************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.CreatePostDto = void 0;
+const class_validator_1 = __webpack_require__(/*! class-validator */ "class-validator");
+class CreatePostDto {
+}
+exports.CreatePostDto = CreatePostDto;
+__decorate([
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], CreatePostDto.prototype, "title", void 0);
+__decorate([
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], CreatePostDto.prototype, "description", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsArray)(),
+    __metadata("design:type", Array)
+], CreatePostDto.prototype, "imageUrls", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], CreatePostDto.prototype, "location", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsNumber)(),
+    __metadata("design:type", Number)
+], CreatePostDto.prototype, "budget", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsDateString)(),
+    __metadata("design:type", String)
+], CreatePostDto.prototype, "desiredTime", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsUUID)(),
+    __metadata("design:type", String)
+], CreatePostDto.prototype, "categoryId", void 0);
+
+
+/***/ }),
+
+/***/ "./src/modules/posts/entities/post.entity.ts":
+/*!***************************************************!*\
+  !*** ./src/modules/posts/entities/post.entity.ts ***!
+  \***************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var _a, _b, _c, _d, _e;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.PostCustomer = void 0;
+const user_entity_1 = __webpack_require__(/*! @/modules/users/entities/user.entity */ "./src/modules/users/entities/user.entity.ts");
+const typeorm_1 = __webpack_require__(/*! typeorm */ "typeorm");
+let PostCustomer = class PostCustomer {
+};
+exports.PostCustomer = PostCustomer;
+__decorate([
+    (0, typeorm_1.PrimaryGeneratedColumn)('uuid'),
+    __metadata("design:type", String)
+], PostCustomer.prototype, "id", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ length: 255 }),
+    __metadata("design:type", String)
+], PostCustomer.prototype, "title", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'text' }),
+    __metadata("design:type", String)
+], PostCustomer.prototype, "description", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        name: 'image_urls',
+        type: 'text',
+        array: true,
+        nullable: true,
+    }),
+    __metadata("design:type", Array)
+], PostCustomer.prototype, "imageUrls", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ length: 255, nullable: true }),
+    __metadata("design:type", String)
+], PostCustomer.prototype, "location", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'timestamp with time zone', name: 'desired_time', nullable: true }),
+    __metadata("design:type", typeof (_a = typeof Date !== "undefined" && Date) === "function" ? _a : Object)
+], PostCustomer.prototype, "desiredTime", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'decimal', precision: 10, scale: 2, nullable: true }),
+    __metadata("design:type", Number)
+], PostCustomer.prototype, "budget", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'is_closed', default: false }),
+    __metadata("design:type", Boolean)
+], PostCustomer.prototype, "isClosed", void 0);
+__decorate([
+    (0, typeorm_1.ManyToOne)(() => user_entity_1.User, { eager: true, onDelete: 'CASCADE' }),
+    (0, typeorm_1.JoinColumn)({ name: 'customer_id' }),
+    __metadata("design:type", typeof (_b = typeof user_entity_1.User !== "undefined" && user_entity_1.User) === "function" ? _b : Object)
+], PostCustomer.prototype, "customer", void 0);
+__decorate([
+    (0, typeorm_1.CreateDateColumn)({ name: 'created_at' }),
+    __metadata("design:type", typeof (_c = typeof Date !== "undefined" && Date) === "function" ? _c : Object)
+], PostCustomer.prototype, "createdAt", void 0);
+__decorate([
+    (0, typeorm_1.UpdateDateColumn)({ name: 'updated_at' }),
+    __metadata("design:type", typeof (_d = typeof Date !== "undefined" && Date) === "function" ? _d : Object)
+], PostCustomer.prototype, "updatedAt", void 0);
+__decorate([
+    (0, typeorm_1.DeleteDateColumn)({ name: 'deleted_at' }),
+    __metadata("design:type", typeof (_e = typeof Date !== "undefined" && Date) === "function" ? _e : Object)
+], PostCustomer.prototype, "deletedAt", void 0);
+exports.PostCustomer = PostCustomer = __decorate([
+    (0, typeorm_1.Entity)('post-customer'),
+    (0, typeorm_1.Index)(['createdAt'])
+], PostCustomer);
+
+
+/***/ }),
+
+/***/ "./src/modules/posts/interfaces/authenticated-request.interface.ts":
+/*!*************************************************************************!*\
+  !*** ./src/modules/posts/interfaces/authenticated-request.interface.ts ***!
+  \*************************************************************************/
+/***/ ((__unused_webpack_module, exports) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+
+
+/***/ }),
+
+/***/ "./src/modules/posts/post.module.ts":
+/*!******************************************!*\
+  !*** ./src/modules/posts/post.module.ts ***!
+  \******************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.PostModule = void 0;
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const typeorm_1 = __webpack_require__(/*! @nestjs/typeorm */ "@nestjs/typeorm");
+const post_controller_1 = __webpack_require__(/*! ./controllers/post.controller */ "./src/modules/posts/controllers/post.controller.ts");
+const post_entity_1 = __webpack_require__(/*! ./entities/post.entity */ "./src/modules/posts/entities/post.entity.ts");
+const post_repository_1 = __webpack_require__(/*! ./repositories/post.repository */ "./src/modules/posts/repositories/post.repository.ts");
+const post_service_1 = __webpack_require__(/*! ./services/post.service */ "./src/modules/posts/services/post.service.ts");
+let PostModule = class PostModule {
+};
+exports.PostModule = PostModule;
+exports.PostModule = PostModule = __decorate([
+    (0, common_1.Module)({
+        imports: [typeorm_1.TypeOrmModule.forFeature([post_entity_1.PostCustomer])],
+        controllers: [post_controller_1.PostController],
+        providers: [post_service_1.PostService, post_repository_1.PostRepository],
+        exports: [post_service_1.PostService],
+    })
+], PostModule);
+
+
+/***/ }),
+
+/***/ "./src/modules/posts/repositories/post.repository.ts":
+/*!***********************************************************!*\
+  !*** ./src/modules/posts/repositories/post.repository.ts ***!
+  \***********************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var __param = (this && this.__param) || function (paramIndex, decorator) {
+    return function (target, key) { decorator(target, key, paramIndex); }
+};
+var _a;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.PostRepository = void 0;
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const typeorm_1 = __webpack_require__(/*! @nestjs/typeorm */ "@nestjs/typeorm");
+const typeorm_2 = __webpack_require__(/*! typeorm */ "typeorm");
+const post_entity_1 = __webpack_require__(/*! ../entities/post.entity */ "./src/modules/posts/entities/post.entity.ts");
+let PostRepository = class PostRepository {
+    constructor(repo) {
+        this.repo = repo;
+    }
+    async createPost(dto, customer) {
+        const newPost = this.repo.create({
+            ...dto,
+            desiredTime: dto.desiredTime ? new Date(dto.desiredTime) : undefined,
+            customer,
+            isClosed: false,
+        });
+        return await this.repo.save(newPost);
+    }
+    async findPublicPosts(limit, cursor) {
+        const qb = this.repo
+            .createQueryBuilder('post')
+            .leftJoinAndSelect('post.customer', 'customer')
+            .where('post.isClosed = false')
+            .orderBy('post.createdAt', 'DESC')
+            .take(limit);
+        if (cursor) {
+            qb.andWhere('post.createdAt < :cursor', { cursor });
+        }
+        return await qb.getMany();
+    }
+};
+exports.PostRepository = PostRepository;
+exports.PostRepository = PostRepository = __decorate([
+    (0, common_1.Injectable)(),
+    __param(0, (0, typeorm_1.InjectRepository)(post_entity_1.PostCustomer)),
+    __metadata("design:paramtypes", [typeof (_a = typeof typeorm_2.Repository !== "undefined" && typeorm_2.Repository) === "function" ? _a : Object])
+], PostRepository);
+
+
+/***/ }),
+
+/***/ "./src/modules/posts/services/post.service.ts":
+/*!****************************************************!*\
+  !*** ./src/modules/posts/services/post.service.ts ***!
+  \****************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var PostService_1;
+var _a, _b;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.PostService = void 0;
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const user_repository_1 = __webpack_require__(/*! ../../auth/repositories/user.repository */ "./src/modules/auth/repositories/user.repository.ts");
+const post_repository_1 = __webpack_require__(/*! ../repositories/post.repository */ "./src/modules/posts/repositories/post.repository.ts");
+let PostService = PostService_1 = class PostService {
+    constructor(repo, userRepo) {
+        this.repo = repo;
+        this.userRepo = userRepo;
+        this.logger = new common_1.Logger(PostService_1.name);
+    }
+    async create(dto, jwtUser) {
+        try {
+            const customer = await this.userRepo.findById(jwtUser.id);
+            if (!customer) {
+                throw new NotFoundException({
+                    code: 'USER_NOT_FOUND',
+                    message: 'Customer not found',
+                });
+            }
+            return await this.repo.createPost(dto, customer);
+        }
+        catch (error) {
+            this.logger.error('Failed to create post', error.stack);
+            throw new common_1.InternalServerErrorException('Failed to create post');
+        }
+    }
+    async getFeed(limit = 10, cursor) {
+        const parsedCursor = cursor ? new Date(cursor) : undefined;
+        const posts = await this.repo.findPublicPosts(limit, parsedCursor);
+        const nextCursor = posts.length > 0 ? posts[posts.length - 1].createdAt.toISOString() : null;
+        return {
+            data: posts,
+            nextCursor,
+        };
+    }
+};
+exports.PostService = PostService;
+exports.PostService = PostService = PostService_1 = __decorate([
+    (0, common_1.Injectable)(),
+    __metadata("design:paramtypes", [typeof (_a = typeof post_repository_1.PostRepository !== "undefined" && post_repository_1.PostRepository) === "function" ? _a : Object, typeof (_b = typeof user_repository_1.UserRepository !== "undefined" && user_repository_1.UserRepository) === "function" ? _b : Object])
+], PostService);
 
 
 /***/ }),
