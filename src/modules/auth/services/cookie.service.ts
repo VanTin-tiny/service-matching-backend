@@ -2,14 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Request, Response } from 'express';
 import { COOKIE_NAMES, COOKIE_OPTIONS } from '../constants/cookie.constants';
-
-interface CookieOptions {
-    httpOnly: boolean;
-    secure: boolean;
-    sameSite: 'strict' | 'lax' | 'none';
-    path: string;
-    maxAge?: number;
-}
+import { CookieOptions } from '../interfaces';
 
 @Injectable()
 export class CookieService {
