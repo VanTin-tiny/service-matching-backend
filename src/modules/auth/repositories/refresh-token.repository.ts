@@ -4,7 +4,6 @@ import { EntityManager, FindOptionsWhere, In, MoreThan, Repository, UpdateResult
 import { RefreshToken } from '../entities/refresh-token.entity';
 import { TokenFindOptions } from '../interfaces/token-find-option.interface';
 
-
 type RefreshTokenWhereCondition = FindOptionsWhere<RefreshToken>;
 
 @Injectable()
