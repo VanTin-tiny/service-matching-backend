@@ -1,28 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { LoginResponseDto } from '../dtos/login-response.dto';
-import { RegisterResponseDto } from '../dtos/register-response.dto';
-import { LoginResult } from '../interfaces/login.interface';
-import { RegisterResult } from '../interfaces/register.interface';
-
-interface SuccessResponse {
-    success: boolean;
-    message: string;
-}
-
-interface TokenResponse {
-    accessToken: string;
-    refreshToken?: string;
-}
-
-interface HealthCheckResponse {
-    status: string;
-    timestamp: string;
-    uptime: number;
-}
+import { HealthCheckResponse, LoginResult, RegisterResult, SuccessResponse, TokenRefreshResult } from '../interfaces';
 
 @Injectable()
 export class AuthResponseBuilder {
-    buildRegisterResponse(result: RegisterResult): RegisterResponseDto {
+    buildRegisterResponse(result: RegisterResult): SuccessResponse<RegisterResult> {
         return {
             success: true,
             message: 'Registration successful',
@@ -53,7 +35,7 @@ export class AuthResponseBuilder {
         };
     }
 
-    buildRefreshResponse(accessToken: string): SuccessResponse & { data: { accessToken: string } } {
+    buildRefreshResponse(accessToken: string): SuccessResponse<{ accessToken: string }> {
         return {
             success: true,
             message: 'Token refreshed successfully',
@@ -63,7 +45,7 @@ export class AuthResponseBuilder {
         };
     }
 
-    buildRefreshMobileResponse(tokens: TokenResponse): SuccessResponse & { data: TokenResponse } {
+    buildRefreshMobileResponse(tokens: TokenRefreshResult): SuccessResponse<TokenRefreshResult> {
         return {
             success: true,
             message: 'Token refreshed successfully',
@@ -74,21 +56,21 @@ export class AuthResponseBuilder {
         };
     }
 
-    buildLogoutResponse(): SuccessResponse {
+    buildLogoutResponse(): SuccessResponse<void> {
         return {
             success: true,
             message: 'Logout successful',
         };
     }
 
-    buildLogoutAllResponse(): SuccessResponse {
+    buildLogoutAllResponse(): SuccessResponse<void> {
         return {
             success: true,
             message: 'Logged out from all devices successfully',
         };
     }
 
-    buildLogoutDeviceResponse(): SuccessResponse {
+    buildLogoutDeviceResponse(): SuccessResponse<void> {
         return {
             success: true,
             message: 'Device logged out successfully',

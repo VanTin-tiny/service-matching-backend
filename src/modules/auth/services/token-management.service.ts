@@ -1,13 +1,10 @@
 import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { EntityManager } from 'typeorm';
 import { AUTH_CONSTANTS, AUTH_ERROR_CODES } from '../constants/auth.constants';
+import { TokenValidationResult } from '../interfaces';
 import { RefreshTokenRepository } from '../repositories/refresh-token.repository';
 import { PasswordUtil } from '../utils/password.util';
-interface TokenValidationResult {
-    isValid: boolean;
-    tokenId?: string;
-    shouldRevokeAll?: boolean;
-}
+
 @Injectable()
 export class TokenManagementService {
     private readonly logger = new Logger(TokenManagementService.name);

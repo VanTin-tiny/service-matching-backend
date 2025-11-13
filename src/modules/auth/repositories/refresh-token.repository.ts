@@ -2,12 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, FindOptionsWhere, In, MoreThan, Repository, UpdateResult } from 'typeorm';
 import { RefreshToken } from '../entities/refresh-token.entity';
-
-
-interface TokenFindOptions {
-    includeRevoked?: boolean;
-    includeExpired?: boolean;
-}
+import { TokenFindOptions } from '../interfaces/token-find-option.interface';
 
 
 type RefreshTokenWhereCondition = FindOptionsWhere<RefreshToken>;
