@@ -3,12 +3,18 @@ import { AppConfigModule } from '@/config/config.module';
 import { TypeOrmDatabaseModule } from '@/database/typeorm.module';
 import { AuthModule } from '@/modules/auth/auth.module';
 import { Module } from '@nestjs/common';
+import { ThrottlerModule } from '@nestjs/throttler';
 @Module({
   imports: [
     AppConfigModule,
     TypeOrmDatabaseModule,
     AuthModule,
-    CommonModule
+    CommonModule,
+    ThrottlerModule.forRoot([{
+      ttl: 60000,
+      limit: 10,
+    }])
+
   ],
   controllers: [],
   providers: [],

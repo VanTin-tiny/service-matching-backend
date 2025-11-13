@@ -18,4 +18,14 @@ export class ErrorResponseDto {
 
     @ApiProperty({ example: '2025-11-04T07:26:05.344Z' })
     timestamp!: string;
+
+    @ApiProperty({
+        required: false,
+        example: { field: 'email', reason: 'invalid format' }
+    })
+    details?: Record<string, unknown>;
 }
+
+
+
+

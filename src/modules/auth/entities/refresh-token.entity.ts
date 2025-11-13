@@ -12,7 +12,9 @@ import {
 
 @Entity('refresh_tokens')
 @Unique(['tokenHash'])
-@Index('idx_refresh_expires', ['expiresAt'])
+@Index('idx_user_active', ['userId', 'isRevoked', 'expiresAt'])
+@Index('idx_user_device_active', ['userId', 'deviceId', 'isRevoked', 'expiresAt'])
+@Index('idx_cleanup', ['isRevoked', 'expiresAt'])
 export class RefreshToken {
     @PrimaryGeneratedColumn('uuid')
     id!: string;
@@ -28,8 +30,14 @@ export class RefreshToken {
     @Column({ name: 'token_hash', length: 500 })
     tokenHash!: string;
 
+    @Column({ name: 'device_id', length: 255, nullable: true })
+    deviceId!: string | null;
+
     @Column({ type: 'timestamp with time zone', name: 'expires_at' })
     expiresAt!: Date;
+
+    @Column({ name: 'is_revoked', default: false, nullable: true })
+    isRevoked!: boolean;
 
     @CreateDateColumn({ name: 'created_at' })
     createdAt!: Date;

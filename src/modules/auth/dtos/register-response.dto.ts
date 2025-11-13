@@ -7,7 +7,7 @@ export class RegisterResponseDto extends BaseResponseDto<RegisterResponseDataDto
   success!: boolean;
 
   @ApiProperty({ example: 'Register successful' })
-  message?: string;
+  message?: string; 
 
   @ApiProperty({ type: RegisterResponseDataDto })
   data?: RegisterResponseDataDto;

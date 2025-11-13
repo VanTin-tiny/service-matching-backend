@@ -53,17 +53,14 @@ export class JwtService {
 
         const { id, email, role } = payload;
 
-        // ✅ Kiểm tra định danh
         if (!id || typeof id !== 'string') {
             throw new UnauthorizedException('Missing or invalid "id" in JWT payload');
         }
 
-        // ✅ Kiểm tra email (nếu có)
         if (email && typeof email !== 'string') {
             throw new UnauthorizedException('Invalid "email" in JWT payload');
         }
 
-        // ✅ Kiểm tra role hợp lệ với enum UserRole
         const validRoles = Object.values(UserRole);
         if (!role || !validRoles.includes(role)) {
             throw new UnauthorizedException('Invalid or missing "role" in JWT payload');
