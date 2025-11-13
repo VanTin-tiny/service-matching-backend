@@ -4,13 +4,13 @@ import { ConfigService } from '@nestjs/config';
 import { HttpAdapterHost, NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import cookieParser from 'cookie-parser';
-import { GlobalHttpExceptionFilter } from './common/filters/http-exception.filter';
+import { GlobalExceptionFilter } from './common/exceptions/index';
 
 async function bootstrap() {
     const app = await NestFactory.create(AppModule);
     app.use(cookieParser());
     const httpAdapterHost = app.get(HttpAdapterHost);
-    app.useGlobalFilters(new GlobalHttpExceptionFilter(httpAdapterHost));
+    app.useGlobalFilters(new GlobalExceptionFilter(httpAdapterHost));
 
     const configService = app.get(ConfigService);
 
@@ -27,6 +27,7 @@ async function bootstrap() {
         .setDescription('API for service-matching platform')
         .setVersion('1.0')
         .addBearerAuth()
+        .addServer('/api/v1')
         .build();
     const document = SwaggerModule.createDocument(app, config);
     SwaggerModule.setup('api', app, document);
