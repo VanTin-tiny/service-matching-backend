@@ -1,4 +1,8 @@
 import { JwtService } from '@/common/services/jwt.service';
+import { ErrorUtil } from '@/common/utils/error.util';
+import {
+    InvalidTokenException,
+} from '@/modules/auth/exceptions/auth.exception';
 import { JwtPayload } from '@/modules/auth/interfaces/jwt-payload.interface';
 import {
     CanActivate,
@@ -7,7 +11,6 @@ import {
     UnauthorizedException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
     constructor(
@@ -31,10 +34,19 @@ export class JwtAuthGuard implements CanActivate {
             const payload: JwtPayload = this.jwtService.verifyAccessToken(token);
             request.user = payload;
             return true;
-        } catch {
+        } catch (error: unknown) {
+            if (
+                ErrorUtil.isKnownException(
+                    error,
+                    InvalidTokenException,
+                )
+            ) {
+                throw error;
+            }
+
             throw new UnauthorizedException({
-                code: 'INVALID_OR_EXPIRED_TOKEN',
-                message: 'Access token is invalid or expired',
+                code: 'TOKEN_INVALID',
+                message: 'Access token is invalid',
             });
         }
     }

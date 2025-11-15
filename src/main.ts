@@ -17,6 +17,7 @@ async function bootstrap() {
     app.enableCors({
         origin: [
             'https://postmaxillary-variably-justa.ngrok-free.dev',
+            'http://localhost:3001'
         ],
         credentials: true,
     });

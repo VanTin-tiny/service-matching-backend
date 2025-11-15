@@ -1,33 +1,95 @@
-import { User } from '@/modules/users/entities/user.entity';
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { CreatePostDto } from '../dtos/create-post.dto';
+import { EntityManager, IsNull, Repository } from 'typeorm';
 import { PostCustomer } from '../entities/post.entity';
+import { PostStatus } from '../enums/post-status.enum';
+
 
 @Injectable()
 export class PostRepository {
+    private readonly logger = new Logger(PostRepository.name);
+
     constructor(
         @InjectRepository(PostCustomer)
-        private readonly repo: Repository<PostCustomer>,
+        private readonly repository: Repository<PostCustomer>,
     ) { }
 
-    async createPost(dto: CreatePostDto, customer: User): Promise<PostCustomer> {
-        const newPost = this.repo.create({
-            ...dto,
-            desiredTime: dto.desiredTime ? new Date(dto.desiredTime) : undefined,
-            customer,
-            isClosed: false,
-        });
-
-        return await this.repo.save(newPost);
+    
+    private getRepository(manager?: EntityManager): Repository<PostCustomer> {
+        return manager ? manager.getRepository(PostCustomer) : this.repository;
     }
 
-    async findPublicPosts(limit: number, cursor?: Date) {
-        const qb = this.repo
+  
+    async createPost(
+        data: Partial<PostCustomer>,
+        manager?: EntityManager,
+    ): Promise<PostCustomer | null> {
+        const repo = this.getRepository(manager);
+        const entity = repo.create(data);
+        const saved = await repo.save(entity);
+
+        this.logger.log(`Post created: ${saved.id}`);
+
+    
+        return await this.findById(saved.id, manager);
+    }
+
+    async updatePost(
+        id: string,
+        data: Partial<PostCustomer>,
+        manager?: EntityManager,
+    ): Promise<PostCustomer> {
+        const repo = this.getRepository(manager);
+        await repo.update(id, data);
+
+        this.logger.log(`Post updated: ${id}`);
+
+      
+        const updated = await this.findById(id, manager);
+        if (!updated) {
+            throw new Error(`Post ${id} not found after update`);
+        }
+
+        return updated;
+    }
+
+    
+    async findById(
+        id: string,
+        manager?: EntityManager,
+    ): Promise<PostCustomer | null> {
+        return await this.getRepository(manager).findOne({
+            where: { id, deletedAt: IsNull() },
+            relations: ['customer'],
+        });
+    }
+
+   
+    async findByIdAndCustomer(
+        id: string,
+        customerId: string,
+        manager?: EntityManager,
+    ): Promise<PostCustomer | null> {
+        return await this.getRepository(manager).findOne({
+            where: {
+                id,
+                customerId,
+                deletedAt: IsNull(),
+            },
+            relations: ['customer'],
+        });
+    }
+
+    async findPublicPosts(
+        limit: number,
+        cursor?: Date,
+        manager?: EntityManager,
+    ): Promise<PostCustomer[]> {
+        const qb = this.getRepository(manager)
             .createQueryBuilder('post')
             .leftJoinAndSelect('post.customer', 'customer')
-            .where('post.isClosed = false')
+            .where('post.status = :status', { status: PostStatus.OPEN })
+            .andWhere('post.deletedAt IS NULL')
             .orderBy('post.createdAt', 'DESC')
             .take(limit);
 
@@ -36,5 +98,59 @@ export class PostRepository {
         }
 
         return await qb.getMany();
+    }
+
+  
+    async findCustomerPosts(
+        customerId: string,
+        limit: number,
+        cursor?: Date,
+        manager?: EntityManager,
+    ): Promise<PostCustomer[]> {
+        const qb = this.getRepository(manager)
+            .createQueryBuilder('post')
+            .leftJoinAndSelect('post.customer', 'customer')
+            .where('post.customerId = :customerId', { customerId })
+            .andWhere('post.deletedAt IS NULL')
+            .orderBy('post.createdAt', 'DESC')
+            .take(limit);
+
+        if (cursor) {
+            qb.andWhere('post.createdAt < :cursor', { cursor });
+        }
+
+        return await qb.getMany();
+    }
+
+    async softDelete(id: string, manager?: EntityManager): Promise<void> {
+        await this.getRepository(manager).softDelete(id);
+        this.logger.log(`Post soft deleted: ${id}`);
+    }
+
+    
+    async closePost(
+        post: PostCustomer,
+        manager?: EntityManager,
+    ): Promise<PostCustomer> {
+        const repo = this.getRepository(manager);
+        post.status = PostStatus.CLOSED;
+        const closed = await repo.save(post);
+
+        this.logger.log(`Post closed: ${closed.id}`);
+        return closed;
+    }
+
+   
+    async countOpenPostsByCustomer(
+        customerId: string,
+        manager?: EntityManager,
+    ): Promise<number> {
+        return await this.getRepository(manager).count({
+            where: {
+                customerId,
+                status: PostStatus.OPEN,
+                deletedAt: IsNull(),
+            },
+        });
     }
 }

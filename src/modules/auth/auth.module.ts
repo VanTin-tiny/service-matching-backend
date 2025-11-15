@@ -4,8 +4,9 @@ import { TransactionInterceptor } from '@/common/interceptors/transaction.interc
 import { Module } from '@nestjs/common';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { AuthController } from './auth.controller';
+import { UsersModule } from '../users/users.module';
 import { AuthService } from './auth.service';
+import { AuthController } from './auth.controller';
 import { RefreshToken } from './entities/refresh-token.entity';
 import { RefreshTokenRepository } from './repositories/refresh-token.repository';
 import { AuthConfigService } from './services/auth-config.service';
@@ -14,7 +15,6 @@ import { AuthenticationFactory } from './services/authentication-factory.service
 import { CookieService } from './services/cookie.service';
 import { TokenManagementService } from './services/token-management.service';
 import { UserValidationService } from './services/user-validation.service';
-import { UsersModule } from '../users/users.module';
 @Module({
     imports: [
         UsersModule,

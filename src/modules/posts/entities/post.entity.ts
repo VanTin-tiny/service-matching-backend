@@ -1,4 +1,6 @@
+import { PostStatus } from '@/modules/posts/enums/post-status.enum';
 import { User } from '@/modules/users/entities/user.entity';
+
 import {
     Column,
     CreateDateColumn,
@@ -11,8 +13,9 @@ import {
     UpdateDateColumn,
 } from 'typeorm';
 
-@Entity('post-customer')
-@Index(['createdAt'])
+@Entity('post_customer')
+@Index(['status', 'deletedAt', 'createdAt'])
+@Index(['customerId', 'status'])
 export class PostCustomer {
     @PrimaryGeneratedColumn('uuid')
     id!: string;
@@ -28,20 +31,38 @@ export class PostCustomer {
         type: 'text',
         array: true,
         nullable: true,
+        default: '{}',
     })
-    imageUrls?: string[];
+    imageUrls: string[] = [];
 
     @Column({ length: 255, nullable: true })
     location?: string;
 
-    @Column({ type: 'timestamp with time zone', name: 'desired_time', nullable: true })
+    @Column({
+        type: 'timestamp with time zone',
+        name: 'desired_time',
+        nullable: true
+    })
     desiredTime?: Date;
 
-    @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
+    @Column({
+        type: 'decimal',
+        precision: 10,
+        scale: 2,
+        nullable: true
+    })
     budget?: number;
 
-    @Column({ name: 'is_closed', default: false })
-    isClosed!: boolean;
+    @Column({
+        type: 'enum',
+        enum: PostStatus,
+        default: PostStatus.OPEN,
+    })
+    status: PostStatus = PostStatus.OPEN;
+
+    @Column({ name: 'customer_id' })
+    @Index()
+    customerId!: string;
 
     @ManyToOne(() => User, { eager: true, onDelete: 'CASCADE' })
     @JoinColumn({ name: 'customer_id' })
@@ -55,4 +76,16 @@ export class PostCustomer {
 
     @DeleteDateColumn({ name: 'deleted_at' })
     deletedAt?: Date;
+
+    isOpen(): boolean {
+        return this.status === PostStatus.OPEN && !this.deletedAt;
+    }
+
+    isClosed(): boolean {
+        return this.status === PostStatus.CLOSED;
+    }
+
+    belongsTo(userId: string): boolean {
+        return this.customerId === userId;
+    }
 }
