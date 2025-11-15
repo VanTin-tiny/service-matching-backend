@@ -5,13 +5,13 @@ import { UserRepository } from './repositorys/user.repository';
 
 @Module({
     imports: [
-        TypeOrmModule.forFeature([User]), 
+        TypeOrmModule.forFeature([User]),
     ],
     providers: [
         UserRepository,
     ],
     exports: [
-        UserRepository, 
+        UserRepository,
     ],
 })
-export class UsersModule {}
+export class UsersModule { }

@@ -22,7 +22,7 @@ export class TransactionInterceptor implements NestInterceptor {
     async intercept(
         context: ExecutionContext,
         next: CallHandler,
-    ): Promise<Observable<any>> {
+    ): Promise<Observable<unknown>> {
         const isTransactional = this.reflector.get<boolean>(
             TRANSACTION_KEY,
             context.getHandler(),
