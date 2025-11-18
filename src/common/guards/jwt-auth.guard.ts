@@ -33,6 +33,8 @@ export class JwtAuthGuard implements CanActivate {
         try {
             const payload: JwtPayload = this.jwtService.verifyAccessToken(token);
             request.user = payload;
+
+
             return true;
         } catch (error: unknown) {
             if (

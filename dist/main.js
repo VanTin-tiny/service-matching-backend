@@ -73,6 +73,31 @@ exports.CurrentUser = (0, common_1.createParamDecorator)((data, ctx) => {
 
 /***/ }),
 
+/***/ "./src/common/decorators/@CurrentUserId.ts":
+/*!*************************************************!*\
+  !*** ./src/common/decorators/@CurrentUserId.ts ***!
+  \*************************************************/
+/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.CurrentUserId = void 0;
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+exports.CurrentUserId = (0, common_1.createParamDecorator)((data, ctx) => {
+    const request = ctx.switchToHttp().getRequest();
+    const user = request.user;
+    if (!user?.id) {
+        throw new common_1.UnauthorizedException({
+            code: 'USER_NOT_AUTHENTICATED',
+            message: 'User is not authenticated',
+        });
+    }
+    return user.id;
+});
+
+
+/***/ }),
+
 /***/ "./src/common/decorators/@Roles.ts":
 /*!*****************************************!*\
   !*** ./src/common/decorators/@Roles.ts ***!
@@ -1473,8 +1498,11 @@ const common_module_1 = __webpack_require__(/*! @/common/common.module */ "./src
 const config_module_1 = __webpack_require__(/*! @/config/config.module */ "./src/config/config.module.ts");
 const typeorm_module_1 = __webpack_require__(/*! @/database/typeorm.module */ "./src/database/typeorm.module.ts");
 const auth_module_1 = __webpack_require__(/*! @/modules/auth/auth.module */ "./src/modules/auth/auth.module.ts");
+const notifications_module_1 = __webpack_require__(/*! @/modules/notifications/notifications.module */ "./src/modules/notifications/notifications.module.ts");
 const posts_module_1 = __webpack_require__(/*! @/modules/posts/posts.module */ "./src/modules/posts/posts.module.ts");
+const quotes_module_1 = __webpack_require__(/*! @/modules/quotes/quotes.module */ "./src/modules/quotes/quotes.module.ts");
 const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const event_emitter_1 = __webpack_require__(/*! @nestjs/event-emitter */ "@nestjs/event-emitter");
 const throttler_1 = __webpack_require__(/*! @nestjs/throttler */ "@nestjs/throttler");
 let AppModule = class AppModule {
 };
@@ -1487,6 +1515,9 @@ exports.AppModule = AppModule = __decorate([
             auth_module_1.AuthModule,
             posts_module_1.PostsModule,
             common_module_1.CommonModule,
+            notifications_module_1.NotificationsModule,
+            quotes_module_1.QuoteModule,
+            event_emitter_1.EventEmitterModule.forRoot(),
             throttler_1.ThrottlerModule.forRoot([{
                     ttl: 60000,
                     limit: 10,
@@ -1564,11 +1595,13 @@ const app_module_1 = __webpack_require__(/*! @/core/app.module */ "./src/core/ap
 const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
 const config_1 = __webpack_require__(/*! @nestjs/config */ "@nestjs/config");
 const core_1 = __webpack_require__(/*! @nestjs/core */ "@nestjs/core");
+const platform_socket_io_1 = __webpack_require__(/*! @nestjs/platform-socket.io */ "@nestjs/platform-socket.io");
 const swagger_1 = __webpack_require__(/*! @nestjs/swagger */ "@nestjs/swagger");
 const cookie_parser_1 = __importDefault(__webpack_require__(/*! cookie-parser */ "cookie-parser"));
 const index_1 = __webpack_require__(/*! ./common/exceptions/index */ "./src/common/exceptions/index.ts");
 async function bootstrap() {
     const app = await core_1.NestFactory.create(app_module_1.AppModule);
+    app.useWebSocketAdapter(new platform_socket_io_1.IoAdapter(app));
     app.use((0, cookie_parser_1.default)());
     const httpAdapterHost = app.get(core_1.HttpAdapterHost);
     app.useGlobalFilters(new index_1.GlobalExceptionFilter(httpAdapterHost));
@@ -1592,7 +1625,6 @@ async function bootstrap() {
     swagger_1.SwaggerModule.setup('api', app, document);
     const apiPrefix = configService.get('API_PREFIX', 'api');
     app.setGlobalPrefix(apiPrefix);
-    app.setGlobalPrefix(process.env.API_PREFIX || 'api');
     await app.listen(process.env.APP_PORT || 3000);
 }
 bootstrap();
@@ -3707,6 +3739,1065 @@ PasswordUtil.DUMMY_HASH = '$2b$12$dummyHashForTimingAttackPreventionXXXXXXXXXXXX
 
 /***/ }),
 
+/***/ "./src/modules/notifications/dtos/notification.dto.ts":
+/*!************************************************************!*\
+  !*** ./src/modules/notifications/dtos/notification.dto.ts ***!
+  \************************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var _a, _b, _c, _d;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.SuccessResponseDto = exports.UnreadCountResponseDto = exports.NotificationListResponseDto = exports.NotificationResponseDto = exports.GetNotificationsQueryDto = void 0;
+const notification_enum_1 = __webpack_require__(/*! @/modules/notifications/enums/notification.enum */ "./src/modules/notifications/enums/notification.enum.ts");
+const swagger_1 = __webpack_require__(/*! @nestjs/swagger */ "@nestjs/swagger");
+const class_transformer_1 = __webpack_require__(/*! class-transformer */ "class-transformer");
+const class_validator_1 = __webpack_require__(/*! class-validator */ "class-validator");
+class GetNotificationsQueryDto {
+    constructor() {
+        this.page = 1;
+        this.limit = 20;
+        this.unreadOnly = false;
+    }
+}
+exports.GetNotificationsQueryDto = GetNotificationsQueryDto;
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ description: 'Number of pages', default: 1 }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsInt)(),
+    (0, class_validator_1.Min)(1),
+    (0, class_transformer_1.Type)(() => Number),
+    __metadata("design:type", Number)
+], GetNotificationsQueryDto.prototype, "page", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ description: 'Quantity/page', default: 20 }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsInt)(),
+    (0, class_validator_1.Min)(1),
+    (0, class_validator_1.Max)(100),
+    (0, class_transformer_1.Type)(() => Number),
+    __metadata("design:type", Number)
+], GetNotificationsQueryDto.prototype, "limit", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ description: 'Only take unread', default: false }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsBoolean)(),
+    (0, class_transformer_1.Transform)(({ value }) => value === 'true' || value === true),
+    __metadata("design:type", Boolean)
+], GetNotificationsQueryDto.prototype, "unreadOnly", void 0);
+class NotificationResponseDto {
+}
+exports.NotificationResponseDto = NotificationResponseDto;
+__decorate([
+    (0, swagger_1.ApiProperty)({ description: 'ID notification' }),
+    (0, class_transformer_1.Expose)(),
+    __metadata("design:type", String)
+], NotificationResponseDto.prototype, "id", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ description: 'ID user' }),
+    (0, class_transformer_1.Expose)(),
+    __metadata("design:type", String)
+], NotificationResponseDto.prototype, "userId", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'Notification Type',
+        enum: notification_enum_1.NotificationType,
+    }),
+    (0, class_transformer_1.Expose)(),
+    __metadata("design:type", typeof (_a = typeof notification_enum_1.NotificationType !== "undefined" && notification_enum_1.NotificationType) === "function" ? _a : Object)
+], NotificationResponseDto.prototype, "type", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ description: 'Tilte' }),
+    (0, class_transformer_1.Expose)(),
+    __metadata("design:type", String)
+], NotificationResponseDto.prototype, "title", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ description: 'Content' }),
+    (0, class_transformer_1.Expose)(),
+    __metadata("design:type", String)
+], NotificationResponseDto.prototype, "message", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ description: 'Additional data' }),
+    (0, class_transformer_1.Expose)(),
+    __metadata("design:type", typeof (_b = typeof Record !== "undefined" && Record) === "function" ? _b : Object)
+], NotificationResponseDto.prototype, "metadata", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ description: 'Action URL' }),
+    (0, class_transformer_1.Expose)(),
+    __metadata("design:type", String)
+], NotificationResponseDto.prototype, "actionUrl", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ description: 'Have you read it?' }),
+    (0, class_transformer_1.Expose)(),
+    __metadata("design:type", Boolean)
+], NotificationResponseDto.prototype, "isRead", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ description: 'Reading time' }),
+    (0, class_transformer_1.Expose)(),
+    (0, class_transformer_1.Type)(() => Date),
+    __metadata("design:type", typeof (_c = typeof Date !== "undefined" && Date) === "function" ? _c : Object)
+], NotificationResponseDto.prototype, "readAt", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ description: 'Creation time' }),
+    (0, class_transformer_1.Expose)(),
+    (0, class_transformer_1.Type)(() => Date),
+    __metadata("design:type", typeof (_d = typeof Date !== "undefined" && Date) === "function" ? _d : Object)
+], NotificationResponseDto.prototype, "createdAt", void 0);
+class NotificationListResponseDto {
+}
+exports.NotificationListResponseDto = NotificationListResponseDto;
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'List of notifications',
+        type: [NotificationResponseDto],
+    }),
+    (0, class_transformer_1.Expose)(),
+    (0, class_transformer_1.Type)(() => NotificationResponseDto),
+    __metadata("design:type", Array)
+], NotificationListResponseDto.prototype, "notifications", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ description: 'Total number of notifications' }),
+    (0, class_transformer_1.Expose)(),
+    __metadata("design:type", Number)
+], NotificationListResponseDto.prototype, "total", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ description: 'Number of unread notifications' }),
+    (0, class_transformer_1.Expose)(),
+    __metadata("design:type", Number)
+], NotificationListResponseDto.prototype, "unreadCount", void 0);
+class UnreadCountResponseDto {
+}
+exports.UnreadCountResponseDto = UnreadCountResponseDto;
+__decorate([
+    (0, swagger_1.ApiProperty)({ description: 'Number of unread notifications' }),
+    __metadata("design:type", Number)
+], UnreadCountResponseDto.prototype, "count", void 0);
+class SuccessResponseDto {
+}
+exports.SuccessResponseDto = SuccessResponseDto;
+__decorate([
+    (0, swagger_1.ApiProperty)({ description: 'Success status' }),
+    __metadata("design:type", Boolean)
+], SuccessResponseDto.prototype, "success", void 0);
+
+
+/***/ }),
+
+/***/ "./src/modules/notifications/entities/notification.entity.ts":
+/*!*******************************************************************!*\
+  !*** ./src/modules/notifications/entities/notification.entity.ts ***!
+  \*******************************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var _a, _b, _c, _d, _e;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.Notification = void 0;
+const user_entity_1 = __webpack_require__(/*! @/modules/users/entities/user.entity */ "./src/modules/users/entities/user.entity.ts");
+const typeorm_1 = __webpack_require__(/*! typeorm */ "typeorm");
+const notification_enum_1 = __webpack_require__(/*! ../enums/notification.enum */ "./src/modules/notifications/enums/notification.enum.ts");
+let Notification = class Notification {
+    constructor() {
+        this.isRead = false;
+    }
+    markAsRead() {
+        if (!this.isRead) {
+            this.isRead = true;
+            this.readAt = new Date();
+        }
+    }
+    isUnread() {
+        return !this.isRead;
+    }
+};
+exports.Notification = Notification;
+__decorate([
+    (0, typeorm_1.PrimaryGeneratedColumn)('uuid'),
+    __metadata("design:type", String)
+], Notification.prototype, "id", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'user_id' }),
+    (0, typeorm_1.Index)(),
+    __metadata("design:type", String)
+], Notification.prototype, "userId", void 0);
+__decorate([
+    (0, typeorm_1.ManyToOne)(() => user_entity_1.User, { onDelete: 'CASCADE' }),
+    (0, typeorm_1.JoinColumn)({ name: 'user_id' }),
+    __metadata("design:type", typeof (_a = typeof user_entity_1.User !== "undefined" && user_entity_1.User) === "function" ? _a : Object)
+], Notification.prototype, "user", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        type: 'enum',
+        enum: notification_enum_1.NotificationType,
+    }),
+    __metadata("design:type", typeof (_b = typeof notification_enum_1.NotificationType !== "undefined" && notification_enum_1.NotificationType) === "function" ? _b : Object)
+], Notification.prototype, "type", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ length: 255 }),
+    __metadata("design:type", String)
+], Notification.prototype, "title", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'text' }),
+    __metadata("design:type", String)
+], Notification.prototype, "message", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        type: 'jsonb',
+        nullable: true,
+        comment: 'Additional data (postId, quoteId, orderId...)',
+    }),
+    __metadata("design:type", typeof (_c = typeof Record !== "undefined" && Record) === "function" ? _c : Object)
+], Notification.prototype, "metadata", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        name: 'action_url',
+        length: 500,
+        nullable: true,
+        comment: 'Deep link to navigate',
+    }),
+    __metadata("design:type", String)
+], Notification.prototype, "actionUrl", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'is_read', default: false }),
+    __metadata("design:type", Boolean)
+], Notification.prototype, "isRead", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        name: 'read_at',
+        type: 'timestamp with time zone',
+        nullable: true,
+    }),
+    __metadata("design:type", typeof (_d = typeof Date !== "undefined" && Date) === "function" ? _d : Object)
+], Notification.prototype, "readAt", void 0);
+__decorate([
+    (0, typeorm_1.CreateDateColumn)({ name: 'created_at' }),
+    __metadata("design:type", typeof (_e = typeof Date !== "undefined" && Date) === "function" ? _e : Object)
+], Notification.prototype, "createdAt", void 0);
+exports.Notification = Notification = __decorate([
+    (0, typeorm_1.Entity)('notifications'),
+    (0, typeorm_1.Index)(['userId', 'isRead', 'createdAt']),
+    (0, typeorm_1.Index)(['userId', 'type', 'isRead'])
+], Notification);
+
+
+/***/ }),
+
+/***/ "./src/modules/notifications/enums/notification.enum.ts":
+/*!**************************************************************!*\
+  !*** ./src/modules/notifications/enums/notification.enum.ts ***!
+  \**************************************************************/
+/***/ ((__unused_webpack_module, exports) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.NotificationType = void 0;
+var NotificationType;
+(function (NotificationType) {
+    NotificationType["NEW_QUOTE_RECEIVED"] = "new_quote_received";
+    NotificationType["QUOTE_ACCEPTED"] = "quote_accepted";
+    NotificationType["QUOTE_REJECTED"] = "quote_rejected";
+    NotificationType["POST_CLOSED"] = "post_closed";
+    NotificationType["POST_UPDATED"] = "post_updated";
+    NotificationType["DIRECT_REQUEST_RECEIVED"] = "direct_request_received";
+    NotificationType["DIRECT_REQUEST_ACCEPTED"] = "direct_request_accepted";
+    NotificationType["DIRECT_REQUEST_REJECTED"] = "direct_request_rejected";
+    NotificationType["ORDER_CREATED"] = "order_created";
+    NotificationType["ORDER_IN_PROGRESS"] = "order_in_progress";
+    NotificationType["ORDER_COMPLETED"] = "order_completed";
+    NotificationType["ORDER_CANCELLED"] = "order_cancelled";
+    NotificationType["PAYMENT_RECEIVED"] = "payment_received";
+    NotificationType["PAYMENT_FAILED"] = "payment_failed";
+    NotificationType["REFUND_PROCESSED"] = "refund_processed";
+    NotificationType["NEW_REVIEW_RECEIVED"] = "new_review_received";
+    NotificationType["REVIEW_REPLY_RECEIVED"] = "review_reply_received";
+    NotificationType["NEW_MESSAGE"] = "new_message";
+    NotificationType["ACCOUNT_VERIFIED"] = "account_verified";
+    NotificationType["ACCOUNT_SUSPENDED"] = "account_suspended";
+    NotificationType["ACCOUNT_WARNING"] = "account_warning";
+    NotificationType["SYSTEM_ANNOUNCEMENT"] = "system_announcement";
+})(NotificationType || (exports.NotificationType = NotificationType = {}));
+
+
+/***/ }),
+
+/***/ "./src/modules/notifications/gateways/notifications.gateway.ts":
+/*!*********************************************************************!*\
+  !*** ./src/modules/notifications/gateways/notifications.gateway.ts ***!
+  \*********************************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var NotificationsGateway_1;
+var _a, _b;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.NotificationsGateway = void 0;
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const event_emitter_1 = __webpack_require__(/*! @nestjs/event-emitter */ "@nestjs/event-emitter");
+const jwt_1 = __webpack_require__(/*! @nestjs/jwt */ "@nestjs/jwt");
+const websockets_1 = __webpack_require__(/*! @nestjs/websockets */ "@nestjs/websockets");
+const socket_io_1 = __webpack_require__(/*! socket.io */ "socket.io");
+let NotificationsGateway = NotificationsGateway_1 = class NotificationsGateway {
+    constructor(jwtService) {
+        this.jwtService = jwtService;
+        this.logger = new common_1.Logger(NotificationsGateway_1.name);
+        this.userSockets = new Map();
+    }
+    async handleConnection(client) {
+        try {
+            const token = client.handshake.auth.token ||
+                client.handshake.headers.authorization?.split(' ')[1];
+            if (!token) {
+                client.disconnect();
+                return;
+            }
+            const payload = await this.jwtService.verifyAsync(token);
+            const userId = payload.sub || payload.id;
+            if (!userId) {
+                client.disconnect();
+                return;
+            }
+            client.data.userId = userId;
+            if (!this.userSockets.has(userId)) {
+                this.userSockets.set(userId, new Set());
+            }
+            this.userSockets.get(userId).add(client.id);
+            await client.join(`user:${userId}`);
+            this.logger.log(`Client connected: ${client.id} (User: ${userId})`);
+            client.emit('connected', { userId });
+        }
+        catch (error) {
+            this.logger.error('Connection error:', error);
+            client.disconnect();
+        }
+    }
+    handleDisconnect(client) {
+        const userId = client.data.userId;
+        if (userId) {
+            const sockets = this.userSockets.get(userId);
+            if (sockets) {
+                sockets.delete(client.id);
+                if (sockets.size === 0) {
+                    this.userSockets.delete(userId);
+                }
+            }
+        }
+        this.logger.log(`Client disconnected: ${client.id} (User: ${userId})`);
+    }
+    handleNotificationCreated(payload) {
+        this.server
+            .to(`user:${payload.userId}`)
+            .emit('notification:new', payload.notification);
+        this.logger.log(`Notification sent to user: ${payload.userId}`);
+    }
+    handleNotificationRead(payload) {
+        this.server
+            .to(`user:${payload.userId}`)
+            .emit('notification:read', {
+            notificationId: payload.notificationId,
+        });
+    }
+    handleAllNotificationsRead(payload) {
+        this.server
+            .to(`user:${payload.userId}`)
+            .emit('notification:all_read', {});
+    }
+    isUserOnline(userId) {
+        const sockets = this.userSockets.get(userId);
+        return !!sockets && sockets.size > 0;
+    }
+    getUserConnectionCount(userId) {
+        return this.userSockets.get(userId)?.size || 0;
+    }
+    sendToUser(userId, event, data) {
+        this.server.to(`user:${userId}`).emit(event, data);
+    }
+    broadcastToAll(event, data) {
+        this.server.emit(event, data);
+    }
+};
+exports.NotificationsGateway = NotificationsGateway;
+__decorate([
+    (0, websockets_1.WebSocketServer)(),
+    __metadata("design:type", typeof (_b = typeof socket_io_1.Server !== "undefined" && socket_io_1.Server) === "function" ? _b : Object)
+], NotificationsGateway.prototype, "server", void 0);
+__decorate([
+    (0, event_emitter_1.OnEvent)('notification.created'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", void 0)
+], NotificationsGateway.prototype, "handleNotificationCreated", null);
+__decorate([
+    (0, event_emitter_1.OnEvent)('notification.read'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", void 0)
+], NotificationsGateway.prototype, "handleNotificationRead", null);
+__decorate([
+    (0, event_emitter_1.OnEvent)('notification.all_read'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", void 0)
+], NotificationsGateway.prototype, "handleAllNotificationsRead", null);
+exports.NotificationsGateway = NotificationsGateway = NotificationsGateway_1 = __decorate([
+    (0, common_1.Injectable)(),
+    (0, websockets_1.WebSocketGateway)({
+        namespace: 'notifications',
+        cors: {
+            origin: process.env.FRONTEND_URL || '*',
+            credentials: true,
+        },
+    }),
+    __metadata("design:paramtypes", [typeof (_a = typeof jwt_1.JwtService !== "undefined" && jwt_1.JwtService) === "function" ? _a : Object])
+], NotificationsGateway);
+
+
+/***/ }),
+
+/***/ "./src/modules/notifications/notification.controller.ts":
+/*!**************************************************************!*\
+  !*** ./src/modules/notifications/notification.controller.ts ***!
+  \**************************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var __param = (this && this.__param) || function (paramIndex, decorator) {
+    return function (target, key) { decorator(target, key, paramIndex); }
+};
+var _a, _b, _c, _d, _e, _f, _g, _h;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.NotificationController = void 0;
+const _CurrentUser_1 = __webpack_require__(/*! @/common/decorators/@CurrentUser */ "./src/common/decorators/@CurrentUser.ts");
+const jwt_auth_guard_1 = __webpack_require__(/*! @/common/guards/jwt-auth.guard */ "./src/common/guards/jwt-auth.guard.ts");
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const swagger_1 = __webpack_require__(/*! @nestjs/swagger */ "@nestjs/swagger");
+const notification_dto_1 = __webpack_require__(/*! ./dtos/notification.dto */ "./src/modules/notifications/dtos/notification.dto.ts");
+const notification_service_1 = __webpack_require__(/*! ./notification.service */ "./src/modules/notifications/notification.service.ts");
+let NotificationController = class NotificationController {
+    constructor(notificationService) {
+        this.notificationService = notificationService;
+    }
+    async getNotifications(userId, query) {
+        return await this.notificationService.getUserNotifications(userId, query.page, query.limit, query.unreadOnly);
+    }
+    async getUnreadCount(userId) {
+        const count = await this.notificationService.getUnreadCount(userId);
+        return { count };
+    }
+    async markAsRead(notificationId, userId) {
+        await this.notificationService.markAsRead(notificationId, userId);
+        return { success: true };
+    }
+    async markAllAsRead(userId) {
+        await this.notificationService.markAllAsRead(userId);
+        return { success: true };
+    }
+    async deleteNotification(notificationId, userId) {
+        await this.notificationService.deleteNotification(notificationId, userId);
+        return { success: true };
+    }
+    async deleteReadNotifications(userId) {
+        await this.notificationService.deleteReadNotifications(userId);
+        return { success: true };
+    }
+};
+exports.NotificationController = NotificationController;
+__decorate([
+    (0, common_1.Get)(),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    (0, swagger_1.ApiOperation)({
+        summary: 'get successful list',
+        description: 'get list of successful notifications',
+    }),
+    (0, swagger_1.ApiOkResponse)({ description: 'success' }),
+    __param(0, (0, _CurrentUser_1.CurrentUser)('id')),
+    __param(1, (0, common_1.Query)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, typeof (_b = typeof notification_dto_1.GetNotificationsQueryDto !== "undefined" && notification_dto_1.GetNotificationsQueryDto) === "function" ? _b : Object]),
+    __metadata("design:returntype", typeof (_c = typeof Promise !== "undefined" && Promise) === "function" ? _c : Object)
+], NotificationController.prototype, "getNotifications", null);
+__decorate([
+    (0, common_1.Get)('unread-count'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    (0, swagger_1.ApiOperation)({ summary: 'count unread notifications' }),
+    (0, swagger_1.ApiOkResponse)({ status: 200, description: 'success' }),
+    __param(0, (0, _CurrentUser_1.CurrentUser)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", typeof (_d = typeof Promise !== "undefined" && Promise) === "function" ? _d : Object)
+], NotificationController.prototype, "getUnreadCount", null);
+__decorate([
+    (0, common_1.Post)(':id/read'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    (0, swagger_1.ApiOperation)({ summary: 'mark as read' }),
+    (0, swagger_1.ApiOkResponse)({ description: 'success' }),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, _CurrentUser_1.CurrentUser)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:returntype", typeof (_e = typeof Promise !== "undefined" && Promise) === "function" ? _e : Object)
+], NotificationController.prototype, "markAsRead", null);
+__decorate([
+    (0, common_1.Post)('mark-all-read'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    (0, swagger_1.ApiOperation)({ summary: 'mark all read' }),
+    (0, swagger_1.ApiOkResponse)({ description: 'success' }),
+    __param(0, (0, _CurrentUser_1.CurrentUser)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", typeof (_f = typeof Promise !== "undefined" && Promise) === "function" ? _f : Object)
+], NotificationController.prototype, "markAllAsRead", null);
+__decorate([
+    (0, common_1.Delete)(':id'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    (0, swagger_1.ApiOperation)({ summary: 'delete notification' }),
+    (0, swagger_1.ApiOkResponse)({ description: 'Deleted successfully' }),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, _CurrentUser_1.CurrentUser)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:returntype", typeof (_g = typeof Promise !== "undefined" && Promise) === "function" ? _g : Object)
+], NotificationController.prototype, "deleteNotification", null);
+__decorate([
+    (0, common_1.Delete)('read'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    (0, swagger_1.ApiOperation)({ summary: 'delete all read receipts' }),
+    (0, swagger_1.ApiOkResponse)({ description: 'Deleted successfully' }),
+    __param(0, (0, _CurrentUser_1.CurrentUser)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", typeof (_h = typeof Promise !== "undefined" && Promise) === "function" ? _h : Object)
+], NotificationController.prototype, "deleteReadNotifications", null);
+exports.NotificationController = NotificationController = __decorate([
+    (0, swagger_1.ApiTags)('Notifications'),
+    (0, common_1.Controller)('notifications'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, swagger_1.ApiBearerAuth)(),
+    __metadata("design:paramtypes", [typeof (_a = typeof notification_service_1.NotificationService !== "undefined" && notification_service_1.NotificationService) === "function" ? _a : Object])
+], NotificationController);
+
+
+/***/ }),
+
+/***/ "./src/modules/notifications/notification.service.ts":
+/*!***********************************************************!*\
+  !*** ./src/modules/notifications/notification.service.ts ***!
+  \***********************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var _a, _b, _c, _d;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.NotificationService = void 0;
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const notification_action_service_1 = __webpack_require__(/*! ./services/notification-action.service */ "./src/modules/notifications/services/notification-action.service.ts");
+const notification_creation_service_1 = __webpack_require__(/*! ./services/notification-creation.service */ "./src/modules/notifications/services/notification-creation.service.ts");
+const notification_event_service_1 = __webpack_require__(/*! ./services/notification-event.service */ "./src/modules/notifications/services/notification-event.service.ts");
+const notification_query_service_1 = __webpack_require__(/*! ./services/notification-query.service */ "./src/modules/notifications/services/notification-query.service.ts");
+let NotificationService = class NotificationService {
+    constructor(queryService, creationService, actionService, eventService) {
+        this.queryService = queryService;
+        this.creationService = creationService;
+        this.actionService = actionService;
+        this.eventService = eventService;
+    }
+    async notifyNewQuote(customerId, data) {
+        await this.eventService.notifyNewQuote(customerId, data);
+    }
+    async notifyQuoteAccepted(providerId, data) {
+        await this.eventService.notifyQuoteAccepted(providerId, data);
+    }
+    async notifyQuoteRejected(providerId, data) {
+        await this.eventService.notifyQuoteRejected(providerId, data);
+    }
+    async notifyPostClosed(providerIds, postTitle, postId) {
+        await this.eventService.notifyPostClosed(providerIds, postTitle, postId);
+    }
+    async notifyOrderCreated(providerId, customerId, orderId, orderTitle) {
+        await this.eventService.notifyOrderCreated(providerId, customerId, orderId, orderTitle);
+    }
+    async notifyOrderCompleted(userId, orderId, orderTitle) {
+        await this.eventService.notifyOrderCompleted(userId, orderId, orderTitle);
+    }
+    async notifyNewReview(providerId, reviewId, rating, customerName) {
+        await this.eventService.notifyNewReview(providerId, reviewId, rating, customerName);
+    }
+    async notifyNewMessage(userId, senderId, senderName, messagePreview, chatId) {
+        await this.eventService.notifyNewMessage(userId, senderId, senderName, messagePreview, chatId);
+    }
+    async notifySystem(userIds, title, message, metadata) {
+        await this.eventService.notifySystem(userIds, title, message, metadata);
+    }
+    async getUserNotifications(userId, page = 1, limit = 20, unreadOnly = false) {
+        return await this.queryService.getUserNotifications(userId, page, limit, unreadOnly);
+    }
+    async getUnreadCount(userId) {
+        return await this.queryService.getUnreadCount(userId);
+    }
+    async markAsRead(notificationId, userId) {
+        await this.actionService.markAsRead(notificationId, userId);
+    }
+    async markAllAsRead(userId) {
+        await this.actionService.markAllAsRead(userId);
+    }
+    async deleteNotification(notificationId, userId) {
+        await this.actionService.deleteNotification(notificationId, userId);
+    }
+    async deleteReadNotifications(userId) {
+        await this.actionService.deleteReadNotifications(userId);
+    }
+};
+exports.NotificationService = NotificationService;
+exports.NotificationService = NotificationService = __decorate([
+    (0, common_1.Injectable)(),
+    __metadata("design:paramtypes", [typeof (_a = typeof notification_query_service_1.NotificationQueryService !== "undefined" && notification_query_service_1.NotificationQueryService) === "function" ? _a : Object, typeof (_b = typeof notification_creation_service_1.NotificationCreationService !== "undefined" && notification_creation_service_1.NotificationCreationService) === "function" ? _b : Object, typeof (_c = typeof notification_action_service_1.NotificationActionService !== "undefined" && notification_action_service_1.NotificationActionService) === "function" ? _c : Object, typeof (_d = typeof notification_event_service_1.NotificationEventService !== "undefined" && notification_event_service_1.NotificationEventService) === "function" ? _d : Object])
+], NotificationService);
+
+
+/***/ }),
+
+/***/ "./src/modules/notifications/notifications.module.ts":
+/*!***********************************************************!*\
+  !*** ./src/modules/notifications/notifications.module.ts ***!
+  \***********************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.NotificationsModule = void 0;
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const jwt_1 = __webpack_require__(/*! @nestjs/jwt */ "@nestjs/jwt");
+const typeorm_1 = __webpack_require__(/*! @nestjs/typeorm */ "@nestjs/typeorm");
+const notification_entity_1 = __webpack_require__(/*! ./entities/notification.entity */ "./src/modules/notifications/entities/notification.entity.ts");
+const notifications_gateway_1 = __webpack_require__(/*! ./gateways/notifications.gateway */ "./src/modules/notifications/gateways/notifications.gateway.ts");
+const notification_controller_1 = __webpack_require__(/*! ./notification.controller */ "./src/modules/notifications/notification.controller.ts");
+const notification_service_1 = __webpack_require__(/*! ./notification.service */ "./src/modules/notifications/notification.service.ts");
+const notification_repository_1 = __webpack_require__(/*! ./repositories/notification.repository */ "./src/modules/notifications/repositories/notification.repository.ts");
+const notification_action_service_1 = __webpack_require__(/*! ./services/notification-action.service */ "./src/modules/notifications/services/notification-action.service.ts");
+const notification_creation_service_1 = __webpack_require__(/*! ./services/notification-creation.service */ "./src/modules/notifications/services/notification-creation.service.ts");
+const notification_event_service_1 = __webpack_require__(/*! ./services/notification-event.service */ "./src/modules/notifications/services/notification-event.service.ts");
+const notification_query_service_1 = __webpack_require__(/*! ./services/notification-query.service */ "./src/modules/notifications/services/notification-query.service.ts");
+let NotificationsModule = class NotificationsModule {
+};
+exports.NotificationsModule = NotificationsModule;
+exports.NotificationsModule = NotificationsModule = __decorate([
+    (0, common_1.Module)({
+        imports: [
+            typeorm_1.TypeOrmModule.forFeature([notification_entity_1.Notification]),
+            jwt_1.JwtModule.register({
+                secret: process.env.JWT_SECRET || 'your-secret-key',
+                signOptions: { expiresIn: '7d' },
+            }),
+        ],
+        controllers: [notification_controller_1.NotificationController],
+        providers: [
+            notification_service_1.NotificationService,
+            notification_repository_1.NotificationRepository,
+            notifications_gateway_1.NotificationsGateway,
+            notification_query_service_1.NotificationQueryService,
+            notification_creation_service_1.NotificationCreationService,
+            notification_action_service_1.NotificationActionService,
+            notification_event_service_1.NotificationEventService,
+        ],
+        exports: [
+            notification_service_1.NotificationService,
+            notification_repository_1.NotificationRepository,
+            notifications_gateway_1.NotificationsGateway,
+            notification_query_service_1.NotificationQueryService,
+            notification_creation_service_1.NotificationCreationService,
+            notification_action_service_1.NotificationActionService,
+            notification_event_service_1.NotificationEventService,
+        ],
+    })
+], NotificationsModule);
+
+
+/***/ }),
+
+/***/ "./src/modules/notifications/repositories/notification.repository.ts":
+/*!***************************************************************************!*\
+  !*** ./src/modules/notifications/repositories/notification.repository.ts ***!
+  \***************************************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var __param = (this && this.__param) || function (paramIndex, decorator) {
+    return function (target, key) { decorator(target, key, paramIndex); }
+};
+var _a;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.NotificationRepository = void 0;
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const typeorm_1 = __webpack_require__(/*! @nestjs/typeorm */ "@nestjs/typeorm");
+const typeorm_2 = __webpack_require__(/*! typeorm */ "typeorm");
+const notification_entity_1 = __webpack_require__(/*! ../entities/notification.entity */ "./src/modules/notifications/entities/notification.entity.ts");
+let NotificationRepository = class NotificationRepository {
+    constructor(repository) {
+        this.repository = repository;
+    }
+    getRepository(manager) {
+        return manager ? manager.getRepository(notification_entity_1.Notification) : this.repository;
+    }
+    create(data, manager) {
+        return this.getRepository(manager).create(data);
+    }
+    async save(notification, manager) {
+        return await this.getRepository(manager).save(notification);
+    }
+    async findAndCount(options, manager) {
+        return await this.getRepository(manager).findAndCount(options);
+    }
+    async count(options, manager) {
+        return await this.getRepository(manager).count(options);
+    }
+    async findOne(options, manager) {
+        return await this.getRepository(manager).findOne(options);
+    }
+    createQueryBuilder(manager) {
+        return this.getRepository(manager).createQueryBuilder();
+    }
+    async delete(criteria, manager) {
+        await this.getRepository(manager).delete(criteria);
+    }
+};
+exports.NotificationRepository = NotificationRepository;
+exports.NotificationRepository = NotificationRepository = __decorate([
+    (0, common_1.Injectable)(),
+    __param(0, (0, typeorm_1.InjectRepository)(notification_entity_1.Notification)),
+    __metadata("design:paramtypes", [typeof (_a = typeof typeorm_2.Repository !== "undefined" && typeorm_2.Repository) === "function" ? _a : Object])
+], NotificationRepository);
+
+
+/***/ }),
+
+/***/ "./src/modules/notifications/services/notification-action.service.ts":
+/*!***************************************************************************!*\
+  !*** ./src/modules/notifications/services/notification-action.service.ts ***!
+  \***************************************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var _a, _b, _c;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.NotificationActionService = void 0;
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const event_emitter_1 = __webpack_require__(/*! @nestjs/event-emitter */ "@nestjs/event-emitter");
+const notification_entity_1 = __webpack_require__(/*! ../entities/notification.entity */ "./src/modules/notifications/entities/notification.entity.ts");
+const notification_repository_1 = __webpack_require__(/*! ../repositories/notification.repository */ "./src/modules/notifications/repositories/notification.repository.ts");
+const notification_query_service_1 = __webpack_require__(/*! ./notification-query.service */ "./src/modules/notifications/services/notification-query.service.ts");
+let NotificationActionService = class NotificationActionService {
+    constructor(notificationRepo, queryService, eventEmitter) {
+        this.notificationRepo = notificationRepo;
+        this.queryService = queryService;
+        this.eventEmitter = eventEmitter;
+    }
+    async markAsRead(notificationId, userId) {
+        const notification = await this.queryService.findNotification(notificationId, userId);
+        if (notification && !notification.isRead) {
+            notification.markAsRead();
+            await this.notificationRepo.save(notification);
+            this.eventEmitter.emit('notification.read', {
+                userId,
+                notificationId,
+            });
+        }
+    }
+    async markAllAsRead(userId) {
+        await this.notificationRepo
+            .createQueryBuilder()
+            .update(notification_entity_1.Notification)
+            .set({
+            isRead: true,
+            readAt: new Date(),
+        })
+            .where('user_id = :userId', { userId })
+            .andWhere('is_read = false')
+            .execute();
+        this.eventEmitter.emit('notification.all_read', { userId });
+    }
+    async deleteNotification(notificationId, userId) {
+        await this.notificationRepo.delete({ id: notificationId, userId });
+        this.eventEmitter.emit('notification.deleted', {
+            userId,
+            notificationId,
+        });
+    }
+    async deleteReadNotifications(userId) {
+        await this.notificationRepo.delete({ userId, isRead: true });
+        this.eventEmitter.emit('notification.read_deleted', { userId });
+    }
+};
+exports.NotificationActionService = NotificationActionService;
+exports.NotificationActionService = NotificationActionService = __decorate([
+    (0, common_1.Injectable)(),
+    __metadata("design:paramtypes", [typeof (_a = typeof notification_repository_1.NotificationRepository !== "undefined" && notification_repository_1.NotificationRepository) === "function" ? _a : Object, typeof (_b = typeof notification_query_service_1.NotificationQueryService !== "undefined" && notification_query_service_1.NotificationQueryService) === "function" ? _b : Object, typeof (_c = typeof event_emitter_1.EventEmitter2 !== "undefined" && event_emitter_1.EventEmitter2) === "function" ? _c : Object])
+], NotificationActionService);
+
+
+/***/ }),
+
+/***/ "./src/modules/notifications/services/notification-creation.service.ts":
+/*!*****************************************************************************!*\
+  !*** ./src/modules/notifications/services/notification-creation.service.ts ***!
+  \*****************************************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var _a, _b;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.NotificationCreationService = void 0;
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const event_emitter_1 = __webpack_require__(/*! @nestjs/event-emitter */ "@nestjs/event-emitter");
+const notification_repository_1 = __webpack_require__(/*! ../repositories/notification.repository */ "./src/modules/notifications/repositories/notification.repository.ts");
+let NotificationCreationService = class NotificationCreationService {
+    constructor(notificationRepo, eventEmitter) {
+        this.notificationRepo = notificationRepo;
+        this.eventEmitter = eventEmitter;
+    }
+    async createNotification(userId, type, title, message, metadata, actionUrl) {
+        const notification = this.notificationRepo.create({
+            userId,
+            type,
+            title,
+            message,
+            metadata,
+            actionUrl,
+            isRead: false,
+        });
+        const saved = await this.notificationRepo.save(notification);
+        this.eventEmitter.emit('notification.created', {
+            userId,
+            notification: saved,
+        });
+        return saved;
+    }
+    async createBulkNotifications(userIds, type, title, message, metadata, actionUrl) {
+        const notifications = userIds.map((userId) => this.createNotification(userId, type, title, message, metadata, actionUrl));
+        await Promise.all(notifications);
+    }
+};
+exports.NotificationCreationService = NotificationCreationService;
+exports.NotificationCreationService = NotificationCreationService = __decorate([
+    (0, common_1.Injectable)(),
+    __metadata("design:paramtypes", [typeof (_a = typeof notification_repository_1.NotificationRepository !== "undefined" && notification_repository_1.NotificationRepository) === "function" ? _a : Object, typeof (_b = typeof event_emitter_1.EventEmitter2 !== "undefined" && event_emitter_1.EventEmitter2) === "function" ? _b : Object])
+], NotificationCreationService);
+
+
+/***/ }),
+
+/***/ "./src/modules/notifications/services/notification-event.service.ts":
+/*!**************************************************************************!*\
+  !*** ./src/modules/notifications/services/notification-event.service.ts ***!
+  \**************************************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var _a;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.NotificationEventService = void 0;
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const notification_enum_1 = __webpack_require__(/*! ../enums/notification.enum */ "./src/modules/notifications/enums/notification.enum.ts");
+const notification_creation_service_1 = __webpack_require__(/*! ./notification-creation.service */ "./src/modules/notifications/services/notification-creation.service.ts");
+let NotificationEventService = class NotificationEventService {
+    constructor(creationService) {
+        this.creationService = creationService;
+    }
+    async notifyNewQuote(customerId, data) {
+        await this.creationService.createNotification(customerId, notification_enum_1.NotificationType.NEW_QUOTE_RECEIVED, 'new quote', `${data.providerName} sent a quote ${data.price?.toLocaleString('vi-VN')}đ for post "${data.postTitle}"`, {
+            postId: data.postId,
+            quoteId: data.quoteId,
+            providerId: data.providerName,
+            price: data.price,
+        }, `/posts/${data.postId}/quotes`);
+    }
+    async notifyQuoteAccepted(providerId, data) {
+        await this.creationService.createNotification(providerId, notification_enum_1.NotificationType.QUOTE_ACCEPTED, 'Quote accepted', `Happy! Your quote for "${data.postTitle}" has been accepted`, {
+            postId: data.postId,
+            quoteId: data.quoteId,
+        }, `/quotes/${data.quoteId}`);
+    }
+    async notifyQuoteRejected(providerId, data) {
+        const reasonText = data.reason ? `: ${data.reason}` : '';
+        await this.creationService.createNotification(providerId, notification_enum_1.NotificationType.QUOTE_REJECTED, 'Quote was rejected', `Your quote for "${data.postTitle}" has been rejected${reasonText}`, {
+            postId: data.postId,
+            quoteId: data.quoteId,
+            reason: data.reason,
+        }, `/quotes/${data.quoteId}`);
+    }
+    async notifyPostClosed(providerIds, postTitle, postId) {
+        await this.creationService.createBulkNotifications(providerIds, notification_enum_1.NotificationType.POST_CLOSED, 'Post is closed', `Post "${postTitle}" you bid on has been closed.`, { postId }, `/posts/${postId}`);
+    }
+    async notifyOrderCreated(providerId, customerId, orderId, orderTitle) {
+        await this.creationService.createNotification(providerId, notification_enum_1.NotificationType.ORDER_CREATED, 'new order', `you have new order: "${orderTitle}"`, { orderId }, `/orders/${orderId}`);
+        await this.creationService.createNotification(customerId, notification_enum_1.NotificationType.ORDER_CREATED, 'Order has been created', `Order "${orderTitle}" was created successfully`, { orderId }, `/orders/${orderId}`);
+    }
+    async notifyOrderCompleted(userId, orderId, orderTitle) {
+        await this.creationService.createNotification(userId, notification_enum_1.NotificationType.ORDER_COMPLETED, 'Order completed', `Order "${orderTitle}" completed`, { orderId }, `/orders/${orderId}`);
+    }
+    async notifyNewReview(providerId, reviewId, rating, customerName) {
+        await this.creationService.createNotification(providerId, notification_enum_1.NotificationType.NEW_REVIEW_RECEIVED, 'New review', `${customerName} rated you ${rating} star`, { reviewId, rating }, `/reviews/${reviewId}`);
+    }
+    async notifyNewMessage(userId, senderId, senderName, messagePreview, chatId) {
+        await this.creationService.createNotification(userId, notification_enum_1.NotificationType.NEW_MESSAGE, 'New message', `${senderName}: ${messagePreview}`, { senderId, chatId }, `/chats/${chatId}`);
+    }
+    async notifySystem(userIds, title, message, metadata) {
+        await this.creationService.createBulkNotifications(userIds, notification_enum_1.NotificationType.SYSTEM_ANNOUNCEMENT, title, message, metadata);
+    }
+};
+exports.NotificationEventService = NotificationEventService;
+exports.NotificationEventService = NotificationEventService = __decorate([
+    (0, common_1.Injectable)(),
+    __metadata("design:paramtypes", [typeof (_a = typeof notification_creation_service_1.NotificationCreationService !== "undefined" && notification_creation_service_1.NotificationCreationService) === "function" ? _a : Object])
+], NotificationEventService);
+
+
+/***/ }),
+
+/***/ "./src/modules/notifications/services/notification-query.service.ts":
+/*!**************************************************************************!*\
+  !*** ./src/modules/notifications/services/notification-query.service.ts ***!
+  \**************************************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var _a;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.NotificationQueryService = void 0;
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const notification_repository_1 = __webpack_require__(/*! ../repositories/notification.repository */ "./src/modules/notifications/repositories/notification.repository.ts");
+let NotificationQueryService = class NotificationQueryService {
+    constructor(notificationRepo) {
+        this.notificationRepo = notificationRepo;
+    }
+    async getUserNotifications(userId, page = 1, limit = 20, unreadOnly = false) {
+        const where = { userId };
+        if (unreadOnly) {
+            where.isRead = false;
+        }
+        const [notifications, total] = await this.notificationRepo.findAndCount({
+            where,
+            order: { createdAt: 'DESC' },
+            skip: (page - 1) * limit,
+            take: limit,
+        });
+        const unreadCount = await this.getUnreadCount(userId);
+        return { notifications, total, unreadCount };
+    }
+    async getUnreadCount(userId) {
+        return await this.notificationRepo.count({
+            where: { userId, isRead: false },
+        });
+    }
+    async findNotification(notificationId, userId) {
+        return await this.notificationRepo.findOne({
+            where: { id: notificationId, userId },
+        });
+    }
+};
+exports.NotificationQueryService = NotificationQueryService;
+exports.NotificationQueryService = NotificationQueryService = __decorate([
+    (0, common_1.Injectable)(),
+    __metadata("design:paramtypes", [typeof (_a = typeof notification_repository_1.NotificationRepository !== "undefined" && notification_repository_1.NotificationRepository) === "function" ? _a : Object])
+], NotificationQueryService);
+
+
+/***/ }),
+
 /***/ "./src/modules/posts/dtos/post.dto.ts":
 /*!********************************************!*\
   !*** ./src/modules/posts/dtos/post.dto.ts ***!
@@ -4830,6 +5921,1221 @@ exports.PostValidationService = PostValidationService = __decorate([
 
 /***/ }),
 
+/***/ "./src/modules/quotes/dtos/quote.dto.ts":
+/*!**********************************************!*\
+  !*** ./src/modules/quotes/dtos/quote.dto.ts ***!
+  \**********************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var _a, _b, _c, _d, _e, _f, _g;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.QuoteResponseDto = exports.StatusQuoteDto = exports.RejectQuoteDto = exports.AcceptQuoteDto = exports.UpdateQuoteDto = exports.CreateQuoteDto = void 0;
+const swagger_1 = __webpack_require__(/*! @nestjs/swagger */ "@nestjs/swagger");
+const class_transformer_1 = __webpack_require__(/*! class-transformer */ "class-transformer");
+const class_validator_1 = __webpack_require__(/*! class-validator */ "class-validator");
+const quote_status_enum_1 = __webpack_require__(/*! ../enums/quote-status.enum */ "./src/modules/quotes/enums/quote-status.enum.ts");
+class CreateQuoteDto {
+}
+exports.CreateQuoteDto = CreateQuoteDto;
+__decorate([
+    (0, swagger_1.ApiProperty)({ description: 'ID post' }),
+    (0, class_validator_1.IsUUID)(),
+    __metadata("design:type", String)
+], CreateQuoteDto.prototype, "postId", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ description: 'the price of a quote ', example: 500000 }),
+    (0, class_validator_1.IsNumber)(),
+    (0, class_validator_1.Min)(0),
+    (0, class_transformer_1.Type)(() => Number),
+    __metadata("design:type", Number)
+], CreateQuoteDto.prototype, "price", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ description: 'Detailed description quote' }),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MaxLength)(2000),
+    __metadata("design:type", String)
+], CreateQuoteDto.prototype, "description", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ description: 'Terms and conditions' }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MaxLength)(1000),
+    __metadata("design:type", String)
+], CreateQuoteDto.prototype, "terms", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ description: 'Estimated time (minutes)', example: 120 }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsNumber)(),
+    (0, class_validator_1.Min)(0),
+    (0, class_transformer_1.Type)(() => Number),
+    __metadata("design:type", Number)
+], CreateQuoteDto.prototype, "estimatedDuration", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ description: 'List of image URLs' }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsArray)(),
+    (0, class_validator_1.IsUrl)({}, { each: true }),
+    __metadata("design:type", Array)
+], CreateQuoteDto.prototype, "imageUrls", void 0);
+class UpdateQuoteDto {
+}
+exports.UpdateQuoteDto = UpdateQuoteDto;
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ description: 'New offer price' }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsNumber)(),
+    (0, class_validator_1.Min)(0),
+    (0, class_transformer_1.Type)(() => Number),
+    __metadata("design:type", Number)
+], UpdateQuoteDto.prototype, "price", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ description: 'New description' }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MaxLength)(2000),
+    __metadata("design:type", String)
+], UpdateQuoteDto.prototype, "description", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ description: 'New Terms' }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MaxLength)(1000),
+    __metadata("design:type", String)
+], UpdateQuoteDto.prototype, "terms", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ description: 'New estimated time' }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsNumber)(),
+    (0, class_validator_1.Min)(0),
+    (0, class_transformer_1.Type)(() => Number),
+    __metadata("design:type", Number)
+], UpdateQuoteDto.prototype, "estimatedDuration", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ description: 'New image' }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsArray)(),
+    (0, class_validator_1.IsUrl)({}, { each: true }),
+    __metadata("design:type", Array)
+], UpdateQuoteDto.prototype, "imageUrls", void 0);
+class AcceptQuoteDto {
+}
+exports.AcceptQuoteDto = AcceptQuoteDto;
+class RejectQuoteDto {
+}
+exports.RejectQuoteDto = RejectQuoteDto;
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ description: 'Reason for refusal' }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MaxLength)(500),
+    __metadata("design:type", String)
+], RejectQuoteDto.prototype, "reason", void 0);
+class StatusQuoteDto extends (0, swagger_1.PartialType)(CreateQuoteDto) {
+}
+exports.StatusQuoteDto = StatusQuoteDto;
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({
+        description: 'Post status',
+        enum: quote_status_enum_1.QuoteStatus,
+        example: quote_status_enum_1.QuoteStatus.CANCELLED,
+    }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsEnum)(quote_status_enum_1.QuoteStatus),
+    __metadata("design:type", typeof (_a = typeof quote_status_enum_1.QuoteStatus !== "undefined" && quote_status_enum_1.QuoteStatus) === "function" ? _a : Object)
+], StatusQuoteDto.prototype, "status", void 0);
+class QuoteResponseDto {
+}
+exports.QuoteResponseDto = QuoteResponseDto;
+__decorate([
+    (0, swagger_1.ApiProperty)({ description: 'ID quote' }),
+    (0, class_transformer_1.Expose)(),
+    __metadata("design:type", String)
+], QuoteResponseDto.prototype, "id", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ description: 'ID post' }),
+    (0, class_transformer_1.Expose)(),
+    __metadata("design:type", String)
+], QuoteResponseDto.prototype, "postId", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ description: 'ID provider' }),
+    (0, class_transformer_1.Expose)(),
+    __metadata("design:type", String)
+], QuoteResponseDto.prototype, "providerId", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ description: 'price quote', example: 500000 }),
+    (0, class_transformer_1.Expose)(),
+    __metadata("design:type", Number)
+], QuoteResponseDto.prototype, "price", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ description: 'Detailed description' }),
+    (0, class_transformer_1.Expose)(),
+    __metadata("design:type", String)
+], QuoteResponseDto.prototype, "description", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ description: 'terms' }),
+    (0, class_transformer_1.Expose)(),
+    __metadata("design:type", String)
+], QuoteResponseDto.prototype, "terms", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ description: 'Estimated time (hours)', example: 4 }),
+    (0, class_transformer_1.Expose)(),
+    __metadata("design:type", Number)
+], QuoteResponseDto.prototype, "estimatedDuration", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({
+        description: 'List of image URLs',
+        type: [String],
+    }),
+    (0, class_transformer_1.Expose)(),
+    __metadata("design:type", Array)
+], QuoteResponseDto.prototype, "imageUrls", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'status quote',
+        enum: quote_status_enum_1.QuoteStatus,
+        example: quote_status_enum_1.QuoteStatus.PENDING,
+    }),
+    (0, class_transformer_1.Expose)(),
+    __metadata("design:type", typeof (_b = typeof quote_status_enum_1.QuoteStatus !== "undefined" && quote_status_enum_1.QuoteStatus) === "function" ? _b : Object)
+], QuoteResponseDto.prototype, "status", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ description: 'Acceptance time' }),
+    (0, class_transformer_1.Expose)(),
+    (0, class_transformer_1.Type)(() => Date),
+    __metadata("design:type", typeof (_c = typeof Date !== "undefined" && Date) === "function" ? _c : Object)
+], QuoteResponseDto.prototype, "acceptedAt", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ description: 'Time of rejection' }),
+    (0, class_transformer_1.Expose)(),
+    (0, class_transformer_1.Type)(() => Date),
+    __metadata("design:type", typeof (_d = typeof Date !== "undefined" && Date) === "function" ? _d : Object)
+], QuoteResponseDto.prototype, "rejectedAt", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ description: 'Reason for refusal' }),
+    (0, class_transformer_1.Expose)(),
+    __metadata("design:type", String)
+], QuoteResponseDto.prototype, "rejectionReason", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ description: 'time cancel' }),
+    (0, class_transformer_1.Expose)(),
+    (0, class_transformer_1.Type)(() => Date),
+    __metadata("design:type", typeof (_e = typeof Date !== "undefined" && Date) === "function" ? _e : Object)
+], QuoteResponseDto.prototype, "cancelledAt", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ description: 'Reason for cancellation' }),
+    (0, class_transformer_1.Expose)(),
+    __metadata("design:type", String)
+], QuoteResponseDto.prototype, "cancellationReason", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ description: 'creation time' }),
+    (0, class_transformer_1.Expose)(),
+    (0, class_transformer_1.Type)(() => Date),
+    __metadata("design:type", typeof (_f = typeof Date !== "undefined" && Date) === "function" ? _f : Object)
+], QuoteResponseDto.prototype, "createdAt", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ description: 'Update time' }),
+    (0, class_transformer_1.Expose)(),
+    (0, class_transformer_1.Type)(() => Date),
+    __metadata("design:type", typeof (_g = typeof Date !== "undefined" && Date) === "function" ? _g : Object)
+], QuoteResponseDto.prototype, "updatedAt", void 0);
+
+
+/***/ }),
+
+/***/ "./src/modules/quotes/entities/quote.entity.ts":
+/*!*****************************************************!*\
+  !*** ./src/modules/quotes/entities/quote.entity.ts ***!
+  \*****************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var _a, _b, _c, _d, _e, _f, _g, _h, _j;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.Quote = void 0;
+const post_entity_1 = __webpack_require__(/*! @/modules/posts/entities/post.entity */ "./src/modules/posts/entities/post.entity.ts");
+const user_entity_1 = __webpack_require__(/*! @/modules/users/entities/user.entity */ "./src/modules/users/entities/user.entity.ts");
+const typeorm_1 = __webpack_require__(/*! typeorm */ "typeorm");
+const quote_status_enum_1 = __webpack_require__(/*! ../enums/quote-status.enum */ "./src/modules/quotes/enums/quote-status.enum.ts");
+let Quote = class Quote {
+    constructor() {
+        this.imageUrls = [];
+        this.status = quote_status_enum_1.QuoteStatus.PENDING;
+    }
+    isPending() {
+        return this.status === quote_status_enum_1.QuoteStatus.PENDING && !this.deletedAt;
+    }
+    isAccepted() {
+        return this.status === quote_status_enum_1.QuoteStatus.ACCEPTED;
+    }
+    isRejected() {
+        return this.status === quote_status_enum_1.QuoteStatus.REJECTED;
+    }
+    isCancelled() {
+        return this.status === quote_status_enum_1.QuoteStatus.CANCELLED;
+    }
+    canEdit() {
+        return this.status === quote_status_enum_1.QuoteStatus.PENDING && !this.deletedAt;
+    }
+    canCancel() {
+        return this.status === quote_status_enum_1.QuoteStatus.PENDING && !this.deletedAt;
+    }
+    belongsTo(providerId) {
+        return this.providerId === providerId;
+    }
+};
+exports.Quote = Quote;
+__decorate([
+    (0, typeorm_1.PrimaryGeneratedColumn)('uuid'),
+    __metadata("design:type", String)
+], Quote.prototype, "id", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'post_id' }),
+    (0, typeorm_1.Index)(),
+    __metadata("design:type", String)
+], Quote.prototype, "postId", void 0);
+__decorate([
+    (0, typeorm_1.ManyToOne)(() => post_entity_1.PostCustomer, { onDelete: 'CASCADE' }),
+    (0, typeorm_1.JoinColumn)({ name: 'post_id' }),
+    __metadata("design:type", typeof (_a = typeof post_entity_1.PostCustomer !== "undefined" && post_entity_1.PostCustomer) === "function" ? _a : Object)
+], Quote.prototype, "post", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'provider_id' }),
+    (0, typeorm_1.Index)(),
+    __metadata("design:type", String)
+], Quote.prototype, "providerId", void 0);
+__decorate([
+    (0, typeorm_1.ManyToOne)(() => user_entity_1.User, { eager: true, onDelete: 'CASCADE' }),
+    (0, typeorm_1.JoinColumn)({ name: 'provider_id' }),
+    __metadata("design:type", typeof (_b = typeof user_entity_1.User !== "undefined" && user_entity_1.User) === "function" ? _b : Object)
+], Quote.prototype, "provider", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        type: 'decimal',
+        precision: 12,
+        scale: 2,
+    }),
+    __metadata("design:type", Number)
+], Quote.prototype, "price", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'text' }),
+    __metadata("design:type", String)
+], Quote.prototype, "description", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'text', nullable: true }),
+    __metadata("design:type", String)
+], Quote.prototype, "terms", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        name: 'estimated_duration',
+        type: 'int',
+        nullable: true,
+        comment: 'Estimated completion time (minutes)'
+    }),
+    __metadata("design:type", Number)
+], Quote.prototype, "estimatedDuration", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        name: 'image_urls',
+        type: 'text',
+        array: true,
+        nullable: true,
+        default: '{}',
+    }),
+    __metadata("design:type", Array)
+], Quote.prototype, "imageUrls", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        type: 'enum',
+        enum: quote_status_enum_1.QuoteStatus,
+        default: quote_status_enum_1.QuoteStatus.PENDING,
+    }),
+    __metadata("design:type", typeof (_c = typeof quote_status_enum_1.QuoteStatus !== "undefined" && quote_status_enum_1.QuoteStatus) === "function" ? _c : Object)
+], Quote.prototype, "status", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        name: 'accepted_at',
+        type: 'timestamp with time zone',
+        nullable: true
+    }),
+    __metadata("design:type", typeof (_d = typeof Date !== "undefined" && Date) === "function" ? _d : Object)
+], Quote.prototype, "acceptedAt", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        name: 'rejected_at',
+        type: 'timestamp with time zone',
+        nullable: true
+    }),
+    __metadata("design:type", typeof (_e = typeof Date !== "undefined" && Date) === "function" ? _e : Object)
+], Quote.prototype, "rejectedAt", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        name: 'cancelled_at',
+        type: 'timestamp with time zone',
+        nullable: true
+    }),
+    __metadata("design:type", typeof (_f = typeof Date !== "undefined" && Date) === "function" ? _f : Object)
+], Quote.prototype, "cancelledAt", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        name: 'rejection_reason',
+        type: 'text',
+        nullable: true
+    }),
+    __metadata("design:type", String)
+], Quote.prototype, "rejectionReason", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        name: 'cancellation_reason',
+        type: 'text',
+        nullable: true
+    }),
+    __metadata("design:type", String)
+], Quote.prototype, "cancellationReason", void 0);
+__decorate([
+    (0, typeorm_1.CreateDateColumn)({ name: 'created_at' }),
+    __metadata("design:type", typeof (_g = typeof Date !== "undefined" && Date) === "function" ? _g : Object)
+], Quote.prototype, "createdAt", void 0);
+__decorate([
+    (0, typeorm_1.UpdateDateColumn)({ name: 'updated_at' }),
+    __metadata("design:type", typeof (_h = typeof Date !== "undefined" && Date) === "function" ? _h : Object)
+], Quote.prototype, "updatedAt", void 0);
+__decorate([
+    (0, typeorm_1.DeleteDateColumn)({ name: 'deleted_at' }),
+    __metadata("design:type", typeof (_j = typeof Date !== "undefined" && Date) === "function" ? _j : Object)
+], Quote.prototype, "deletedAt", void 0);
+exports.Quote = Quote = __decorate([
+    (0, typeorm_1.Entity)('quotes'),
+    (0, typeorm_1.Index)(['postId', 'providerId', 'status']),
+    (0, typeorm_1.Index)(['providerId', 'status', 'createdAt']),
+    (0, typeorm_1.Index)(['postId', 'status', 'createdAt'])
+], Quote);
+
+
+/***/ }),
+
+/***/ "./src/modules/quotes/enums/quote-status.enum.ts":
+/*!*******************************************************!*\
+  !*** ./src/modules/quotes/enums/quote-status.enum.ts ***!
+  \*******************************************************/
+/***/ ((__unused_webpack_module, exports) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.QuoteStatus = void 0;
+var QuoteStatus;
+(function (QuoteStatus) {
+    QuoteStatus["PENDING"] = "pending";
+    QuoteStatus["ACCEPTED"] = "accepted";
+    QuoteStatus["REJECTED"] = "rejected";
+    QuoteStatus["CANCELLED"] = "cancelled";
+})(QuoteStatus || (exports.QuoteStatus = QuoteStatus = {}));
+
+
+/***/ }),
+
+/***/ "./src/modules/quotes/quote.controller.ts":
+/*!************************************************!*\
+  !*** ./src/modules/quotes/quote.controller.ts ***!
+  \************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var __param = (this && this.__param) || function (paramIndex, decorator) {
+    return function (target, key) { decorator(target, key, paramIndex); }
+};
+var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.QuoteController = void 0;
+const _CurrentUser_1 = __webpack_require__(/*! @/common/decorators/@CurrentUser */ "./src/common/decorators/@CurrentUser.ts");
+const _Roles_1 = __webpack_require__(/*! @/common/decorators/@Roles */ "./src/common/decorators/@Roles.ts");
+const user_role_enum_1 = __webpack_require__(/*! @/common/enums/user-role.enum */ "./src/common/enums/user-role.enum.ts");
+const jwt_auth_guard_1 = __webpack_require__(/*! @/common/guards/jwt-auth.guard */ "./src/common/guards/jwt-auth.guard.ts");
+const roles_guard_1 = __webpack_require__(/*! @/common/guards/roles.guard */ "./src/common/guards/roles.guard.ts");
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const swagger_1 = __webpack_require__(/*! @nestjs/swagger */ "@nestjs/swagger");
+const _CurrentUserId_1 = __webpack_require__(/*! ../../common/decorators/@CurrentUserId */ "./src/common/decorators/@CurrentUserId.ts");
+const quote_dto_1 = __webpack_require__(/*! ./dtos/quote.dto */ "./src/modules/quotes/dtos/quote.dto.ts");
+const quote_service_1 = __webpack_require__(/*! ./quote.service */ "./src/modules/quotes/quote.service.ts");
+let QuoteController = class QuoteController {
+    constructor(quoteService) {
+        this.quoteService = quoteService;
+    }
+    async createQuote(providerId, dto) {
+        return await this.quoteService.createQuote(providerId, dto);
+    }
+    async updateQuote(quoteId, providerId, dto) {
+        return await this.quoteService.updateQuote(quoteId, providerId, dto);
+    }
+    async cancelQuote(quoteId, providerId, reason) {
+        return await this.quoteService.cancelQuote(quoteId, providerId, reason);
+    }
+    async acceptQuote(quoteId, customerId) {
+        return await this.quoteService.acceptQuote(quoteId, customerId);
+    }
+    async rejectQuote(quoteId, customerId, dto) {
+        return await this.quoteService.rejectQuote(quoteId, customerId, dto.reason);
+    }
+    async getMyQuotes(providerId, query) {
+        return await this.quoteService.getProviderQuotes(providerId, query.status);
+    }
+    async getPostQuotes(postId, customerId) {
+        return await this.quoteService.getPostQuotes(postId, customerId);
+    }
+    async getQuoteById(quoteId, userId) {
+        return await this.quoteService.getQuoteById(quoteId, userId);
+    }
+    async deleteQuote(quoteId, providerId) {
+        await this.quoteService.deleteQuote(quoteId, providerId);
+        return { success: true };
+    }
+};
+exports.QuoteController = QuoteController;
+__decorate([
+    (0, common_1.Post)(),
+    (0, common_1.HttpCode)(common_1.HttpStatus.CREATED),
+    (0, _Roles_1.Roles)(user_role_enum_1.UserRole.PROVIDER),
+    (0, swagger_1.ApiOperation)({ summary: 'Create new quote (Worker)' }),
+    (0, swagger_1.ApiResponse)({ status: 201, description: 'Create success' }),
+    (0, swagger_1.ApiResponse)({ status: 400, description: 'Invalid data' }),
+    (0, swagger_1.ApiResponse)({ status: 403, description: 'No active' }),
+    (0, swagger_1.ApiResponse)({ status: 409, description: 'Already quote' }),
+    __param(0, (0, _CurrentUserId_1.CurrentUserId)('id')),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, typeof (_b = typeof quote_dto_1.CreateQuoteDto !== "undefined" && quote_dto_1.CreateQuoteDto) === "function" ? _b : Object]),
+    __metadata("design:returntype", typeof (_c = typeof Promise !== "undefined" && Promise) === "function" ? _c : Object)
+], QuoteController.prototype, "createQuote", null);
+__decorate([
+    (0, common_1.Put)(':id'),
+    (0, _Roles_1.Roles)(user_role_enum_1.UserRole.PROVIDER),
+    (0, swagger_1.ApiOperation)({ summary: 'Update price quote (Worker)' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Update successful' }),
+    (0, swagger_1.ApiResponse)({ status: 400, description: 'Unable to update' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: 'Not found' }),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, _CurrentUserId_1.CurrentUserId)('id')),
+    __param(2, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String, typeof (_d = typeof quote_dto_1.UpdateQuoteDto !== "undefined" && quote_dto_1.UpdateQuoteDto) === "function" ? _d : Object]),
+    __metadata("design:returntype", typeof (_e = typeof Promise !== "undefined" && Promise) === "function" ? _e : Object)
+], QuoteController.prototype, "updateQuote", null);
+__decorate([
+    (0, common_1.Post)(':id/cancel'),
+    (0, _Roles_1.Roles)(user_role_enum_1.UserRole.PROVIDER),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    (0, swagger_1.ApiOperation)({ summary: 'Cancel quote (Worker)' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Cancellation successful' }),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, _CurrentUser_1.CurrentUser)('id')),
+    __param(2, (0, common_1.Body)('reason')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String, String]),
+    __metadata("design:returntype", typeof (_f = typeof Promise !== "undefined" && Promise) === "function" ? _f : Object)
+], QuoteController.prototype, "cancelQuote", null);
+__decorate([
+    (0, common_1.Post)(':id/accept'),
+    (0, _Roles_1.Roles)(user_role_enum_1.UserRole.CUSTOMER),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    (0, swagger_1.ApiOperation)({ summary: 'Accepted quote (Customer)' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Accept success' }),
+    (0, swagger_1.ApiResponse)({ status: 400, description: 'Unacceptable' }),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, _CurrentUser_1.CurrentUser)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:returntype", typeof (_g = typeof Promise !== "undefined" && Promise) === "function" ? _g : Object)
+], QuoteController.prototype, "acceptQuote", null);
+__decorate([
+    (0, common_1.Post)(':id/reject'),
+    (0, _Roles_1.Roles)(user_role_enum_1.UserRole.CUSTOMER),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    (0, swagger_1.ApiOperation)({ summary: 'Refused to bid (Customer)' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Rejection successful' }),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, _CurrentUser_1.CurrentUser)('id')),
+    __param(2, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String, typeof (_h = typeof quote_dto_1.RejectQuoteDto !== "undefined" && quote_dto_1.RejectQuoteDto) === "function" ? _h : Object]),
+    __metadata("design:returntype", typeof (_j = typeof Promise !== "undefined" && Promise) === "function" ? _j : Object)
+], QuoteController.prototype, "rejectQuote", null);
+__decorate([
+    (0, common_1.Get)('my-quotes'),
+    (0, _Roles_1.Roles)(user_role_enum_1.UserRole.PROVIDER),
+    (0, swagger_1.ApiOperation)({ summary: 'Get my quote list (Worker)' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Success' }),
+    __param(0, (0, _CurrentUser_1.CurrentUser)('id')),
+    __param(1, (0, common_1.Query)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, typeof (_k = typeof quote_dto_1.StatusQuoteDto !== "undefined" && quote_dto_1.StatusQuoteDto) === "function" ? _k : Object]),
+    __metadata("design:returntype", typeof (_l = typeof Promise !== "undefined" && Promise) === "function" ? _l : Object)
+], QuoteController.prototype, "getMyQuotes", null);
+__decorate([
+    (0, common_1.Get)('post/:postId'),
+    (0, _Roles_1.Roles)(user_role_enum_1.UserRole.CUSTOMER),
+    (0, swagger_1.ApiOperation)({ summary: 'Get post bids (Customer)' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Success' }),
+    __param(0, (0, common_1.Param)('postId')),
+    __param(1, (0, _CurrentUser_1.CurrentUser)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:returntype", typeof (_m = typeof Promise !== "undefined" && Promise) === "function" ? _m : Object)
+], QuoteController.prototype, "getPostQuotes", null);
+__decorate([
+    (0, common_1.Get)(':id'),
+    (0, swagger_1.ApiOperation)({ summary: 'See detailed quote' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Success' }),
+    (0, swagger_1.ApiResponse)({ status: 403, description: 'No active' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: 'Not found' }),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, _CurrentUser_1.CurrentUser)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:returntype", typeof (_o = typeof Promise !== "undefined" && Promise) === "function" ? _o : Object)
+], QuoteController.prototype, "getQuoteById", null);
+__decorate([
+    (0, common_1.Delete)(':id'),
+    (0, _Roles_1.Roles)(user_role_enum_1.UserRole.PROVIDER),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    (0, swagger_1.ApiOperation)({ summary: 'Delete quote (Worker)' }),
+    (0, swagger_1.ApiResponse)({ status: 204, description: 'Delete successful' }),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, _CurrentUser_1.CurrentUser)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:returntype", typeof (_p = typeof Promise !== "undefined" && Promise) === "function" ? _p : Object)
+], QuoteController.prototype, "deleteQuote", null);
+exports.QuoteController = QuoteController = __decorate([
+    (0, swagger_1.ApiTags)('Quotes - Chào giá'),
+    (0, common_1.Controller)('quotes'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
+    (0, swagger_1.ApiBearerAuth)(),
+    __metadata("design:paramtypes", [typeof (_a = typeof quote_service_1.QuoteService !== "undefined" && quote_service_1.QuoteService) === "function" ? _a : Object])
+], QuoteController);
+
+
+/***/ }),
+
+/***/ "./src/modules/quotes/quote.service.ts":
+/*!*********************************************!*\
+  !*** ./src/modules/quotes/quote.service.ts ***!
+  \*********************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var _a, _b, _c, _d, _e, _f, _g;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.QuoteService = void 0;
+const post_repository_1 = __webpack_require__(/*! @/modules/posts/repositories/post.repository */ "./src/modules/posts/repositories/post.repository.ts");
+const user_repository_1 = __webpack_require__(/*! @/modules/users/repositorys/user.repository */ "./src/modules/users/repositorys/user.repository.ts");
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const quote_status_enum_1 = __webpack_require__(/*! ./enums/quote-status.enum */ "./src/modules/quotes/enums/quote-status.enum.ts");
+const quote_repository_1 = __webpack_require__(/*! ./repositories/quote.repository */ "./src/modules/quotes/repositories/quote.repository.ts");
+const quote_notification_service_1 = __webpack_require__(/*! ./services/quote-notification.service */ "./src/modules/quotes/services/quote-notification.service.ts");
+const quote_query_service_1 = __webpack_require__(/*! ./services/quote-query.service */ "./src/modules/quotes/services/quote-query.service.ts");
+const quote_status_service_1 = __webpack_require__(/*! ./services/quote-status.service */ "./src/modules/quotes/services/quote-status.service.ts");
+const quote_validation_service_1 = __webpack_require__(/*! ./services/quote-validation.service */ "./src/modules/quotes/services/quote-validation.service.ts");
+let QuoteService = class QuoteService {
+    constructor(postRepository, userRepository, quoteRepo, validationService, statusService, queryService, notificationService) {
+        this.postRepository = postRepository;
+        this.userRepository = userRepository;
+        this.quoteRepo = quoteRepo;
+        this.validationService = validationService;
+        this.statusService = statusService;
+        this.queryService = queryService;
+        this.notificationService = notificationService;
+    }
+    async createQuote(providerId, dto) {
+        const provider = await this.validationService.validateProvider(providerId);
+        const post = await this.validationService.validatePostForQuote(dto.postId, providerId);
+        this.validationService.validatePrice(dto.price, post.budget);
+        const quote = this.quoteRepo.create({
+            postId: dto.postId,
+            providerId,
+            price: dto.price,
+            description: dto.description,
+            terms: dto.terms,
+            estimatedDuration: dto.estimatedDuration,
+            imageUrls: dto.imageUrls || [],
+            status: quote_status_enum_1.QuoteStatus.PENDING,
+        });
+        const savedQuote = await this.quoteRepo.save(quote);
+        await this.notificationService.notifyNewQuote(post.customerId, savedQuote, provider, post);
+        return savedQuote;
+    }
+    async updateQuote(quoteId, providerId, dto) {
+        const quote = await this.queryService.findQuoteWithRelations(quoteId, [
+            'post',
+            'provider',
+        ]);
+        this.validationService.validateQuoteOwnership(quote, providerId);
+        this.validationService.validateQuoteCanEdit(quote);
+        if (dto.price !== undefined) {
+            this.validationService.validatePrice(dto.price);
+            quote.price = dto.price;
+        }
+        this.updateQuoteFields(quote, dto);
+        return await this.quoteRepo.save(quote);
+    }
+    async cancelQuote(quoteId, providerId, reason) {
+        const quote = await this.queryService.findQuoteWithRelations(quoteId, ['post']);
+        this.validationService.validateQuoteOwnership(quote, providerId);
+        this.validationService.validateQuoteCanCancel(quote);
+        return await this.statusService.cancelQuote(quote, reason);
+    }
+    async acceptQuote(quoteId, customerId) {
+        const quote = await this.queryService.findQuoteWithRelations(quoteId, [
+            'post',
+            'provider',
+        ]);
+        this.validationService.validatePostOwnership(quote.post, customerId);
+        this.validationService.validateQuoteIsPending(quote);
+        this.validationService.validatePostIsOpen(quote.post);
+        return await this.statusService.acceptQuote(quote, customerId);
+    }
+    async rejectQuote(quoteId, customerId, reason) {
+        const quote = await this.queryService.findQuoteWithRelations(quoteId, ['post']);
+        this.validationService.validatePostOwnership(quote.post, customerId);
+        this.validationService.validateQuoteIsPending(quote);
+        return await this.statusService.rejectQuote(quote, reason);
+    }
+    async getProviderQuotes(providerId, status) {
+        return await this.queryService.findProviderQuotes(providerId, status);
+    }
+    async getPostQuotes(postId, customerId) {
+        const post = await this.postRepository.findById(postId);
+        if (!post) {
+            throw new common_1.NotFoundException('Not found post');
+        }
+        this.validationService.validatePostOwnership(post, customerId);
+        return await this.queryService.findPostQuotes(postId);
+    }
+    async getQuoteById(quoteId, userId) {
+        const quote = await this.queryService.findQuoteWithRelations(quoteId, [
+            'post',
+            'post.customer',
+            'provider',
+        ]);
+        this.validationService.validateQuoteAccess(quote, userId);
+        return quote;
+    }
+    async deleteQuote(quoteId, providerId) {
+        const quote = await this.queryService.findQuoteById(quoteId);
+        this.validationService.validateQuoteOwnership(quote, providerId);
+        this.validationService.validateQuoteCanCancel(quote);
+        await this.quoteRepo.softDelete(quoteId);
+    }
+    updateQuoteFields(quote, dto) {
+        if (dto.description !== undefined) {
+            quote.description = dto.description;
+        }
+        if (dto.terms !== undefined) {
+            quote.terms = dto.terms;
+        }
+        if (dto.estimatedDuration !== undefined) {
+            quote.estimatedDuration = dto.estimatedDuration;
+        }
+        if (dto.imageUrls !== undefined) {
+            quote.imageUrls = dto.imageUrls;
+        }
+    }
+};
+exports.QuoteService = QuoteService;
+exports.QuoteService = QuoteService = __decorate([
+    (0, common_1.Injectable)(),
+    __metadata("design:paramtypes", [typeof (_a = typeof post_repository_1.PostRepository !== "undefined" && post_repository_1.PostRepository) === "function" ? _a : Object, typeof (_b = typeof user_repository_1.UserRepository !== "undefined" && user_repository_1.UserRepository) === "function" ? _b : Object, typeof (_c = typeof quote_repository_1.QuoteRepository !== "undefined" && quote_repository_1.QuoteRepository) === "function" ? _c : Object, typeof (_d = typeof quote_validation_service_1.QuoteValidationService !== "undefined" && quote_validation_service_1.QuoteValidationService) === "function" ? _d : Object, typeof (_e = typeof quote_status_service_1.QuoteStatusService !== "undefined" && quote_status_service_1.QuoteStatusService) === "function" ? _e : Object, typeof (_f = typeof quote_query_service_1.QuoteQueryService !== "undefined" && quote_query_service_1.QuoteQueryService) === "function" ? _f : Object, typeof (_g = typeof quote_notification_service_1.QuoteNotificationService !== "undefined" && quote_notification_service_1.QuoteNotificationService) === "function" ? _g : Object])
+], QuoteService);
+
+
+/***/ }),
+
+/***/ "./src/modules/quotes/quotes.module.ts":
+/*!*********************************************!*\
+  !*** ./src/modules/quotes/quotes.module.ts ***!
+  \*********************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.QuoteModule = void 0;
+const notifications_module_1 = __webpack_require__(/*! @/modules/notifications/notifications.module */ "./src/modules/notifications/notifications.module.ts");
+const post_entity_1 = __webpack_require__(/*! @/modules/posts/entities/post.entity */ "./src/modules/posts/entities/post.entity.ts");
+const posts_module_1 = __webpack_require__(/*! @/modules/posts/posts.module */ "./src/modules/posts/posts.module.ts");
+const user_entity_1 = __webpack_require__(/*! @/modules/users/entities/user.entity */ "./src/modules/users/entities/user.entity.ts");
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const typeorm_1 = __webpack_require__(/*! @nestjs/typeorm */ "@nestjs/typeorm");
+const quote_entity_1 = __webpack_require__(/*! ./entities/quote.entity */ "./src/modules/quotes/entities/quote.entity.ts");
+const quote_controller_1 = __webpack_require__(/*! ./quote.controller */ "./src/modules/quotes/quote.controller.ts");
+const quote_service_1 = __webpack_require__(/*! ./quote.service */ "./src/modules/quotes/quote.service.ts");
+const quote_repository_1 = __webpack_require__(/*! ./repositories/quote.repository */ "./src/modules/quotes/repositories/quote.repository.ts");
+const quote_notification_service_1 = __webpack_require__(/*! ./services/quote-notification.service */ "./src/modules/quotes/services/quote-notification.service.ts");
+const quote_query_service_1 = __webpack_require__(/*! ./services/quote-query.service */ "./src/modules/quotes/services/quote-query.service.ts");
+const quote_status_service_1 = __webpack_require__(/*! ./services/quote-status.service */ "./src/modules/quotes/services/quote-status.service.ts");
+const quote_validation_service_1 = __webpack_require__(/*! ./services/quote-validation.service */ "./src/modules/quotes/services/quote-validation.service.ts");
+const users_module_1 = __webpack_require__(/*! @/modules/users/users.module */ "./src/modules/users/users.module.ts");
+let QuoteModule = class QuoteModule {
+};
+exports.QuoteModule = QuoteModule;
+exports.QuoteModule = QuoteModule = __decorate([
+    (0, common_1.Module)({
+        imports: [
+            typeorm_1.TypeOrmModule.forFeature([quote_entity_1.Quote, post_entity_1.PostCustomer, user_entity_1.User]),
+            notifications_module_1.NotificationsModule,
+            posts_module_1.PostsModule,
+            users_module_1.UsersModule
+        ],
+        controllers: [quote_controller_1.QuoteController],
+        providers: [
+            quote_repository_1.QuoteRepository,
+            quote_service_1.QuoteService,
+            quote_validation_service_1.QuoteValidationService,
+            quote_status_service_1.QuoteStatusService,
+            quote_query_service_1.QuoteQueryService,
+            quote_notification_service_1.QuoteNotificationService,
+        ],
+        exports: [quote_service_1.QuoteService],
+    })
+], QuoteModule);
+
+
+/***/ }),
+
+/***/ "./src/modules/quotes/repositories/quote.repository.ts":
+/*!*************************************************************!*\
+  !*** ./src/modules/quotes/repositories/quote.repository.ts ***!
+  \*************************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var __param = (this && this.__param) || function (paramIndex, decorator) {
+    return function (target, key) { decorator(target, key, paramIndex); }
+};
+var _a;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.QuoteRepository = void 0;
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const typeorm_1 = __webpack_require__(/*! @nestjs/typeorm */ "@nestjs/typeorm");
+const typeorm_2 = __webpack_require__(/*! typeorm */ "typeorm");
+const quote_entity_1 = __webpack_require__(/*! ../entities/quote.entity */ "./src/modules/quotes/entities/quote.entity.ts");
+let QuoteRepository = class QuoteRepository {
+    constructor(repository) {
+        this.repository = repository;
+    }
+    getRepository(manager) {
+        return manager ? manager.getRepository(quote_entity_1.Quote) : this.repository;
+    }
+    create(data, manager) {
+        return this.getRepository(manager).create(data);
+    }
+    async save(quote, manager) {
+        return await this.getRepository(manager).save(quote);
+    }
+    async findOne(options, manager) {
+        return await this.getRepository(manager).findOne(options);
+    }
+    async find(options, manager) {
+        return await this.getRepository(manager).find(options);
+    }
+    async count(options, manager) {
+        return await this.getRepository(manager).count(options);
+    }
+    createQueryBuilder(alias, manager) {
+        return this.getRepository(manager).createQueryBuilder(alias);
+    }
+    async softDelete(id, manager) {
+        await this.getRepository(manager).softDelete(id);
+    }
+};
+exports.QuoteRepository = QuoteRepository;
+exports.QuoteRepository = QuoteRepository = __decorate([
+    (0, common_1.Injectable)(),
+    __param(0, (0, typeorm_1.InjectRepository)(quote_entity_1.Quote)),
+    __metadata("design:paramtypes", [typeof (_a = typeof typeorm_2.Repository !== "undefined" && typeorm_2.Repository) === "function" ? _a : Object])
+], QuoteRepository);
+
+
+/***/ }),
+
+/***/ "./src/modules/quotes/services/quote-notification.service.ts":
+/*!*******************************************************************!*\
+  !*** ./src/modules/quotes/services/quote-notification.service.ts ***!
+  \*******************************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var _a;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.QuoteNotificationService = void 0;
+const notification_service_1 = __webpack_require__(/*! @/modules/notifications/notification.service */ "./src/modules/notifications/notification.service.ts");
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+let QuoteNotificationService = class QuoteNotificationService {
+    constructor(notificationService) {
+        this.notificationService = notificationService;
+    }
+    async notifyNewQuote(customerId, quote, provider, post) {
+        await this.notificationService.notifyNewQuote(customerId, {
+            postId: post.id,
+            quoteId: quote.id,
+            providerName: provider.displayName || provider.fullName || 'Thợ',
+            price: quote.price,
+            postTitle: post.title,
+        });
+    }
+    async notifyQuoteAccepted(quote, customerId) {
+        await this.notificationService.notifyQuoteAccepted(quote.providerId, {
+            quoteId: quote.id,
+            postId: quote.postId,
+            postTitle: quote.post.title,
+            customerName: customerId,
+        });
+    }
+    async notifyQuoteRejected(quote, reason) {
+        await this.notificationService.notifyQuoteRejected(quote.providerId, {
+            quoteId: quote.id,
+            postId: quote.postId,
+            postTitle: quote.post.title,
+            reason,
+        });
+    }
+};
+exports.QuoteNotificationService = QuoteNotificationService;
+exports.QuoteNotificationService = QuoteNotificationService = __decorate([
+    (0, common_1.Injectable)(),
+    __metadata("design:paramtypes", [typeof (_a = typeof notification_service_1.NotificationService !== "undefined" && notification_service_1.NotificationService) === "function" ? _a : Object])
+], QuoteNotificationService);
+
+
+/***/ }),
+
+/***/ "./src/modules/quotes/services/quote-query.service.ts":
+/*!************************************************************!*\
+  !*** ./src/modules/quotes/services/quote-query.service.ts ***!
+  \************************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var _a;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.QuoteQueryService = void 0;
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const typeorm_1 = __webpack_require__(/*! typeorm */ "typeorm");
+const quote_repository_1 = __webpack_require__(/*! ../repositories/quote.repository */ "./src/modules/quotes/repositories/quote.repository.ts");
+let QuoteQueryService = class QuoteQueryService {
+    constructor(quoteRepo) {
+        this.quoteRepo = quoteRepo;
+    }
+    async findQuoteById(quoteId) {
+        const quote = await this.quoteRepo.findOne({
+            where: { id: quoteId },
+        });
+        if (!quote) {
+            throw new common_1.NotFoundException('Not found quote');
+        }
+        return quote;
+    }
+    async findQuoteWithRelations(quoteId, relations) {
+        const quote = await this.quoteRepo.findOne({
+            where: { id: quoteId },
+            relations,
+        });
+        if (!quote) {
+            throw new common_1.NotFoundException('Not found quote');
+        }
+        return quote;
+    }
+    async findProviderQuotes(providerId, status) {
+        const where = { providerId, deletedAt: (0, typeorm_1.IsNull)() };
+        if (status)
+            where.status = status;
+        return await this.quoteRepo.find({
+            where,
+            relations: ['post', 'post.customer'],
+            order: { createdAt: 'DESC' },
+        });
+    }
+    async findPostQuotes(postId) {
+        return await this.quoteRepo.find({
+            where: { postId, deletedAt: (0, typeorm_1.IsNull)() },
+            relations: ['provider'],
+            order: { createdAt: 'DESC' },
+        });
+    }
+};
+exports.QuoteQueryService = QuoteQueryService;
+exports.QuoteQueryService = QuoteQueryService = __decorate([
+    (0, common_1.Injectable)(),
+    __metadata("design:paramtypes", [typeof (_a = typeof quote_repository_1.QuoteRepository !== "undefined" && quote_repository_1.QuoteRepository) === "function" ? _a : Object])
+], QuoteQueryService);
+
+
+/***/ }),
+
+/***/ "./src/modules/quotes/services/quote-status.service.ts":
+/*!*************************************************************!*\
+  !*** ./src/modules/quotes/services/quote-status.service.ts ***!
+  \*************************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var _a, _b, _c;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.QuoteStatusService = void 0;
+const post_repository_1 = __webpack_require__(/*! @/modules/posts/repositories/post.repository */ "./src/modules/posts/repositories/post.repository.ts");
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const typeorm_1 = __webpack_require__(/*! typeorm */ "typeorm");
+const quote_status_enum_1 = __webpack_require__(/*! ../enums/quote-status.enum */ "./src/modules/quotes/enums/quote-status.enum.ts");
+const quote_repository_1 = __webpack_require__(/*! ../repositories/quote.repository */ "./src/modules/quotes/repositories/quote.repository.ts");
+const quote_notification_service_1 = __webpack_require__(/*! ./quote-notification.service */ "./src/modules/quotes/services/quote-notification.service.ts");
+let QuoteStatusService = class QuoteStatusService {
+    constructor(quoteRepo, postRepo, notificationService) {
+        this.quoteRepo = quoteRepo;
+        this.postRepo = postRepo;
+        this.notificationService = notificationService;
+    }
+    async cancelQuote(quote, reason) {
+        quote.status = quote_status_enum_1.QuoteStatus.CANCELLED;
+        quote.cancelledAt = new Date();
+        quote.cancellationReason = reason;
+        return await this.quoteRepo.save(quote);
+    }
+    async acceptQuote(quote, customerId) {
+        quote.status = quote_status_enum_1.QuoteStatus.ACCEPTED;
+        quote.acceptedAt = new Date();
+        const savedQuote = await this.quoteRepo.save(quote);
+        await this.postRepo.closePost(quote.post);
+        await this.rejectOtherQuotes(quote.postId, quote.id);
+        await this.notificationService.notifyQuoteAccepted(savedQuote, customerId);
+        return savedQuote;
+    }
+    async rejectQuote(quote, reason) {
+        quote.status = quote_status_enum_1.QuoteStatus.REJECTED;
+        quote.rejectedAt = new Date();
+        quote.rejectionReason = reason;
+        const savedQuote = await this.quoteRepo.save(quote);
+        await this.notificationService.notifyQuoteRejected(savedQuote, reason);
+        return savedQuote;
+    }
+    async rejectOtherQuotes(postId, acceptedQuoteId) {
+        const otherQuotes = await this.quoteRepo.find({
+            where: {
+                postId,
+                id: (0, typeorm_1.Not)(acceptedQuoteId),
+                status: quote_status_enum_1.QuoteStatus.PENDING,
+                deletedAt: (0, typeorm_1.IsNull)(),
+            },
+            relations: ['post'],
+        });
+        const rejectionReason = 'The customer has selected a different offer';
+        for (const quote of otherQuotes) {
+            quote.status = quote_status_enum_1.QuoteStatus.REJECTED;
+            quote.rejectedAt = new Date();
+            quote.rejectionReason = rejectionReason;
+            await this.quoteRepo.save(quote);
+            await this.notificationService.notifyQuoteRejected(quote, rejectionReason);
+        }
+    }
+};
+exports.QuoteStatusService = QuoteStatusService;
+exports.QuoteStatusService = QuoteStatusService = __decorate([
+    (0, common_1.Injectable)(),
+    __metadata("design:paramtypes", [typeof (_a = typeof quote_repository_1.QuoteRepository !== "undefined" && quote_repository_1.QuoteRepository) === "function" ? _a : Object, typeof (_b = typeof post_repository_1.PostRepository !== "undefined" && post_repository_1.PostRepository) === "function" ? _b : Object, typeof (_c = typeof quote_notification_service_1.QuoteNotificationService !== "undefined" && quote_notification_service_1.QuoteNotificationService) === "function" ? _c : Object])
+], QuoteStatusService);
+
+
+/***/ }),
+
+/***/ "./src/modules/quotes/services/quote-validation.service.ts":
+/*!*****************************************************************!*\
+  !*** ./src/modules/quotes/services/quote-validation.service.ts ***!
+  \*****************************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var _a, _b, _c;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.QuoteValidationService = void 0;
+const post_repository_1 = __webpack_require__(/*! @/modules/posts/repositories/post.repository */ "./src/modules/posts/repositories/post.repository.ts");
+const user_repository_1 = __webpack_require__(/*! @/modules/users/repositorys/user.repository */ "./src/modules/users/repositorys/user.repository.ts");
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const typeorm_1 = __webpack_require__(/*! typeorm */ "typeorm");
+const quote_status_enum_1 = __webpack_require__(/*! ../enums/quote-status.enum */ "./src/modules/quotes/enums/quote-status.enum.ts");
+const quote_repository_1 = __webpack_require__(/*! ../repositories/quote.repository */ "./src/modules/quotes/repositories/quote.repository.ts");
+let QuoteValidationService = class QuoteValidationService {
+    constructor(userRepo, postRepo, quoteRepo) {
+        this.userRepo = userRepo;
+        this.postRepo = postRepo;
+        this.quoteRepo = quoteRepo;
+    }
+    async validateProvider(providerId) {
+        const provider = await this.userRepo.findByIdProvider(providerId);
+        if (!provider) {
+            throw new common_1.ForbiddenException('Only workers can create bids');
+        }
+        return provider;
+    }
+    async validatePostForQuote(postId, providerId) {
+        const post = await this.postRepo.findById(postId);
+        if (!post) {
+            throw new common_1.NotFoundException('Not found post');
+        }
+        if (!post.isOpen()) {
+            throw new common_1.BadRequestException('Post is closed, no bidding possible');
+        }
+        const existingQuote = await this.quoteRepo.findOne({
+            where: {
+                postId,
+                providerId,
+                deletedAt: (0, typeorm_1.IsNull)(),
+                status: (0, typeorm_1.Not)(quote_status_enum_1.QuoteStatus.CANCELLED),
+            },
+        });
+        if (existingQuote) {
+            throw new common_1.ConflictException('You have already bid on this post');
+        }
+        return post;
+    }
+    validatePrice(price, postBudget) {
+        if (price <= 0) {
+            throw new common_1.BadRequestException('Price must be greater than 0');
+        }
+        if (postBudget && price > postBudget * 1.5) {
+            throw new common_1.BadRequestException('The offer price exceeded 150% of the customer is budget');
+        }
+    }
+    validateQuoteOwnership(quote, providerId) {
+        if (!quote.belongsTo(providerId)) {
+            throw new common_1.ForbiddenException('You do not have permission to perform this action');
+        }
+    }
+    validatePostOwnership(post, customerId) {
+        if (!post.belongsTo(customerId)) {
+            throw new common_1.ForbiddenException('You do not have permission to perform this action.');
+        }
+    }
+    validateQuoteCanEdit(quote) {
+        if (!quote.canEdit()) {
+            throw new common_1.BadRequestException('Cannot edit a quote that has been processed or deleted');
+        }
+    }
+    validateQuoteCanCancel(quote) {
+        if (!quote.canCancel()) {
+            throw new common_1.BadRequestException('This quote cannot be canceled.');
+        }
+    }
+    validateQuoteIsPending(quote) {
+        if (!quote.isPending()) {
+            throw new common_1.BadRequestException('Quote is not pending');
+        }
+    }
+    validatePostIsOpen(post) {
+        if (!post.isOpen()) {
+            throw new common_1.BadRequestException('Post closed');
+        }
+    }
+    validateQuoteAccess(quote, userId) {
+        const isOwner = quote.belongsTo(userId);
+        const isPostOwner = quote.post.belongsTo(userId);
+        if (!isOwner && !isPostOwner) {
+            throw new common_1.ForbiddenException('You do not have permission to view this quote');
+        }
+    }
+};
+exports.QuoteValidationService = QuoteValidationService;
+exports.QuoteValidationService = QuoteValidationService = __decorate([
+    (0, common_1.Injectable)(),
+    __metadata("design:paramtypes", [typeof (_a = typeof user_repository_1.UserRepository !== "undefined" && user_repository_1.UserRepository) === "function" ? _a : Object, typeof (_b = typeof post_repository_1.PostRepository !== "undefined" && post_repository_1.PostRepository) === "function" ? _b : Object, typeof (_c = typeof quote_repository_1.QuoteRepository !== "undefined" && quote_repository_1.QuoteRepository) === "function" ? _c : Object])
+], QuoteValidationService);
+
+
+/***/ }),
+
 /***/ "./src/modules/users/entities/user.entity.ts":
 /*!***************************************************!*\
   !*** ./src/modules/users/entities/user.entity.ts ***!
@@ -4854,7 +7160,7 @@ const refresh_token_entity_1 = __webpack_require__(/*! @/modules/auth/entities/r
 const typeorm_1 = __webpack_require__(/*! typeorm */ "typeorm");
 let User = class User {
     constructor() {
-        this.role = user_role_enum_1.UserRole.ADMIN;
+        this.role = user_role_enum_1.UserRole.CUSTOMER;
         this.displayNameChangeCount = 0;
         this.isVerified = false;
         this.isActive = true;
@@ -5027,6 +7333,7 @@ var UserRepository_1;
 var _a;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.UserRepository = void 0;
+const user_role_enum_1 = __webpack_require__(/*! @/common/enums/user-role.enum */ "./src/common/enums/user-role.enum.ts");
 const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
 const typeorm_1 = __webpack_require__(/*! @nestjs/typeorm */ "@nestjs/typeorm");
 const typeorm_2 = __webpack_require__(/*! typeorm */ "typeorm");
@@ -5056,6 +7363,9 @@ let UserRepository = UserRepository_1 = class UserRepository {
     }
     async findById(id, manager) {
         return await this.getRepository(manager).findOne({ where: { id } });
+    }
+    async findByIdProvider(id, manager) {
+        return await this.getRepository(manager).findOne({ where: { id, role: user_role_enum_1.UserRole.PROVIDER, isActive: true } });
     }
     async createUser(data, manager) {
         const repository = this.getRepository(manager);
@@ -5154,6 +7464,36 @@ module.exports = require("@nestjs/core");
 
 /***/ }),
 
+/***/ "@nestjs/event-emitter":
+/*!****************************************!*\
+  !*** external "@nestjs/event-emitter" ***!
+  \****************************************/
+/***/ ((module) => {
+
+module.exports = require("@nestjs/event-emitter");
+
+/***/ }),
+
+/***/ "@nestjs/jwt":
+/*!******************************!*\
+  !*** external "@nestjs/jwt" ***!
+  \******************************/
+/***/ ((module) => {
+
+module.exports = require("@nestjs/jwt");
+
+/***/ }),
+
+/***/ "@nestjs/platform-socket.io":
+/*!*********************************************!*\
+  !*** external "@nestjs/platform-socket.io" ***!
+  \*********************************************/
+/***/ ((module) => {
+
+module.exports = require("@nestjs/platform-socket.io");
+
+/***/ }),
+
 /***/ "@nestjs/swagger":
 /*!**********************************!*\
   !*** external "@nestjs/swagger" ***!
@@ -5181,6 +7521,16 @@ module.exports = require("@nestjs/throttler");
 /***/ ((module) => {
 
 module.exports = require("@nestjs/typeorm");
+
+/***/ }),
+
+/***/ "@nestjs/websockets":
+/*!*************************************!*\
+  !*** external "@nestjs/websockets" ***!
+  \*************************************/
+/***/ ((module) => {
+
+module.exports = require("@nestjs/websockets");
 
 /***/ }),
 
@@ -5271,6 +7621,16 @@ module.exports = require("rxjs");
 /***/ ((module) => {
 
 module.exports = require("rxjs/operators");
+
+/***/ }),
+
+/***/ "socket.io":
+/*!****************************!*\
+  !*** external "socket.io" ***!
+  \****************************/
+/***/ ((module) => {
+
+module.exports = require("socket.io");
 
 /***/ }),
 
