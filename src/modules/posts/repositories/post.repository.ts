@@ -133,7 +133,7 @@ export class PostRepository {
         manager?: EntityManager,
     ): Promise<PostCustomer> {
         const repo = this.getRepository(manager);
-        post.status = PostStatus.CLOSED;
+        post.status = PostStatus.CLOSED;    
         const closed = await repo.save(post);
 
         this.logger.log(`Post closed: ${closed.id}`);

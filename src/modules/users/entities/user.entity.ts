@@ -33,7 +33,7 @@ export class User {
     passwordHash!: string;
 
     @Column({ type: 'enum', enum: UserRole, default: UserRole.CUSTOMER })
-    role: UserRole = UserRole.ADMIN;
+    role: UserRole = UserRole.CUSTOMER;
 
     @Column({ name: 'full_name', length: 255, nullable: true })
     fullName?: string;

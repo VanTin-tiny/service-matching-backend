@@ -1,5 +1,6 @@
 import { CurrentUser } from '@/common/decorators/@CurrentUser';
 import { Roles } from '@/common/decorators/@Roles';
+
 import { UserRole } from '@/common/enums/user-role.enum';
 import { JwtAuthGuard } from '@/common/guards/jwt-auth.guard';
 import { RolesGuard } from '@/common/guards/roles.guard';
@@ -227,5 +228,6 @@ export class PostController {
         @CurrentUser() user: JwtPayload,
     ): Promise<FeedResponseDto> {
         return await this.postService.getMyPosts(user, query.limit, query.cursor);
+
     }
 }

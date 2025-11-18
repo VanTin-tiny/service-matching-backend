@@ -1,3 +1,4 @@
+import { UserRole } from '@/common/enums/user-role.enum';
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, Repository } from 'typeorm';
@@ -36,6 +37,12 @@ export class UserRepository {
 
     async findById(id: string, manager?: EntityManager): Promise<User | null> {
         return await this.getRepository(manager).findOne({ where: { id } });
+    }
+
+
+
+    async findByIdProvider(id: string, manager?: EntityManager): Promise<User | null> {
+        return await this.getRepository(manager).findOne({ where: { id, role: UserRole.PROVIDER, isActive: true } });
     }
 
     async createUser(data: Partial<User>, manager?: EntityManager): Promise<User> {
