@@ -1,14 +1,10 @@
+import { UserRole } from '@/common/enums/user-role.enum';
 
-export interface RegisterInput {
-    email?: string;
-    phone?: string;
-    fullName?: string;
-    password?:string
-}
 
 export interface RegisterResult {
     id: string;
     email?: string;
     phone?: string;
-    fullName?: string
+    fullName?: string;
+    role?: UserRole
 }

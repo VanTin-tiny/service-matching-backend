@@ -1,6 +1,6 @@
 import { UserRole } from '@/common/enums/user-role.enum';
 import { ApiProperty } from '@nestjs/swagger';
-import { IsOptional } from 'class-validator';
+import { IsEmail, IsOptional, IsString } from 'class-validator';
 
 
 export class LoginResponseDataDto {
@@ -27,3 +27,38 @@ export class LoginResponseDataDto {
         role?: UserRole;
     };
 }
+
+
+
+export class RegisterResponseDataDto {
+    @ApiProperty({ example: '1a2b3c4d-5678-90ef' })
+    id!: string;
+
+    @ApiProperty({ required: false })
+    @IsOptional()
+    @IsEmail()
+    email?: string;
+
+    @ApiProperty({ required: false })
+    @IsOptional()
+    @IsString()
+    phone?: string;
+
+
+    @ApiProperty({ required: false })
+    @IsOptional()
+    @IsString()
+    fullName?: string;
+
+}
+
+
+export class TokenResponseDataDto {
+    @ApiProperty({ example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6...' })
+    accessToken!: string;
+
+    @ApiProperty({ example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6...' })
+    refreshToken?: string;
+}
+
+

@@ -9,16 +9,17 @@ import {
     PhoneAlreadyExistsException,
 } from '@/modules/auth/exceptions/auth.exception';
 
+import { UserRole } from '@/common/enums/user-role.enum';
 import { JwtService } from '@/common/services/jwt.service';
 import { ErrorUtil } from '@/common/utils/error.util';
-import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { EntityManager } from 'typeorm';
 import { AUTH_ERROR_CODES } from './constants/auth.constants';
-import { LoginMobileInput, LoginResult, LoginWebInput } from './interfaces/login.interface';
+import { LoginDto, LoginMobileDto, RegisterDto } from './dtos/auth.dto';
+import { LoginResult } from './interfaces/login.interface';
 import { RefreshInput, TokenRefreshResult } from './interfaces/refresh-token.interface';
-import { RegisterInput, RegisterResult } from './interfaces/register.interface';
+import { RegisterResult } from './interfaces/register.interface';
 import { RevokeRefreshTokenInput } from './interfaces/revoke-refresh-token.interface';
-
 import { toJwtPayload } from './mappers/user-to-jwt-payload.mapper';
 import { AuthConfigService } from './services/auth-config.service';
 import { AuthenticationFactory } from './services/authentication-factory.service';
@@ -42,12 +43,19 @@ export class AuthService {
     // REGISTER 
     @Transactional()
     async register(
-        data: RegisterInput,
+        data: RegisterDto,
         @TransactionManager() manager?: EntityManager,
     ): Promise<RegisterResult> {
         try {
             const email = data.email?.toLowerCase().trim();
             const phone = data.phone?.trim();
+            const role = data.role;
+            const allowedRoles = [UserRole.CUSTOMER, UserRole.PROVIDER];
+            if (!role || !allowedRoles.includes(role)) {
+                throw new BadRequestException(
+                    `Invalid role. Allowed roles: ${allowedRoles.join(', ')}`
+                );
+            }
 
             await Promise.all([
                 this.userValidation.checkEmailExists(email!, manager),
@@ -62,11 +70,12 @@ export class AuthService {
                     phone,
                     fullName: data.fullName?.trim(),
                     passwordHash,
+                    role
                 },
                 manager,
             );
 
-            this.logger.log(`User registered: ${user.id}`);
+            this.logger.log(`User registered: ${user.id} with role: ${role}`);
 
             return {
                 id: user.id,
@@ -96,7 +105,7 @@ export class AuthService {
     // LOGIN (WEB)
     @Transactional()
     async login(
-        data: LoginWebInput,
+        data: LoginDto,
         @TransactionManager() manager?: EntityManager,
     ): Promise<LoginResult> {
         try {
@@ -130,7 +139,7 @@ export class AuthService {
     // LOGIN MOBILE
     @Transactional()
     async loginMobile(
-        data: LoginMobileInput,
+        data: LoginMobileDto & { deviceId: string },
         @TransactionManager() manager?: EntityManager,
     ): Promise<LoginResult> {
         try {
