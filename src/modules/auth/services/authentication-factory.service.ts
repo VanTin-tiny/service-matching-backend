@@ -1,7 +1,7 @@
 import { JwtService } from '@/common/services/jwt.service';
+import { User } from '@/modules/users/entities/user.entity';
 import { Injectable } from '@nestjs/common';
 import { EntityManager } from 'typeorm';
-import { User } from '@/modules/users/entities/user.entity';
 import { LoginResult } from '../interfaces/login.interface';
 import { toJwtPayload } from '../mappers/user-to-jwt-payload.mapper';
 import { AuthConfigService } from './auth-config.service';

@@ -28,15 +28,12 @@ import { Throttle } from '@nestjs/throttler';
 import { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import { DeviceId } from './decorators/device-id.decorator';
-import { LoginMobileDto } from './dtos/login-mobile.dto';
-import { LoginResponseDto } from './dtos/login-response.dto';
-import { LoginDto } from './dtos/login.dto';
-import { RegisterResponseDto } from './dtos/register-response.dto';
-import { RegisterDto } from './dtos/register.dto';
-import { TokenResponseDto } from './dtos/token-response.dto';
+import { LoginResponseDto, RegisterResponseDto, TokenResponseDto } from './dtos/auth-response.dto';
+import { LoginDto, LoginMobileDto, RefreshTokenDto, RegisterDto } from './dtos/auth.dto';
 import { DeviceIdValidationPipe } from './pipes/device-id-validation.pipe';
 import { AuthResponseBuilder } from './services/auth-response-builder.service';
 import { CookieService } from './services/cookie.service';
+
 
 @Controller('auth')
 export class AuthController {
@@ -48,15 +45,6 @@ export class AuthController {
 
     @Get('health')
     @ApiExcludeEndpoint()
-    @ApiTags('Auth - Common')
-    @HttpCode(HttpStatus.OK)
-    @ApiOperation({
-        summary: 'Health check auth',
-        description: 'Check if the authentication service is healthy',
-    })
-    @ApiOkResponse({
-        description: 'Service is healthy',
-    })
     healthCheck(): HealthCheckResponse {
         return this.responseBuilder.buildHealthCheckResponse();
     }
@@ -70,7 +58,7 @@ export class AuthController {
     @Throttle({ default: { limit: 5, ttl: 60000 } })
     @ApiOperation({
         summary: 'Register a new user',
-        description: 'Create a new account using email, phone, and password.',
+        description: 'Send body: RegisterDto',
     })
     @ApiCreatedResponse({
         description: 'Registration successful',
@@ -92,9 +80,9 @@ export class AuthController {
         }),
     )
     async register(
-        @Body() registerDto: RegisterDto,
+        @Body() bodyRegister: RegisterDto,
     ): Promise<RegisterResponseDto> {
-        const result = await this.authService.register(registerDto);
+        const result = await this.authService.register(bodyRegister);
         return this.responseBuilder.buildRegisterResponse(result);
     }
 
@@ -105,7 +93,7 @@ export class AuthController {
     @HttpCode(HttpStatus.OK)
     @ApiOperation({
         summary: 'Logout from all devices',
-        description: 'Revoke all refresh tokens for the current user.',
+        description: 'Sent body: bodyRefreshToken, Revoke all refresh tokens for the current user.',
     })
     @ApiOkResponse({
         description: 'Logged out from all devices successfully',
@@ -135,7 +123,7 @@ export class AuthController {
     @Throttle({ default: { limit: 10, ttl: 60000 } })
     @ApiOperation({
         summary: 'Login (Web)',
-        description: 'Authenticate user via web browser. Refresh token stored in httpOnly cookie.',
+        description: 'Send body: LoginDto. Authenticate user via web browser. Refresh token stored in httpOnly cookie.',
     })
     @ApiOkResponse({
         description: 'Login successful',
@@ -179,10 +167,10 @@ export class AuthController {
     @Throttle({ default: { limit: 20, ttl: 60000 } })
     @ApiOperation({
         summary: 'Refresh access token (Web)',
-        description: 'Generate new tokens using refresh token from cookie.',
+        description: 'Do not send body, Do not send header, Sent cookie.',
     })
     @ApiOkResponse({
-        description: 'Token refreshed successfully',
+        description: 'Token refreshed successfully, Do not send body, Do not send header, Refresh token is retrieved from cookie',
     })
     @ApiUnauthorizedResponse({
         description: 'Invalid or expired refresh token',
@@ -208,10 +196,17 @@ export class AuthController {
     @HttpCode(HttpStatus.OK)
     @ApiOperation({
         summary: 'Logout (Web)',
-        description: 'Revoke refresh token and clear cookie.',
+        description: 'Do not send body, Do not send header, Sent cookie. Revoke refresh token and clear cookie',
     })
     @ApiOkResponse({
         description: 'Logout successful',
+        schema: {
+            example: {
+                success: true,
+                message: 'Logout successfully',
+                data: null
+            }
+        }
     })
     @ApiUnauthorizedResponse({
         description: 'Invalid or missing token',
@@ -241,7 +236,7 @@ export class AuthController {
     @Throttle({ default: { limit: 10, ttl: 60000 } })
     @ApiOperation({
         summary: 'Login (Mobile)',
-        description: 'Authenticate user via mobile app. Requires X-Device-ID header.',
+        description: 'Sent body: LoginMobileDto, Sent header X-Device-ID mobile',
     })
     @ApiHeader({
         name: 'X-Device-ID',
@@ -249,8 +244,24 @@ export class AuthController {
         required: true,
     })
     @ApiOkResponse({
-        description: 'Login successful',
+        description: 'Login successful (Mobile)',
         type: LoginResponseDto,
+        schema: {
+            example: {
+                success: true,
+                message: 'Login successfully',
+                data: {
+                    accessToken: 'access-token',
+                    refreshToken: 'refresh-token',
+                    user: {
+                        id: 'uuid',
+                        phone: '+84987654321',
+                        name: 'Van Tin',
+                        role: 'CUSTOMER'
+                    }
+                }
+            }
+        }
     })
     @ApiUnauthorizedResponse({
         description: 'Invalid credentials',
@@ -288,7 +299,7 @@ export class AuthController {
     @Throttle({ default: { limit: 20, ttl: 60000 } })
     @ApiOperation({
         summary: 'Refresh access token (Mobile)',
-        description: 'Generate new tokens using refresh token from request body.',
+        description: 'Sent body: RefreshTokenDto, Sent header X-Device-ID mobile.',
     })
     @ApiHeader({
         name: 'X-Device-ID',
@@ -297,17 +308,27 @@ export class AuthController {
     })
     @ApiOkResponse({
         description: 'Token refreshed successfully',
+        schema: {
+            example: {
+                success: true,
+                message: 'Refresh token successfully',
+                data: {
+                    accessToken: 'new-access-token',
+                    refreshToken: 'new-refresh-token'
+                }
+            }
+        }
     })
     @ApiUnauthorizedResponse({
         description: 'Invalid or expired refresh token',
         type: ErrorResponseDto,
     })
     async refreshMobile(
-        @Body('refreshToken') refreshToken: string,
+        @Body('refreshToken') bodyRefreshToken: RefreshTokenDto,
         @DeviceId(DeviceIdValidationPipe) deviceId: string,
     ): Promise<TokenResponseDto> {
         const tokens = await this.authService.refreshAccessToken({
-            refreshToken,
+            ...bodyRefreshToken,
             deviceId,
         });
 
@@ -321,7 +342,7 @@ export class AuthController {
     @HttpCode(HttpStatus.OK)
     @ApiOperation({
         summary: 'Logout (Mobile)',
-        description: 'Revoke refresh token for specific device.',
+        description: 'Sent body: RefreshTokenDto, Sent header X-Device-ID mobile. Revoke refresh token for specific device.',
     })
     @ApiHeader({
         name: 'X-Device-ID',
@@ -336,10 +357,10 @@ export class AuthController {
         type: ErrorResponseDto,
     })
     async logoutMobile(
-        @Body('refreshToken') refreshToken: string,
+        @Body('refreshToken') bodyRefresh: RefreshTokenDto,
         @DeviceId(DeviceIdValidationPipe) deviceId: string,
     ): Promise<BaseResponseDto<void>> {
-        await this.authService.revokeRefreshToken({ refreshToken, deviceId });
+        await this.authService.revokeRefreshToken({ ...bodyRefresh, deviceId });
 
         return this.responseBuilder.buildLogoutResponse();
     }
@@ -351,7 +372,7 @@ export class AuthController {
     @HttpCode(HttpStatus.OK)
     @ApiOperation({
         summary: 'Logout specific device (Mobile)',
-        description: 'Revoke all tokens for a specific device.',
+        description: 'Sent body: refreshToken, Sent header X-Device-ID mobile. Revoke all tokens for a specific device.',
     })
     @ApiHeader({
         name: 'X-Device-ID',

@@ -1,3 +1,4 @@
+import { UserRole } from '@/common/enums/user-role.enum';
 import {
     EmailAlreadyExistsException,
     InvalidCredentialsException,
@@ -8,6 +9,7 @@ import { Injectable } from '@nestjs/common';
 import { EntityManager } from 'typeorm';
 import { UserRepository } from '../../users/repositorys/user.repository';
 import { PasswordUtil } from '../utils/password.util';
+
 
 @Injectable()
 export class UserValidationService {
@@ -61,6 +63,7 @@ export class UserValidationService {
             phone?: string;
             fullName?: string;
             passwordHash: string;
+            role?: UserRole
         },
         manager?: EntityManager,
     ): Promise<User> {

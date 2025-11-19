@@ -1,15 +1,47 @@
+import { UserRole } from '@/common/enums/user-role.enum';
 import { ApiProperty } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import {
     IsEmail,
-    IsNotEmpty,
-    IsString,
-    IsStrongPassword,
+    IsEnum, IsNotEmpty, IsString, IsStrongPassword,
     Matches,
     MaxLength,
     MinLength
 } from 'class-validator';
 import { AUTH_CONSTANTS } from '../constants/auth.constants';
+export class LoginMobileDto {
+    @ApiProperty({ description: 'Email or phone' })
+    @IsString()
+    identifier!: string;
+
+    @ApiProperty()
+    @IsString()
+    password!: string;
+}
+
+
+export class LoginDto {
+    @ApiProperty({ description: 'Email or phone' })
+    @IsString()
+    identifier!: string;
+
+    @ApiProperty()
+    @IsString()
+    password!: string;
+}
+
+
+export class RefreshTokenDto {
+    @ApiProperty({
+        description: 'Refresh token',
+        example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+    })
+    @IsString()
+    @IsNotEmpty()
+    refreshToken!: string;
+}
+
+
 
 export class RegisterDto {
     @ApiProperty({
@@ -27,9 +59,11 @@ export class RegisterDto {
     })
     @IsString({ message: 'Phone must be a string' })
     @IsNotEmpty({ message: 'Phone is required' })
-    @Matches(/^\+?[1-9]\d{1,14}$/, {
-        message: 'Invalid phone number format (E.164)'
+
+    @Matches(/^0\d{9}$/, {
+        message: 'Invalid phone number format',
     })
+
     @Transform(({ value }) => value?.trim())
     phone?: string;
 
@@ -60,5 +94,18 @@ export class RegisterDto {
         message: 'Password must contain at least 8 characters, including uppercase, lowercase, number, and special character',
     })
     password?: string;
-    
+
+
+    @ApiProperty({
+        example: UserRole.CUSTOMER,
+        description: 'User role - customer or provider',
+        enum: UserRole,
+        enumName: 'UserRole',
+    })
+    @IsEnum(UserRole, {
+        message: `Role must be either ${UserRole.CUSTOMER} or ${UserRole.PROVIDER}`
+    })
+    @IsNotEmpty({ message: 'Role is required' })
+    role!: UserRole;
+
 }

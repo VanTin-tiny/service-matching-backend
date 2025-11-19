@@ -1651,7 +1651,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
-var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y;
+var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.AuthController = void 0;
 const error_response_dto_1 = __webpack_require__(/*! @/common/dtos/error-response.dto */ "./src/common/dtos/error-response.dto.ts");
@@ -1662,11 +1662,8 @@ const throttler_1 = __webpack_require__(/*! @nestjs/throttler */ "@nestjs/thrott
 const express_1 = __webpack_require__(/*! express */ "express");
 const auth_service_1 = __webpack_require__(/*! ./auth.service */ "./src/modules/auth/auth.service.ts");
 const device_id_decorator_1 = __webpack_require__(/*! ./decorators/device-id.decorator */ "./src/modules/auth/decorators/device-id.decorator.ts");
-const login_mobile_dto_1 = __webpack_require__(/*! ./dtos/login-mobile.dto */ "./src/modules/auth/dtos/login-mobile.dto.ts");
-const login_response_dto_1 = __webpack_require__(/*! ./dtos/login-response.dto */ "./src/modules/auth/dtos/login-response.dto.ts");
-const login_dto_1 = __webpack_require__(/*! ./dtos/login.dto */ "./src/modules/auth/dtos/login.dto.ts");
-const register_response_dto_1 = __webpack_require__(/*! ./dtos/register-response.dto */ "./src/modules/auth/dtos/register-response.dto.ts");
-const register_dto_1 = __webpack_require__(/*! ./dtos/register.dto */ "./src/modules/auth/dtos/register.dto.ts");
+const auth_response_dto_1 = __webpack_require__(/*! ./dtos/auth-response.dto */ "./src/modules/auth/dtos/auth-response.dto.ts");
+const auth_dto_1 = __webpack_require__(/*! ./dtos/auth.dto */ "./src/modules/auth/dtos/auth.dto.ts");
 const device_id_validation_pipe_1 = __webpack_require__(/*! ./pipes/device-id-validation.pipe */ "./src/modules/auth/pipes/device-id-validation.pipe.ts");
 const auth_response_builder_service_1 = __webpack_require__(/*! ./services/auth-response-builder.service */ "./src/modules/auth/services/auth-response-builder.service.ts");
 const cookie_service_1 = __webpack_require__(/*! ./services/cookie.service */ "./src/modules/auth/services/cookie.service.ts");
@@ -1679,8 +1676,8 @@ let AuthController = class AuthController {
     healthCheck() {
         return this.responseBuilder.buildHealthCheckResponse();
     }
-    async register(registerDto) {
-        const result = await this.authService.register(registerDto);
+    async register(bodyRegister) {
+        const result = await this.authService.register(bodyRegister);
         return this.responseBuilder.buildRegisterResponse(result);
     }
     async logoutAll(req, bodyRefreshToken, res) {
@@ -1716,15 +1713,15 @@ let AuthController = class AuthController {
         });
         return this.responseBuilder.buildLoginMobileResponse(result);
     }
-    async refreshMobile(refreshToken, deviceId) {
+    async refreshMobile(bodyRefreshToken, deviceId) {
         const tokens = await this.authService.refreshAccessToken({
-            refreshToken,
+            ...bodyRefreshToken,
             deviceId,
         });
         return this.responseBuilder.buildRefreshMobileResponse(tokens);
     }
-    async logoutMobile(refreshToken, deviceId) {
-        await this.authService.revokeRefreshToken({ refreshToken, deviceId });
+    async logoutMobile(bodyRefresh, deviceId) {
+        await this.authService.revokeRefreshToken({ ...bodyRefresh, deviceId });
         return this.responseBuilder.buildLogoutResponse();
     }
     async logoutDevice(refreshToken, deviceId) {
@@ -1736,15 +1733,6 @@ exports.AuthController = AuthController;
 __decorate([
     (0, common_1.Get)('health'),
     (0, swagger_1.ApiExcludeEndpoint)(),
-    (0, swagger_1.ApiTags)('Auth - Common'),
-    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
-    (0, swagger_1.ApiOperation)({
-        summary: 'Health check auth',
-        description: 'Check if the authentication service is healthy',
-    }),
-    (0, swagger_1.ApiOkResponse)({
-        description: 'Service is healthy',
-    }),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", typeof (_d = typeof health_check_response_interface_1.HealthCheckResponse !== "undefined" && health_check_response_interface_1.HealthCheckResponse) === "function" ? _d : Object)
@@ -1756,11 +1744,11 @@ __decorate([
     (0, throttler_1.Throttle)({ default: { limit: 5, ttl: 60000 } }),
     (0, swagger_1.ApiOperation)({
         summary: 'Register a new user',
-        description: 'Create a new account using email, phone, and password.',
+        description: 'Send body: RegisterDto',
     }),
     (0, swagger_1.ApiCreatedResponse)({
         description: 'Registration successful',
-        type: register_response_dto_1.RegisterResponseDto,
+        type: auth_response_dto_1.RegisterResponseDto,
     }),
     (0, swagger_1.ApiUnauthorizedResponse)({
         description: 'Invalid registration data',
@@ -1777,7 +1765,7 @@ __decorate([
     })),
     __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [typeof (_e = typeof register_dto_1.RegisterDto !== "undefined" && register_dto_1.RegisterDto) === "function" ? _e : Object]),
+    __metadata("design:paramtypes", [typeof (_e = typeof auth_dto_1.RegisterDto !== "undefined" && auth_dto_1.RegisterDto) === "function" ? _e : Object]),
     __metadata("design:returntype", typeof (_f = typeof Promise !== "undefined" && Promise) === "function" ? _f : Object)
 ], AuthController.prototype, "register", null);
 __decorate([
@@ -1786,7 +1774,7 @@ __decorate([
     (0, common_1.HttpCode)(common_1.HttpStatus.OK),
     (0, swagger_1.ApiOperation)({
         summary: 'Logout from all devices',
-        description: 'Revoke all refresh tokens for the current user.',
+        description: 'Sent body: bodyRefreshToken, Revoke all refresh tokens for the current user.',
     }),
     (0, swagger_1.ApiOkResponse)({
         description: 'Logged out from all devices successfully',
@@ -1809,11 +1797,11 @@ __decorate([
     (0, throttler_1.Throttle)({ default: { limit: 10, ttl: 60000 } }),
     (0, swagger_1.ApiOperation)({
         summary: 'Login (Web)',
-        description: 'Authenticate user via web browser. Refresh token stored in httpOnly cookie.',
+        description: 'Send body: LoginDto. Authenticate user via web browser. Refresh token stored in httpOnly cookie.',
     }),
     (0, swagger_1.ApiOkResponse)({
         description: 'Login successful',
-        type: login_response_dto_1.LoginResponseDto,
+        type: auth_response_dto_1.LoginResponseDto,
     }),
     (0, swagger_1.ApiUnauthorizedResponse)({
         description: 'Invalid credentials',
@@ -1835,7 +1823,7 @@ __decorate([
     __param(0, (0, common_1.Body)()),
     __param(1, (0, common_1.Res)({ passthrough: true })),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [typeof (_k = typeof login_dto_1.LoginDto !== "undefined" && login_dto_1.LoginDto) === "function" ? _k : Object, typeof (_l = typeof express_1.Response !== "undefined" && express_1.Response) === "function" ? _l : Object]),
+    __metadata("design:paramtypes", [typeof (_k = typeof auth_dto_1.LoginDto !== "undefined" && auth_dto_1.LoginDto) === "function" ? _k : Object, typeof (_l = typeof express_1.Response !== "undefined" && express_1.Response) === "function" ? _l : Object]),
     __metadata("design:returntype", typeof (_m = typeof Promise !== "undefined" && Promise) === "function" ? _m : Object)
 ], AuthController.prototype, "login", null);
 __decorate([
@@ -1845,10 +1833,10 @@ __decorate([
     (0, throttler_1.Throttle)({ default: { limit: 20, ttl: 60000 } }),
     (0, swagger_1.ApiOperation)({
         summary: 'Refresh access token (Web)',
-        description: 'Generate new tokens using refresh token from cookie.',
+        description: 'Do not send body, Do not send header, Sent cookie.',
     }),
     (0, swagger_1.ApiOkResponse)({
-        description: 'Token refreshed successfully',
+        description: 'Token refreshed successfully, Do not send body, Do not send header, Refresh token is retrieved from cookie',
     }),
     (0, swagger_1.ApiUnauthorizedResponse)({
         description: 'Invalid or expired refresh token',
@@ -1866,10 +1854,17 @@ __decorate([
     (0, common_1.HttpCode)(common_1.HttpStatus.OK),
     (0, swagger_1.ApiOperation)({
         summary: 'Logout (Web)',
-        description: 'Revoke refresh token and clear cookie.',
+        description: 'Do not send body, Do not send header, Sent cookie. Revoke refresh token and clear cookie',
     }),
     (0, swagger_1.ApiOkResponse)({
         description: 'Logout successful',
+        schema: {
+            example: {
+                success: true,
+                message: 'Logout successfully',
+                data: null
+            }
+        }
     }),
     (0, swagger_1.ApiUnauthorizedResponse)({
         description: 'Invalid or missing token',
@@ -1888,7 +1883,7 @@ __decorate([
     (0, throttler_1.Throttle)({ default: { limit: 10, ttl: 60000 } }),
     (0, swagger_1.ApiOperation)({
         summary: 'Login (Mobile)',
-        description: 'Authenticate user via mobile app. Requires X-Device-ID header.',
+        description: 'Sent body: LoginMobileDto, Sent header X-Device-ID mobile',
     }),
     (0, swagger_1.ApiHeader)({
         name: 'X-Device-ID',
@@ -1896,8 +1891,24 @@ __decorate([
         required: true,
     }),
     (0, swagger_1.ApiOkResponse)({
-        description: 'Login successful',
-        type: login_response_dto_1.LoginResponseDto,
+        description: 'Login successful (Mobile)',
+        type: auth_response_dto_1.LoginResponseDto,
+        schema: {
+            example: {
+                success: true,
+                message: 'Login successfully',
+                data: {
+                    accessToken: 'access-token',
+                    refreshToken: 'refresh-token',
+                    user: {
+                        id: 'uuid',
+                        phone: '+84987654321',
+                        name: 'Van Tin',
+                        role: 'CUSTOMER'
+                    }
+                }
+            }
+        }
     }),
     (0, swagger_1.ApiUnauthorizedResponse)({
         description: 'Invalid credentials',
@@ -1915,7 +1926,7 @@ __decorate([
     __param(0, (0, common_1.Body)()),
     __param(1, (0, device_id_decorator_1.DeviceId)(device_id_validation_pipe_1.DeviceIdValidationPipe)),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [typeof (_u = typeof login_mobile_dto_1.LoginMobileDto !== "undefined" && login_mobile_dto_1.LoginMobileDto) === "function" ? _u : Object, String]),
+    __metadata("design:paramtypes", [typeof (_u = typeof auth_dto_1.LoginMobileDto !== "undefined" && auth_dto_1.LoginMobileDto) === "function" ? _u : Object, String]),
     __metadata("design:returntype", typeof (_v = typeof Promise !== "undefined" && Promise) === "function" ? _v : Object)
 ], AuthController.prototype, "loginMobile", null);
 __decorate([
@@ -1925,7 +1936,7 @@ __decorate([
     (0, throttler_1.Throttle)({ default: { limit: 20, ttl: 60000 } }),
     (0, swagger_1.ApiOperation)({
         summary: 'Refresh access token (Mobile)',
-        description: 'Generate new tokens using refresh token from request body.',
+        description: 'Sent body: RefreshTokenDto, Sent header X-Device-ID mobile.',
     }),
     (0, swagger_1.ApiHeader)({
         name: 'X-Device-ID',
@@ -1934,6 +1945,16 @@ __decorate([
     }),
     (0, swagger_1.ApiOkResponse)({
         description: 'Token refreshed successfully',
+        schema: {
+            example: {
+                success: true,
+                message: 'Refresh token successfully',
+                data: {
+                    accessToken: 'new-access-token',
+                    refreshToken: 'new-refresh-token'
+                }
+            }
+        }
     }),
     (0, swagger_1.ApiUnauthorizedResponse)({
         description: 'Invalid or expired refresh token',
@@ -1942,8 +1963,8 @@ __decorate([
     __param(0, (0, common_1.Body)('refreshToken')),
     __param(1, (0, device_id_decorator_1.DeviceId)(device_id_validation_pipe_1.DeviceIdValidationPipe)),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String]),
-    __metadata("design:returntype", typeof (_w = typeof Promise !== "undefined" && Promise) === "function" ? _w : Object)
+    __metadata("design:paramtypes", [typeof (_w = typeof auth_dto_1.RefreshTokenDto !== "undefined" && auth_dto_1.RefreshTokenDto) === "function" ? _w : Object, String]),
+    __metadata("design:returntype", typeof (_x = typeof Promise !== "undefined" && Promise) === "function" ? _x : Object)
 ], AuthController.prototype, "refreshMobile", null);
 __decorate([
     (0, common_1.Post)('logout-mobile'),
@@ -1951,7 +1972,7 @@ __decorate([
     (0, common_1.HttpCode)(common_1.HttpStatus.OK),
     (0, swagger_1.ApiOperation)({
         summary: 'Logout (Mobile)',
-        description: 'Revoke refresh token for specific device.',
+        description: 'Sent body: RefreshTokenDto, Sent header X-Device-ID mobile. Revoke refresh token for specific device.',
     }),
     (0, swagger_1.ApiHeader)({
         name: 'X-Device-ID',
@@ -1968,8 +1989,8 @@ __decorate([
     __param(0, (0, common_1.Body)('refreshToken')),
     __param(1, (0, device_id_decorator_1.DeviceId)(device_id_validation_pipe_1.DeviceIdValidationPipe)),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String]),
-    __metadata("design:returntype", typeof (_x = typeof Promise !== "undefined" && Promise) === "function" ? _x : Object)
+    __metadata("design:paramtypes", [typeof (_y = typeof auth_dto_1.RefreshTokenDto !== "undefined" && auth_dto_1.RefreshTokenDto) === "function" ? _y : Object, String]),
+    __metadata("design:returntype", typeof (_z = typeof Promise !== "undefined" && Promise) === "function" ? _z : Object)
 ], AuthController.prototype, "logoutMobile", null);
 __decorate([
     (0, common_1.Post)('logout-device'),
@@ -1977,7 +1998,7 @@ __decorate([
     (0, common_1.HttpCode)(common_1.HttpStatus.OK),
     (0, swagger_1.ApiOperation)({
         summary: 'Logout specific device (Mobile)',
-        description: 'Revoke all tokens for a specific device.',
+        description: 'Sent body: refreshToken, Sent header X-Device-ID mobile. Revoke all tokens for a specific device.',
     }),
     (0, swagger_1.ApiHeader)({
         name: 'X-Device-ID',
@@ -1995,7 +2016,7 @@ __decorate([
     __param(1, (0, device_id_decorator_1.DeviceId)(device_id_validation_pipe_1.DeviceIdValidationPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String, String]),
-    __metadata("design:returntype", typeof (_y = typeof Promise !== "undefined" && Promise) === "function" ? _y : Object)
+    __metadata("design:returntype", typeof (_0 = typeof Promise !== "undefined" && Promise) === "function" ? _0 : Object)
 ], AuthController.prototype, "logoutDevice", null);
 exports.AuthController = AuthController = __decorate([
     (0, common_1.Controller)('auth'),
@@ -2103,14 +2124,14 @@ exports.AuthService = void 0;
 const _Transaction_1 = __webpack_require__(/*! @/common/decorators/@Transaction */ "./src/common/decorators/@Transaction.ts");
 const exceptions_1 = __webpack_require__(/*! @/common/exceptions */ "./src/common/exceptions/index.ts");
 const auth_exception_1 = __webpack_require__(/*! @/modules/auth/exceptions/auth.exception */ "./src/modules/auth/exceptions/auth.exception.ts");
+const user_role_enum_1 = __webpack_require__(/*! @/common/enums/user-role.enum */ "./src/common/enums/user-role.enum.ts");
 const jwt_service_1 = __webpack_require__(/*! @/common/services/jwt.service */ "./src/common/services/jwt.service.ts");
 const error_util_1 = __webpack_require__(/*! @/common/utils/error.util */ "./src/common/utils/error.util.ts");
 const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
 const typeorm_1 = __webpack_require__(/*! typeorm */ "typeorm");
 const auth_constants_1 = __webpack_require__(/*! ./constants/auth.constants */ "./src/modules/auth/constants/auth.constants.ts");
-const login_interface_1 = __webpack_require__(/*! ./interfaces/login.interface */ "./src/modules/auth/interfaces/login.interface.ts");
+const auth_dto_1 = __webpack_require__(/*! ./dtos/auth.dto */ "./src/modules/auth/dtos/auth.dto.ts");
 const refresh_token_interface_1 = __webpack_require__(/*! ./interfaces/refresh-token.interface */ "./src/modules/auth/interfaces/refresh-token.interface.ts");
-const register_interface_1 = __webpack_require__(/*! ./interfaces/register.interface */ "./src/modules/auth/interfaces/register.interface.ts");
 const user_to_jwt_payload_mapper_1 = __webpack_require__(/*! ./mappers/user-to-jwt-payload.mapper */ "./src/modules/auth/mappers/user-to-jwt-payload.mapper.ts");
 const auth_config_service_1 = __webpack_require__(/*! ./services/auth-config.service */ "./src/modules/auth/services/auth-config.service.ts");
 const authentication_factory_service_1 = __webpack_require__(/*! ./services/authentication-factory.service */ "./src/modules/auth/services/authentication-factory.service.ts");
@@ -2130,6 +2151,11 @@ let AuthService = AuthService_1 = class AuthService {
         try {
             const email = data.email?.toLowerCase().trim();
             const phone = data.phone?.trim();
+            const role = data.role;
+            const allowedRoles = [user_role_enum_1.UserRole.CUSTOMER, user_role_enum_1.UserRole.PROVIDER];
+            if (!role || !allowedRoles.includes(role)) {
+                throw new common_1.BadRequestException(`Invalid role. Allowed roles: ${allowedRoles.join(', ')}`);
+            }
             await Promise.all([
                 this.userValidation.checkEmailExists(email, manager),
                 this.userValidation.checkPhoneExists(phone, manager)
@@ -2140,8 +2166,9 @@ let AuthService = AuthService_1 = class AuthService {
                 phone,
                 fullName: data.fullName?.trim(),
                 passwordHash,
+                role
             }, manager);
-            this.logger.log(`User registered: ${user.id}`);
+            this.logger.log(`User registered: ${user.id} with role: ${role}`);
             return {
                 id: user.id,
                 email: user.email,
@@ -2331,21 +2358,21 @@ __decorate([
     (0, _Transaction_1.Transactional)(),
     __param(1, (0, _Transaction_1.TransactionManager)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [typeof (_f = typeof register_interface_1.RegisterInput !== "undefined" && register_interface_1.RegisterInput) === "function" ? _f : Object, typeof (_g = typeof typeorm_1.EntityManager !== "undefined" && typeorm_1.EntityManager) === "function" ? _g : Object]),
+    __metadata("design:paramtypes", [typeof (_f = typeof auth_dto_1.RegisterDto !== "undefined" && auth_dto_1.RegisterDto) === "function" ? _f : Object, typeof (_g = typeof typeorm_1.EntityManager !== "undefined" && typeorm_1.EntityManager) === "function" ? _g : Object]),
     __metadata("design:returntype", typeof (_h = typeof Promise !== "undefined" && Promise) === "function" ? _h : Object)
 ], AuthService.prototype, "register", null);
 __decorate([
     (0, _Transaction_1.Transactional)(),
     __param(1, (0, _Transaction_1.TransactionManager)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [typeof (_j = typeof login_interface_1.LoginWebInput !== "undefined" && login_interface_1.LoginWebInput) === "function" ? _j : Object, typeof (_k = typeof typeorm_1.EntityManager !== "undefined" && typeorm_1.EntityManager) === "function" ? _k : Object]),
+    __metadata("design:paramtypes", [typeof (_j = typeof auth_dto_1.LoginDto !== "undefined" && auth_dto_1.LoginDto) === "function" ? _j : Object, typeof (_k = typeof typeorm_1.EntityManager !== "undefined" && typeorm_1.EntityManager) === "function" ? _k : Object]),
     __metadata("design:returntype", typeof (_l = typeof Promise !== "undefined" && Promise) === "function" ? _l : Object)
 ], AuthService.prototype, "login", null);
 __decorate([
     (0, _Transaction_1.Transactional)(),
     __param(1, (0, _Transaction_1.TransactionManager)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [typeof (_m = typeof login_interface_1.LoginMobileInput !== "undefined" && login_interface_1.LoginMobileInput) === "function" ? _m : Object, typeof (_o = typeof typeorm_1.EntityManager !== "undefined" && typeorm_1.EntityManager) === "function" ? _o : Object]),
+    __metadata("design:paramtypes", [Object, typeof (_o = typeof typeorm_1.EntityManager !== "undefined" && typeorm_1.EntityManager) === "function" ? _o : Object]),
     __metadata("design:returntype", typeof (_p = typeof Promise !== "undefined" && Promise) === "function" ? _p : Object)
 ], AuthService.prototype, "loginMobile", null);
 __decorate([
@@ -2493,10 +2520,10 @@ exports.DeviceId = (0, common_1.createParamDecorator)((data, ctx) => {
 
 /***/ }),
 
-/***/ "./src/modules/auth/dtos/login-mobile.dto.ts":
-/*!***************************************************!*\
-  !*** ./src/modules/auth/dtos/login-mobile.dto.ts ***!
-  \***************************************************/
+/***/ "./src/modules/auth/dtos/auth-data-response.dto.ts":
+/*!*********************************************************!*\
+  !*** ./src/modules/auth/dtos/auth-data-response.dto.ts ***!
+  \*********************************************************/
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 
@@ -2510,44 +2537,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.LoginMobileDto = void 0;
-const swagger_1 = __webpack_require__(/*! @nestjs/swagger */ "@nestjs/swagger");
-const class_validator_1 = __webpack_require__(/*! class-validator */ "class-validator");
-class LoginMobileDto {
-}
-exports.LoginMobileDto = LoginMobileDto;
-__decorate([
-    (0, swagger_1.ApiProperty)({ description: 'Email or phone' }),
-    (0, class_validator_1.IsString)(),
-    __metadata("design:type", String)
-], LoginMobileDto.prototype, "identifier", void 0);
-__decorate([
-    (0, swagger_1.ApiProperty)(),
-    (0, class_validator_1.IsString)(),
-    __metadata("design:type", String)
-], LoginMobileDto.prototype, "password", void 0);
-
-
-/***/ }),
-
-/***/ "./src/modules/auth/dtos/login-response-data.dto.ts":
-/*!**********************************************************!*\
-  !*** ./src/modules/auth/dtos/login-response-data.dto.ts ***!
-  \**********************************************************/
-/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
-
-
-var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
-    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
-    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
-    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
-    return c > 3 && r && Object.defineProperty(target, key, r), r;
-};
-var __metadata = (this && this.__metadata) || function (k, v) {
-    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
-};
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.LoginResponseDataDto = void 0;
+exports.TokenResponseDataDto = exports.RegisterResponseDataDto = exports.LoginResponseDataDto = void 0;
 const swagger_1 = __webpack_require__(/*! @nestjs/swagger */ "@nestjs/swagger");
 const class_validator_1 = __webpack_require__(/*! class-validator */ "class-validator");
 class LoginResponseDataDto {
@@ -2573,108 +2563,6 @@ __decorate([
     (0, class_validator_1.IsOptional)(),
     __metadata("design:type", Object)
 ], LoginResponseDataDto.prototype, "user", void 0);
-
-
-/***/ }),
-
-/***/ "./src/modules/auth/dtos/login-response.dto.ts":
-/*!*****************************************************!*\
-  !*** ./src/modules/auth/dtos/login-response.dto.ts ***!
-  \*****************************************************/
-/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
-
-
-var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
-    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
-    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
-    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
-    return c > 3 && r && Object.defineProperty(target, key, r), r;
-};
-var __metadata = (this && this.__metadata) || function (k, v) {
-    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
-};
-var _a;
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.LoginResponseDto = void 0;
-const base_response_dto_1 = __webpack_require__(/*! @/common/dtos/base-response.dto */ "./src/common/dtos/base-response.dto.ts");
-const swagger_1 = __webpack_require__(/*! @nestjs/swagger */ "@nestjs/swagger");
-const login_response_data_dto_1 = __webpack_require__(/*! ./login-response-data.dto */ "./src/modules/auth/dtos/login-response-data.dto.ts");
-class LoginResponseDto extends base_response_dto_1.BaseResponseDto {
-}
-exports.LoginResponseDto = LoginResponseDto;
-__decorate([
-    (0, swagger_1.ApiProperty)({ example: true }),
-    __metadata("design:type", Boolean)
-], LoginResponseDto.prototype, "success", void 0);
-__decorate([
-    (0, swagger_1.ApiProperty)({ example: 'Login successful' }),
-    __metadata("design:type", String)
-], LoginResponseDto.prototype, "message", void 0);
-__decorate([
-    (0, swagger_1.ApiProperty)({ type: login_response_data_dto_1.LoginResponseDataDto }),
-    __metadata("design:type", typeof (_a = typeof login_response_data_dto_1.LoginResponseDataDto !== "undefined" && login_response_data_dto_1.LoginResponseDataDto) === "function" ? _a : Object)
-], LoginResponseDto.prototype, "data", void 0);
-
-
-/***/ }),
-
-/***/ "./src/modules/auth/dtos/login.dto.ts":
-/*!********************************************!*\
-  !*** ./src/modules/auth/dtos/login.dto.ts ***!
-  \********************************************/
-/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
-
-
-var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
-    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
-    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
-    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
-    return c > 3 && r && Object.defineProperty(target, key, r), r;
-};
-var __metadata = (this && this.__metadata) || function (k, v) {
-    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
-};
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.LoginDto = void 0;
-const swagger_1 = __webpack_require__(/*! @nestjs/swagger */ "@nestjs/swagger");
-const class_validator_1 = __webpack_require__(/*! class-validator */ "class-validator");
-class LoginDto {
-}
-exports.LoginDto = LoginDto;
-__decorate([
-    (0, swagger_1.ApiProperty)({ description: 'Email or phone' }),
-    (0, class_validator_1.IsString)(),
-    __metadata("design:type", String)
-], LoginDto.prototype, "identifier", void 0);
-__decorate([
-    (0, swagger_1.ApiProperty)(),
-    (0, class_validator_1.IsString)(),
-    __metadata("design:type", String)
-], LoginDto.prototype, "password", void 0);
-
-
-/***/ }),
-
-/***/ "./src/modules/auth/dtos/register-response-data.dto.ts":
-/*!*************************************************************!*\
-  !*** ./src/modules/auth/dtos/register-response-data.dto.ts ***!
-  \*************************************************************/
-/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
-
-
-var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
-    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
-    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
-    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
-    return c > 3 && r && Object.defineProperty(target, key, r), r;
-};
-var __metadata = (this && this.__metadata) || function (k, v) {
-    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
-};
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.RegisterResponseDataDto = void 0;
-const swagger_1 = __webpack_require__(/*! @nestjs/swagger */ "@nestjs/swagger");
-const class_validator_1 = __webpack_require__(/*! class-validator */ "class-validator");
 class RegisterResponseDataDto {
 }
 exports.RegisterResponseDataDto = RegisterResponseDataDto;
@@ -2700,14 +2588,96 @@ __decorate([
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], RegisterResponseDataDto.prototype, "fullName", void 0);
+class TokenResponseDataDto {
+}
+exports.TokenResponseDataDto = TokenResponseDataDto;
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6...' }),
+    __metadata("design:type", String)
+], TokenResponseDataDto.prototype, "accessToken", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6...' }),
+    __metadata("design:type", String)
+], TokenResponseDataDto.prototype, "refreshToken", void 0);
 
 
 /***/ }),
 
-/***/ "./src/modules/auth/dtos/register-response.dto.ts":
-/*!********************************************************!*\
-  !*** ./src/modules/auth/dtos/register-response.dto.ts ***!
-  \********************************************************/
+/***/ "./src/modules/auth/dtos/auth-response.dto.ts":
+/*!****************************************************!*\
+  !*** ./src/modules/auth/dtos/auth-response.dto.ts ***!
+  \****************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var _a, _b, _c;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.TokenResponseDto = exports.RegisterResponseDto = exports.LoginResponseDto = void 0;
+const base_response_dto_1 = __webpack_require__(/*! @/common/dtos/base-response.dto */ "./src/common/dtos/base-response.dto.ts");
+const auth_data_response_dto_1 = __webpack_require__(/*! @/modules/auth/dtos/auth-data-response.dto */ "./src/modules/auth/dtos/auth-data-response.dto.ts");
+const swagger_1 = __webpack_require__(/*! @nestjs/swagger */ "@nestjs/swagger");
+class LoginResponseDto extends base_response_dto_1.BaseResponseDto {
+}
+exports.LoginResponseDto = LoginResponseDto;
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: true }),
+    __metadata("design:type", Boolean)
+], LoginResponseDto.prototype, "success", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 'Login successful' }),
+    __metadata("design:type", String)
+], LoginResponseDto.prototype, "message", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ type: auth_data_response_dto_1.LoginResponseDataDto }),
+    __metadata("design:type", typeof (_a = typeof auth_data_response_dto_1.LoginResponseDataDto !== "undefined" && auth_data_response_dto_1.LoginResponseDataDto) === "function" ? _a : Object)
+], LoginResponseDto.prototype, "data", void 0);
+class RegisterResponseDto extends base_response_dto_1.BaseResponseDto {
+}
+exports.RegisterResponseDto = RegisterResponseDto;
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: true }),
+    __metadata("design:type", Boolean)
+], RegisterResponseDto.prototype, "success", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 'Register successful' }),
+    __metadata("design:type", String)
+], RegisterResponseDto.prototype, "message", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ type: auth_data_response_dto_1.RegisterResponseDataDto }),
+    __metadata("design:type", typeof (_b = typeof auth_data_response_dto_1.RegisterResponseDataDto !== "undefined" && auth_data_response_dto_1.RegisterResponseDataDto) === "function" ? _b : Object)
+], RegisterResponseDto.prototype, "data", void 0);
+class TokenResponseDto extends base_response_dto_1.BaseResponseDto {
+}
+exports.TokenResponseDto = TokenResponseDto;
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: true }),
+    __metadata("design:type", Boolean)
+], TokenResponseDto.prototype, "success", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 'Register successful' }),
+    __metadata("design:type", String)
+], TokenResponseDto.prototype, "message", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ type: auth_data_response_dto_1.TokenResponseDataDto }),
+    __metadata("design:type", typeof (_c = typeof auth_data_response_dto_1.TokenResponseDataDto !== "undefined" && auth_data_response_dto_1.TokenResponseDataDto) === "function" ? _c : Object)
+], TokenResponseDto.prototype, "data", void 0);
+
+
+/***/ }),
+
+/***/ "./src/modules/auth/dtos/auth.dto.ts":
+/*!*******************************************!*\
+  !*** ./src/modules/auth/dtos/auth.dto.ts ***!
+  \*******************************************/
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 
@@ -2722,51 +2692,50 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 };
 var _a;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.RegisterResponseDto = void 0;
-const base_response_dto_1 = __webpack_require__(/*! @/common/dtos/base-response.dto */ "./src/common/dtos/base-response.dto.ts");
-const register_response_data_dto_1 = __webpack_require__(/*! @/modules/auth/dtos/register-response-data.dto */ "./src/modules/auth/dtos/register-response-data.dto.ts");
-const swagger_1 = __webpack_require__(/*! @nestjs/swagger */ "@nestjs/swagger");
-class RegisterResponseDto extends base_response_dto_1.BaseResponseDto {
-}
-exports.RegisterResponseDto = RegisterResponseDto;
-__decorate([
-    (0, swagger_1.ApiProperty)({ example: true }),
-    __metadata("design:type", Boolean)
-], RegisterResponseDto.prototype, "success", void 0);
-__decorate([
-    (0, swagger_1.ApiProperty)({ example: 'Register successful' }),
-    __metadata("design:type", String)
-], RegisterResponseDto.prototype, "message", void 0);
-__decorate([
-    (0, swagger_1.ApiProperty)({ type: register_response_data_dto_1.RegisterResponseDataDto }),
-    __metadata("design:type", typeof (_a = typeof register_response_data_dto_1.RegisterResponseDataDto !== "undefined" && register_response_data_dto_1.RegisterResponseDataDto) === "function" ? _a : Object)
-], RegisterResponseDto.prototype, "data", void 0);
-
-
-/***/ }),
-
-/***/ "./src/modules/auth/dtos/register.dto.ts":
-/*!***********************************************!*\
-  !*** ./src/modules/auth/dtos/register.dto.ts ***!
-  \***********************************************/
-/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
-
-
-var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
-    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
-    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
-    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
-    return c > 3 && r && Object.defineProperty(target, key, r), r;
-};
-var __metadata = (this && this.__metadata) || function (k, v) {
-    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
-};
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.RegisterDto = void 0;
+exports.RegisterDto = exports.RefreshTokenDto = exports.LoginDto = exports.LoginMobileDto = void 0;
+const user_role_enum_1 = __webpack_require__(/*! @/common/enums/user-role.enum */ "./src/common/enums/user-role.enum.ts");
 const swagger_1 = __webpack_require__(/*! @nestjs/swagger */ "@nestjs/swagger");
 const class_transformer_1 = __webpack_require__(/*! class-transformer */ "class-transformer");
 const class_validator_1 = __webpack_require__(/*! class-validator */ "class-validator");
 const auth_constants_1 = __webpack_require__(/*! ../constants/auth.constants */ "./src/modules/auth/constants/auth.constants.ts");
+class LoginMobileDto {
+}
+exports.LoginMobileDto = LoginMobileDto;
+__decorate([
+    (0, swagger_1.ApiProperty)({ description: 'Email or phone' }),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], LoginMobileDto.prototype, "identifier", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], LoginMobileDto.prototype, "password", void 0);
+class LoginDto {
+}
+exports.LoginDto = LoginDto;
+__decorate([
+    (0, swagger_1.ApiProperty)({ description: 'Email or phone' }),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], LoginDto.prototype, "identifier", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], LoginDto.prototype, "password", void 0);
+class RefreshTokenDto {
+}
+exports.RefreshTokenDto = RefreshTokenDto;
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'Refresh token',
+        example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+    }),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsNotEmpty)(),
+    __metadata("design:type", String)
+], RefreshTokenDto.prototype, "refreshToken", void 0);
 class RegisterDto {
 }
 exports.RegisterDto = RegisterDto;
@@ -2787,8 +2756,8 @@ __decorate([
     }),
     (0, class_validator_1.IsString)({ message: 'Phone must be a string' }),
     (0, class_validator_1.IsNotEmpty)({ message: 'Phone is required' }),
-    (0, class_validator_1.Matches)(/^\+?[1-9]\d{1,14}$/, {
-        message: 'Invalid phone number format (E.164)'
+    (0, class_validator_1.Matches)(/^0\d{9}$/, {
+        message: 'Invalid phone number format',
     }),
     (0, class_transformer_1.Transform)(({ value }) => value?.trim()),
     __metadata("design:type", String)
@@ -2823,6 +2792,19 @@ __decorate([
     }),
     __metadata("design:type", String)
 ], RegisterDto.prototype, "password", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        example: user_role_enum_1.UserRole.CUSTOMER,
+        description: 'User role - customer or provider',
+        enum: user_role_enum_1.UserRole,
+        enumName: 'UserRole',
+    }),
+    (0, class_validator_1.IsEnum)(user_role_enum_1.UserRole, {
+        message: `Role must be either ${user_role_enum_1.UserRole.CUSTOMER} or ${user_role_enum_1.UserRole.PROVIDER}`
+    }),
+    (0, class_validator_1.IsNotEmpty)({ message: 'Role is required' }),
+    __metadata("design:type", typeof (_a = typeof user_role_enum_1.UserRole !== "undefined" && user_role_enum_1.UserRole) === "function" ? _a : Object)
+], RegisterDto.prototype, "role", void 0);
 
 
 /***/ }),
@@ -2959,34 +2941,10 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 
 /***/ }),
 
-/***/ "./src/modules/auth/interfaces/login.interface.ts":
-/*!********************************************************!*\
-  !*** ./src/modules/auth/interfaces/login.interface.ts ***!
-  \********************************************************/
-/***/ ((__unused_webpack_module, exports) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-
-
-/***/ }),
-
 /***/ "./src/modules/auth/interfaces/refresh-token.interface.ts":
 /*!****************************************************************!*\
   !*** ./src/modules/auth/interfaces/refresh-token.interface.ts ***!
   \****************************************************************/
-/***/ ((__unused_webpack_module, exports) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-
-
-/***/ }),
-
-/***/ "./src/modules/auth/interfaces/register.interface.ts":
-/*!***********************************************************!*\
-  !*** ./src/modules/auth/interfaces/register.interface.ts ***!
-  \***********************************************************/
 /***/ ((__unused_webpack_module, exports) => {
 
 
