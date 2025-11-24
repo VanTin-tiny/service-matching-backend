@@ -17,7 +17,9 @@ import {
     Patch,
     Post,
     Query,
+    Headers,
     UseGuards,
+    Ip
 } from '@nestjs/common';
 import {
     ApiBearerAuth,
@@ -34,6 +36,8 @@ import {
     UpdatePostDto,
 } from './dtos/post.dto';
 import { PostService } from './post.service';
+import { ModerationContext } from './services/post-validation.service';
+
 
 
 @ApiTags('Posts')
@@ -41,7 +45,17 @@ import { PostService } from './post.service';
 export class PostController {
     constructor(private readonly postService: PostService) { }
 
-    // PUBLIC ENDPOINTS
+    private getRequestContext(
+        ipAddress?: string,
+        userAgent?: string,
+    ): ModerationContext {
+        return {
+            ipAddress: ipAddress || 'unknown',
+            userAgent: userAgent || 'unknown',
+        };
+    }
+
+    // PUBLIC
 
     @Get('feed')
     @HttpCode(HttpStatus.OK)
@@ -89,8 +103,7 @@ export class PostController {
     }
 
 
-    // CUSTOMER ENDPOINTS
-
+    // CUSTOMER
     @Post()
     @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles(UserRole.CUSTOMER)
@@ -120,8 +133,16 @@ export class PostController {
     async createPost(
         @Body() dto: CreatePostDto,
         @CurrentUser() user: JwtPayload,
+        //
+
+        @Ip() ipAddress: string,
+        @Headers('user-agent') userAgent: string,
+
     ): Promise<PostResponseDto> {
-        return await this.postService.create(dto, user);
+
+
+        const context = this.getRequestContext(ipAddress, userAgent);
+        return await this.postService.create(dto, user, context);
     }
 
     @Patch(':id')
@@ -150,8 +171,12 @@ export class PostController {
         @Param('id', ParseUUIDPipe) id: string,
         @Body() dto: UpdatePostDto,
         @CurrentUser() user: JwtPayload,
+
+        @Ip() ipAddress: string,
+        @Headers('user-agent') userAgent: string,
     ): Promise<PostResponseDto> {
-        return await this.postService.update(id, dto, user);
+        const context = this.getRequestContext(ipAddress, userAgent);
+        return await this.postService.update(id, dto, user,context);
     }
 
     @Delete(':id')

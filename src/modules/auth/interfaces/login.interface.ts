@@ -7,7 +7,6 @@ export interface LoginResult {
         id: string;
         email?: string;
         phone?: string;
-        name?: string;
         role?: UserRole;
     };
 }

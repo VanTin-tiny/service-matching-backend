@@ -61,12 +61,15 @@ export class UserValidationService {
         data: {
             email?: string;
             phone?: string;
-            fullName?: string;
             passwordHash: string;
             role?: UserRole
+            isVerified:boolean,
+            isActive: boolean,
         },
         manager?: EntityManager,
     ): Promise<User> {
         return await this.userRepo.createUser(data, manager);
     }
+
+
 }

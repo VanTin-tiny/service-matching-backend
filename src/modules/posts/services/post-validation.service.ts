@@ -1,3 +1,4 @@
+import { ModerationService } from '@/modules/moderation/moderation.service';
 import { UserRepository } from '@/modules/users/repositorys/user.repository';
 import {
     BadRequestException,
@@ -5,15 +6,23 @@ import {
     Injectable,
     NotFoundException,
 } from '@nestjs/common';
-import { UpdatePostDto } from '../dtos/post.dto';
+import { CreatePostDto, UpdatePostDto } from '../dtos/post.dto';
 import { PostCustomer } from '../entities/post.entity';
 import { PostRepository } from '../repositories/post.repository';
 
+
+export interface ModerationContext {
+    ipAddress?: string;
+    userAgent?: string;
+    entityType?: string;
+    entityId?: string;
+}
 @Injectable()
 export class PostValidationService {
     constructor(
         private readonly postRepository: PostRepository,
         private readonly userRepository: UserRepository,
+        private readonly moderationService: ModerationService,
     ) { }
 
     async validateUserExists(userId: string): Promise<void> {
@@ -27,7 +36,7 @@ export class PostValidationService {
     }
 
     async validatePostExists(postId: string): Promise<PostCustomer> {
-        const post = await this.postRepository.findById(postId);
+        const post = await this.postRepository.findByIdWithRelations(postId);
         if (!post) {
             throw new NotFoundException({
                 code: 'POST_NOT_FOUND',
@@ -39,9 +48,8 @@ export class PostValidationService {
 
     async validatePostOwnership(
         postId: string,
-        userId: string,
     ): Promise<PostCustomer> {
-        const post = await this.postRepository.findByIdAndCustomer(postId, userId);
+        const post = await this.postRepository.findByIdWithRelations(postId);
         if (!post) {
             throw new NotFoundException({
                 code: 'POST_NOT_FOUND',
@@ -77,7 +85,7 @@ export class PostValidationService {
     }
 
     validatePostUpdateRules(post: PostCustomer, dto: UpdatePostDto): void {
-        
+
         if (post.isClosed() && dto.title) {
             throw new ForbiddenException({
                 code: 'POST_CLOSED',
@@ -85,4 +93,98 @@ export class PostValidationService {
             });
         }
     }
+
+
+
+
+
+    async validateAndModeratePostContent(
+        dto: CreatePostDto,
+        userId: string,
+        context?: ModerationContext,
+    ): Promise<void> {
+        const moderationResult = await this.moderationService.moderatePostContent(
+            dto.title,
+            dto.description,
+            userId,
+            {
+                ...context,
+                entityType: 'post',
+            },
+        );
+
+        if (!moderationResult.isAllowed) {
+            const violationMessages = moderationResult.violations
+                .map(v => `- ${this.getViolationTypeVietnamese(v.type)}: ${v.reason}`)
+                .join('\n');
+
+            throw new ForbiddenException({
+                code: 'CONTENT_MODERATION_FAILED',
+                message: 'Your content violates our community guidelines',
+                userMessage: `Nội dung của bạn vi phạm quy định cộng đồng:\n${violationMessages}\n\nVui lòng chỉnh sửa và thử lại.`,
+                details: {
+                    violations: moderationResult.violations,
+                    suggestions: moderationResult.moderatedContent,
+                },
+            });
+        }
+    }
+
+    
+    async validateAndModeratePostUpdate(
+        post: PostCustomer,
+        dto: UpdatePostDto,
+        userId: string,
+        context?: ModerationContext,
+    ): Promise<void> {
+        const isContentUpdate = dto.title || dto.description;
+
+        if (!isContentUpdate) {
+            return;
+        }
+
+        const title = dto.title || post.title;
+        const description = dto.description || post.description;
+
+        const moderationResult = await this.moderationService.moderatePostContent(
+            title,
+            description,
+            userId,
+            {
+                ...context,
+                entityType: 'post_update',
+                entityId: post.id,
+            },
+        );
+
+        if (!moderationResult.isAllowed) {
+            const violationMessages = moderationResult.violations
+                .map(v => `- ${this.getViolationTypeVietnamese(v.type)}: ${v.reason}`)
+                .join('\n');
+
+            throw new ForbiddenException({
+                code: 'CONTENT_MODERATION_FAILED',
+                message: 'Your updated content violates our community guidelines',
+                userMessage: `Nội dung cập nhật vi phạm quy định cộng đồng:\n${violationMessages}\n\nVui lòng chỉnh sửa và thử lại.`,
+                details: {
+                    violations: moderationResult.violations,
+                    suggestions: moderationResult.moderatedContent,
+                },
+            });
+        }
+    }
+
+    
+    private getViolationTypeVietnamese(type: string): string {
+        const mapping: Record<string, string> = {
+            'SEXUAL': 'Nội dung tình dục',
+            'VIOLENCE': 'Nội dung bạo lực',
+            'HATE': 'Ngôn từ thù hận',
+            'HARASSMENT': 'Quấy rối',
+            'SELF_HARM': 'Tự gây hại',
+            'ILLEGAL': 'Nội dung bất hợp pháp',
+        };
+        return mapping[type] || type;
+    }
+
 }

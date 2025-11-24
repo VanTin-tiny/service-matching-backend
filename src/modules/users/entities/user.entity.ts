@@ -1,104 +1,128 @@
 import { UserRole } from '@/common/enums/user-role.enum';
 import { RefreshToken } from '@/modules/auth/entities/refresh-token.entity';
+import { Profile } from '@/modules/profile/entities/profile.entity';
 import {
-    BeforeInsert,
     Column,
     CreateDateColumn,
     DeleteDateColumn,
     Entity,
     Index,
     OneToMany,
+    OneToOne,
     PrimaryGeneratedColumn,
-    Unique,
     UpdateDateColumn
 } from 'typeorm';
 
+
 @Entity('users')
-@Unique(['email'])
+@Index(['email'], { unique: true, where: 'deleted_at IS NULL' })
+@Index(['phone'], { unique: true, where: 'deleted_at IS NULL AND phone IS NOT NULL' })
 @Index(['role', 'deletedAt'])
+@Index(['isActive', 'deletedAt'])
 @Index(['createdAt'])
 export class User {
     @PrimaryGeneratedColumn('uuid')
     id!: string;
 
-    @Column({ length: 255, nullable: true })
-    @Index()
+    @Column({ 
+        length: 255, 
+        nullable: true,
+        comment: 'User email for authentication'
+    })
     email?: string;
 
-    @Column({ length: 20, nullable: true })
-    @Index()
+    @Column({ 
+        length: 20, 
+        nullable: true,
+        comment: 'User phone for authentication'
+    })
     phone?: string;
 
-    @Column({ name: 'password_hash', length: 255, nullable: true, select: false })
-    passwordHash!: string;
-
-    @Column({ type: 'enum', enum: UserRole, default: UserRole.CUSTOMER })
-    role: UserRole = UserRole.CUSTOMER;
-
-    @Column({ name: 'full_name', length: 255, nullable: true })
-    fullName?: string;
-
-    @Column({ name: 'display_name', length: 100, nullable: true })
-    displayName?: string;
-
-    @Column({ name: 'avatar_url', length: 500, nullable: true })
-    avatarUrl?: string;
-
-    @Column({ type: 'text', nullable: true })
-    bio?: string;
-
-    @Column({ length: 255, nullable: true })
-    address?: string;
-
-    @Column({ type: 'date', nullable: true })
-    birthday?: Date;
-
-    @Column({ length: 10, nullable: true })
-    gender?: string;
-
-    // Tracking cho thay đổi tên hiển thị
     @Column({
-        name: 'last_display_name_change',
-        type: 'timestamp with time zone',
-        nullable: true
+        name: 'password_hash',
+        length: 255,
+        nullable: true,
+        select: false,
+        comment: 'Hashed password - never select by default'
     })
-    lastDisplayNameChange?: Date;
+    passwordHash?: string;
 
     @Column({
-        name: 'display_name_change_count',
-        type: 'int',
-        default: 0
+        type: 'enum',
+        enum: UserRole,
+        default: UserRole.CUSTOMER,
+        comment: 'User role for authorization and access control'
     })
-    displayNameChangeCount: number = 0;
+    role!: UserRole;
 
-    // Account status
-    @Column({ name: 'is_verified', default: false })
+    @Column({
+        name: 'is_verified',
+        default: false,
+        comment: 'Email/Phone verification status'
+    })
     isVerified: boolean = false;
 
-    @Column({ name: 'is_active', default: true })
+    @Column({
+        name: 'is_active',
+        default: true,
+        comment: 'Account active status (can be deactivated by user or admin)'
+    })
     isActive: boolean = true;
 
-    @CreateDateColumn({ name: 'created_at' })
+    @Column({
+        name: 'last_login_at',
+        type: 'timestamp with time zone',
+        nullable: true,
+        comment: 'Last successful login timestamp'
+    })
+    lastLoginAt?: Date;
+
+    @Column({
+        name: 'failed_login_attempts',
+        type: 'int',
+        default: 0,
+        comment: 'Counter for failed login attempts (for security)'
+    })
+    failedLoginAttempts: number = 0;
+
+    @Column({
+        name: 'account_locked_until',
+        type: 'timestamp with time zone',
+        nullable: true,
+        comment: 'Temporary account lock timestamp (after too many failed attempts)'
+    })
+    accountLockedUntil?: Date;
+
+    @CreateDateColumn({
+        name: 'created_at',
+        type: 'timestamp with time zone'
+    })
     createdAt!: Date;
 
-    @UpdateDateColumn({ name: 'updated_at' })
+    @UpdateDateColumn({
+        name: 'updated_at',
+        type: 'timestamp with time zone'
+    })
     updatedAt!: Date;
 
-    @DeleteDateColumn({ name: 'deleted_at' })
+    @DeleteDateColumn({
+        name: 'deleted_at',
+        type: 'timestamp with time zone'
+    })
     deletedAt?: Date;
 
-    @OneToMany(() => RefreshToken, (rt) => rt.user, { cascade: true })
+    @OneToOne(() => Profile, profile => profile.user, {
+        cascade: true,
+        eager: false
+    })
+    profile?: Profile;
+
+
+    @OneToMany(() => RefreshToken, rt => rt.user, {
+        cascade: true
+    })
     refreshTokens?: RefreshToken[];
 
-    @BeforeInsert()
-    setDefaults() {
-        if (!this.role) this.role = UserRole.CUSTOMER;
-        if (!this.displayName && this.fullName) {
-            this.displayName = this.fullName;
-        }
-    }
-
-    // Helper methods
     isAdmin(): boolean {
         return this.role === UserRole.ADMIN;
     }
@@ -107,32 +131,18 @@ export class User {
         return this.role === UserRole.CUSTOMER;
     }
 
-    isWorker(): boolean {
+    isProvider(): boolean {
         return this.role === UserRole.PROVIDER;
     }
 
-    canChangeDisplayName(): boolean {
-        if (!this.lastDisplayNameChange) return true;
-
-        const daysSinceLastChange = this.getDaysSinceLastDisplayNameChange();
-        return daysSinceLastChange >= 30;
+    isAccountLocked(): boolean {
+        if (!this.accountLockedUntil) return false;
+        return new Date() < this.accountLockedUntil;
     }
 
-    getDaysSinceLastDisplayNameChange(): number {
-        if (!this.lastDisplayNameChange) return Infinity;
-
-        const now = new Date();
-        const lastChange = new Date(this.lastDisplayNameChange);
-        const diffTime = Math.abs(now.getTime() - lastChange.getTime());
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-        return diffDays;
-    }
-
-    getDaysUntilCanChangeDisplayName(): number {
-        if (!this.lastDisplayNameChange) return 0;
-
-        const daysSinceLastChange = this.getDaysSinceLastDisplayNameChange();
-        return Math.max(0, 30 - daysSinceLastChange);
+    canLogin(): boolean {
+        return this.isActive &&
+            !this.isAccountLocked() &&
+            this.deletedAt === null;
     }
 }

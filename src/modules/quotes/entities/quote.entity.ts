@@ -33,7 +33,7 @@ export class Quote {
     @Index()
     providerId!: string;
 
-    @ManyToOne(() => User, { eager: true, onDelete: 'CASCADE' })
+    @ManyToOne(() => User, { eager: false, onDelete: 'CASCADE' })
     @JoinColumn({ name: 'provider_id' })
     provider!: User;
 

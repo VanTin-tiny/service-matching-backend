@@ -15,9 +15,12 @@ import { AuthenticationFactory } from './services/authentication-factory.service
 import { CookieService } from './services/cookie.service';
 import { TokenManagementService } from './services/token-management.service';
 import { UserValidationService } from './services/user-validation.service';
+import { ProfileModule } from '@/modules/profile/profile.module';
+
 @Module({
     imports: [
         UsersModule,
+        ProfileModule,
         TypeOrmModule.forFeature([RefreshToken]),
     ],
     controllers: [AuthController],
