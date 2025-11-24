@@ -34,7 +34,7 @@ import {
 } from './dtos/quote.dto';
 import { QuoteService } from './quote.service';
 
-@ApiTags('Quotes - Chào giá')
+@ApiTags('Quotes')
 @Controller('quotes')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @ApiBearerAuth()

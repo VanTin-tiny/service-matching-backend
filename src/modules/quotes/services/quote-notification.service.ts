@@ -20,7 +20,7 @@ export class QuoteNotificationService {
         await this.notificationService.notifyNewQuote(customerId, {
             postId: post.id,
             quoteId: quote.id,
-            providerName: provider.displayName || provider.fullName || 'Thợ',
+            providerName:  provider.profile?.fullName || 'Thợ',
             price: quote.price,
             postTitle: post.title,
         });

@@ -11,7 +11,7 @@ import {
 import { PostRepository } from './repositories/post.repository';
 import { PostBusinessService } from './services/post-business.service';
 import { PostMapperService } from './services/post-mapper.service';
-import { PostValidationService } from './services/post-validation.service';
+import { ModerationContext, PostValidationService } from './services/post-validation.service';
 
 
 @Injectable()
@@ -30,10 +30,19 @@ export class PostService {
     async create(
         dto: CreatePostDto,
         jwtUser: JwtPayload,
+        context?: ModerationContext,
+
     ): Promise<PostResponseDto> {
         this.logger.log(`Creating post for user: ${jwtUser.id}`);
 
         await this.validationService.validateUserExists(jwtUser.id);
+
+
+        await this.validationService.validateAndModeratePostContent(
+            dto,
+            jwtUser.id,
+            context,
+        );
 
         const post = await this.businessService.createPost(dto, jwtUser.id);
 
@@ -72,16 +81,23 @@ export class PostService {
         id: string,
         dto: UpdatePostDto,
         jwtUser: JwtPayload,
+
+        context?: ModerationContext,
     ): Promise<PostResponseDto> {
         this.logger.log(`Updating post: ${id} by user: ${jwtUser.id}`);
 
         const post = await this.validationService.validatePostOwnership(
             id,
-            jwtUser.id,
         );
 
         this.validationService.validatePostUpdateRules(post, dto);
 
+        await this.validationService.validateAndModeratePostUpdate(
+            post,
+            dto,
+            jwtUser.id,
+            context,
+        );
 
         const updatedPost = await this.businessService.updatePost(post, dto);
 
@@ -96,7 +112,7 @@ export class PostService {
     ): Promise<DeletePostResponseDto> {
         this.logger.log(`Deleting post: ${id} by user: ${jwtUser.id}`);
 
-        await this.validationService.validatePostOwnership(id, jwtUser.id);
+        await this.validationService.validatePostOwnership(id);
 
         await this.businessService.deletePost(id);
 
@@ -114,7 +130,7 @@ export class PostService {
 
         const post = await this.validationService.validatePostOwnership(
             id,
-            jwtUser.id,
+
         );
         this.validationService.validatePostNotClosed(post);
 

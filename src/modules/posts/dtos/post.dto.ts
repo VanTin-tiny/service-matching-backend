@@ -129,8 +129,6 @@ export class PostResponseDto {
     @ApiProperty({ enum: PostStatus, example: PostStatus.OPEN })
     status!: PostStatus;
 
-    @ApiProperty({ example: 'uuid-456' })
-    customerId!: string;
 
     @ApiProperty({
         description: 'Customer information',
@@ -142,9 +140,10 @@ export class PostResponseDto {
         }
     })
     customer!: {
-        id: string;
+        customerId: string;
         fullName?: string;
         avatarUrl?: string;
+        displayName?: string
     };
 
     @ApiProperty({ example: '2025-11-13T10:00:00Z' })

@@ -324,7 +324,7 @@ export class AuthController {
         type: ErrorResponseDto,
     })
     async refreshMobile(
-        @Body('refreshToken') bodyRefreshToken: RefreshTokenDto,
+        @Body() bodyRefreshToken: RefreshTokenDto,
         @DeviceId(DeviceIdValidationPipe) deviceId: string,
     ): Promise<TokenResponseDto> {
         const tokens = await this.authService.refreshAccessToken({
@@ -357,7 +357,7 @@ export class AuthController {
         type: ErrorResponseDto,
     })
     async logoutMobile(
-        @Body('refreshToken') bodyRefresh: RefreshTokenDto,
+        @Body() bodyRefresh: RefreshTokenDto,
         @DeviceId(DeviceIdValidationPipe) deviceId: string,
     ): Promise<BaseResponseDto<void>> {
         await this.authService.revokeRefreshToken({ ...bodyRefresh, deviceId });

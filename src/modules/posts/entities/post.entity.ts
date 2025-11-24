@@ -64,7 +64,7 @@ export class PostCustomer {
     @Index()
     customerId!: string;
 
-    @ManyToOne(() => User, { eager: true, onDelete: 'CASCADE' })
+    @ManyToOne(() => User, { eager: false, onDelete: 'CASCADE' })
     @JoinColumn({ name: 'customer_id' })
     customer!: User;
 

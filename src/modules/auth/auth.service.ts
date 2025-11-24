@@ -12,6 +12,7 @@ import {
 import { UserRole } from '@/common/enums/user-role.enum';
 import { JwtService } from '@/common/services/jwt.service';
 import { ErrorUtil } from '@/common/utils/error.util';
+import { ProfileRepository } from '@/modules/profile/repositorys/profile-repository';
 import { BadRequestException, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { EntityManager } from 'typeorm';
 import { AUTH_ERROR_CODES } from './constants/auth.constants';
@@ -28,6 +29,7 @@ import { UserValidationService } from './services/user-validation.service';
 import { PasswordUtil } from './utils/password.util';
 
 
+
 @Injectable()
 export class AuthService {
     private readonly logger = new Logger(AuthService.name);
@@ -38,6 +40,7 @@ export class AuthService {
         private readonly userValidation: UserValidationService,
         private readonly authFactory: AuthenticationFactory,
         private readonly authConfig: AuthConfigService,
+        private readonly profileRepo: ProfileRepository,
     ) { }
 
     // REGISTER 
@@ -49,6 +52,7 @@ export class AuthService {
         try {
             const email = data.email?.toLowerCase().trim();
             const phone = data.phone?.trim();
+            const fullName = data.fullName?.trim();
             const role = data.role;
             const allowedRoles = [UserRole.CUSTOMER, UserRole.PROVIDER];
             if (!role || !allowedRoles.includes(role)) {
@@ -68,20 +72,30 @@ export class AuthService {
                 {
                     email,
                     phone,
-                    fullName: data.fullName?.trim(),
                     passwordHash,
-                    role
+                    role,
+                    isVerified: false,
+                    isActive: true,
                 },
                 manager,
             );
 
-            this.logger.log(`User registered: ${user.id} with role: ${role}`);
+            const profile = await this.profileRepo.createProfile(
+                user.id,
+                {
+                    fullName,
+                    displayName: fullName,
+                },
+                manager,
+            );
+
+            this.logger.log(`User registered: ${user.id} with role: ${role},Profile created: ${profile.id}`);
 
             return {
                 id: user.id,
                 email: user.email,
                 phone: user.phone,
-                fullName: user.fullName,
+                fullName: profile.fullName
             };
         } catch (error: unknown) {
             if (

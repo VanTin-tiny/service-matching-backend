@@ -1355,6 +1355,7 @@ const validation_config_1 = __importDefault(__webpack_require__(/*! @/config/val
 const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
 const config_1 = __webpack_require__(/*! @nestjs/config */ "@nestjs/config");
 const database_config_1 = __importDefault(__webpack_require__(/*! ./database.config */ "./src/config/database.config.ts"));
+const moderation_config_1 = __importDefault(__webpack_require__(/*! ./moderation.config */ "./src/config/moderation.config.ts"));
 let AppConfigModule = class AppConfigModule {
 };
 exports.AppConfigModule = AppConfigModule;
@@ -1363,7 +1364,7 @@ exports.AppConfigModule = AppConfigModule = __decorate([
         imports: [
             config_1.ConfigModule.forRoot({
                 isGlobal: true,
-                load: [database_config_1.default, redis_config_1.default],
+                load: [database_config_1.default, redis_config_1.default, moderation_config_1.default],
                 validationSchema: validation_config_1.default,
                 envFilePath: [
                     `.env.${process.env.NODE_ENV || 'development'}`,
@@ -1397,6 +1398,41 @@ exports["default"] = (0, config_1.registerAs)('database', () => ({
     username: process.env.DATABASE_USERNAME,
     password: process.env.DATABASE_PASSWORD,
     database: process.env.DATABASE_NAME,
+}));
+
+
+/***/ }),
+
+/***/ "./src/config/moderation.config.ts":
+/*!*****************************************!*\
+  !*** ./src/config/moderation.config.ts ***!
+  \*****************************************/
+/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+const config_1 = __webpack_require__(/*! @nestjs/config */ "@nestjs/config");
+exports["default"] = (0, config_1.registerAs)('moderation', () => ({
+    enabled: process.env.MODERATION_ENABLED === 'true',
+    provider: process.env.MODERATION_PROVIDER || 'ollama',
+    ollama: {
+        baseUrl: process.env.OLLAMA_BASE_URL || 'http://localhost:11434',
+        model: process.env.OLLAMA_MODEL || 'qwen2.5:7b',
+        timeoutMs: parseInt(process.env.OLLAMA_TIMEOUT_MS || '60000', 10),
+        maxRetries: parseInt(process.env.OLLAMA_MAX_RETRIES || '5', 10),
+    },
+    settings: {
+        cacheTTL: parseInt(process.env.MODERATION_CACHE_TTL || '3600', 10),
+        enableCache: process.env.MODERATION_ENABLE_CACHE === 'true',
+        cacheProvider: process.env.MODERATION_CACHE_PROVIDER || 'memory',
+    },
+    thresholds: {
+        sexual: parseFloat(process.env.MODERATION_THRESHOLD_SEXUAL || '0.7'),
+        violence: parseFloat(process.env.MODERATION_THRESHOLD_VIOLENCE || '0.7'),
+        hate: parseFloat(process.env.MODERATION_THRESHOLD_HATE || '0.8'),
+        harassment: parseFloat(process.env.MODERATION_THRESHOLD_HARASSMENT || '0.75'),
+    },
+    fallbackMode: process.env.MODERATION_FALLBACK_MODE || 'allow',
 }));
 
 
@@ -1501,6 +1537,7 @@ const auth_module_1 = __webpack_require__(/*! @/modules/auth/auth.module */ "./s
 const notifications_module_1 = __webpack_require__(/*! @/modules/notifications/notifications.module */ "./src/modules/notifications/notifications.module.ts");
 const posts_module_1 = __webpack_require__(/*! @/modules/posts/posts.module */ "./src/modules/posts/posts.module.ts");
 const quotes_module_1 = __webpack_require__(/*! @/modules/quotes/quotes.module */ "./src/modules/quotes/quotes.module.ts");
+const profile_module_1 = __webpack_require__(/*! @/modules/profile/profile.module */ "./src/modules/profile/profile.module.ts");
 const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
 const event_emitter_1 = __webpack_require__(/*! @nestjs/event-emitter */ "@nestjs/event-emitter");
 const throttler_1 = __webpack_require__(/*! @nestjs/throttler */ "@nestjs/throttler");
@@ -1515,13 +1552,14 @@ exports.AppModule = AppModule = __decorate([
             auth_module_1.AuthModule,
             posts_module_1.PostsModule,
             common_module_1.CommonModule,
+            profile_module_1.ProfileModule,
             notifications_module_1.NotificationsModule,
             quotes_module_1.QuoteModule,
             event_emitter_1.EventEmitterModule.forRoot(),
             throttler_1.ThrottlerModule.forRoot([{
                     ttl: 60000,
                     limit: 10,
-                }])
+                },]),
         ],
         controllers: [],
         providers: [],
@@ -1960,7 +1998,7 @@ __decorate([
         description: 'Invalid or expired refresh token',
         type: error_response_dto_1.ErrorResponseDto,
     }),
-    __param(0, (0, common_1.Body)('refreshToken')),
+    __param(0, (0, common_1.Body)()),
     __param(1, (0, device_id_decorator_1.DeviceId)(device_id_validation_pipe_1.DeviceIdValidationPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [typeof (_w = typeof auth_dto_1.RefreshTokenDto !== "undefined" && auth_dto_1.RefreshTokenDto) === "function" ? _w : Object, String]),
@@ -1986,7 +2024,7 @@ __decorate([
         description: 'Invalid or missing token',
         type: error_response_dto_1.ErrorResponseDto,
     }),
-    __param(0, (0, common_1.Body)('refreshToken')),
+    __param(0, (0, common_1.Body)()),
     __param(1, (0, device_id_decorator_1.DeviceId)(device_id_validation_pipe_1.DeviceIdValidationPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [typeof (_y = typeof auth_dto_1.RefreshTokenDto !== "undefined" && auth_dto_1.RefreshTokenDto) === "function" ? _y : Object, String]),
@@ -2058,6 +2096,7 @@ const authentication_factory_service_1 = __webpack_require__(/*! ./services/auth
 const cookie_service_1 = __webpack_require__(/*! ./services/cookie.service */ "./src/modules/auth/services/cookie.service.ts");
 const token_management_service_1 = __webpack_require__(/*! ./services/token-management.service */ "./src/modules/auth/services/token-management.service.ts");
 const user_validation_service_1 = __webpack_require__(/*! ./services/user-validation.service */ "./src/modules/auth/services/user-validation.service.ts");
+const profile_module_1 = __webpack_require__(/*! @/modules/profile/profile.module */ "./src/modules/profile/profile.module.ts");
 let AuthModule = class AuthModule {
 };
 exports.AuthModule = AuthModule;
@@ -2065,6 +2104,7 @@ exports.AuthModule = AuthModule = __decorate([
     (0, common_1.Module)({
         imports: [
             users_module_1.UsersModule,
+            profile_module_1.ProfileModule,
             typeorm_1.TypeOrmModule.forFeature([refresh_token_entity_1.RefreshToken]),
         ],
         controllers: [auth_controller_1.AuthController],
@@ -2118,7 +2158,7 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
 var AuthService_1;
-var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s;
+var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.AuthService = void 0;
 const _Transaction_1 = __webpack_require__(/*! @/common/decorators/@Transaction */ "./src/common/decorators/@Transaction.ts");
@@ -2127,6 +2167,7 @@ const auth_exception_1 = __webpack_require__(/*! @/modules/auth/exceptions/auth.
 const user_role_enum_1 = __webpack_require__(/*! @/common/enums/user-role.enum */ "./src/common/enums/user-role.enum.ts");
 const jwt_service_1 = __webpack_require__(/*! @/common/services/jwt.service */ "./src/common/services/jwt.service.ts");
 const error_util_1 = __webpack_require__(/*! @/common/utils/error.util */ "./src/common/utils/error.util.ts");
+const profile_repository_1 = __webpack_require__(/*! @/modules/profile/repositorys/profile-repository */ "./src/modules/profile/repositorys/profile-repository.ts");
 const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
 const typeorm_1 = __webpack_require__(/*! typeorm */ "typeorm");
 const auth_constants_1 = __webpack_require__(/*! ./constants/auth.constants */ "./src/modules/auth/constants/auth.constants.ts");
@@ -2139,18 +2180,20 @@ const token_management_service_1 = __webpack_require__(/*! ./services/token-mana
 const user_validation_service_1 = __webpack_require__(/*! ./services/user-validation.service */ "./src/modules/auth/services/user-validation.service.ts");
 const password_util_1 = __webpack_require__(/*! ./utils/password.util */ "./src/modules/auth/utils/password.util.ts");
 let AuthService = AuthService_1 = class AuthService {
-    constructor(jwtService, tokenMgmt, userValidation, authFactory, authConfig) {
+    constructor(jwtService, tokenMgmt, userValidation, authFactory, authConfig, profileRepo) {
         this.jwtService = jwtService;
         this.tokenMgmt = tokenMgmt;
         this.userValidation = userValidation;
         this.authFactory = authFactory;
         this.authConfig = authConfig;
+        this.profileRepo = profileRepo;
         this.logger = new common_1.Logger(AuthService_1.name);
     }
     async register(data, manager) {
         try {
             const email = data.email?.toLowerCase().trim();
             const phone = data.phone?.trim();
+            const fullName = data.fullName?.trim();
             const role = data.role;
             const allowedRoles = [user_role_enum_1.UserRole.CUSTOMER, user_role_enum_1.UserRole.PROVIDER];
             if (!role || !allowedRoles.includes(role)) {
@@ -2164,16 +2207,21 @@ let AuthService = AuthService_1 = class AuthService {
             const user = await this.userValidation.createUser({
                 email,
                 phone,
-                fullName: data.fullName?.trim(),
                 passwordHash,
-                role
+                role,
+                isVerified: false,
+                isActive: true,
             }, manager);
-            this.logger.log(`User registered: ${user.id} with role: ${role}`);
+            const profile = await this.profileRepo.createProfile(user.id, {
+                fullName,
+                displayName: fullName,
+            }, manager);
+            this.logger.log(`User registered: ${user.id} with role: ${role},Profile created: ${profile.id}`);
             return {
                 id: user.id,
                 email: user.email,
                 phone: user.phone,
-                fullName: user.fullName,
+                fullName: profile.fullName
             };
         }
         catch (error) {
@@ -2358,33 +2406,33 @@ __decorate([
     (0, _Transaction_1.Transactional)(),
     __param(1, (0, _Transaction_1.TransactionManager)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [typeof (_f = typeof auth_dto_1.RegisterDto !== "undefined" && auth_dto_1.RegisterDto) === "function" ? _f : Object, typeof (_g = typeof typeorm_1.EntityManager !== "undefined" && typeorm_1.EntityManager) === "function" ? _g : Object]),
-    __metadata("design:returntype", typeof (_h = typeof Promise !== "undefined" && Promise) === "function" ? _h : Object)
+    __metadata("design:paramtypes", [typeof (_g = typeof auth_dto_1.RegisterDto !== "undefined" && auth_dto_1.RegisterDto) === "function" ? _g : Object, typeof (_h = typeof typeorm_1.EntityManager !== "undefined" && typeorm_1.EntityManager) === "function" ? _h : Object]),
+    __metadata("design:returntype", typeof (_j = typeof Promise !== "undefined" && Promise) === "function" ? _j : Object)
 ], AuthService.prototype, "register", null);
 __decorate([
     (0, _Transaction_1.Transactional)(),
     __param(1, (0, _Transaction_1.TransactionManager)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [typeof (_j = typeof auth_dto_1.LoginDto !== "undefined" && auth_dto_1.LoginDto) === "function" ? _j : Object, typeof (_k = typeof typeorm_1.EntityManager !== "undefined" && typeorm_1.EntityManager) === "function" ? _k : Object]),
-    __metadata("design:returntype", typeof (_l = typeof Promise !== "undefined" && Promise) === "function" ? _l : Object)
+    __metadata("design:paramtypes", [typeof (_k = typeof auth_dto_1.LoginDto !== "undefined" && auth_dto_1.LoginDto) === "function" ? _k : Object, typeof (_l = typeof typeorm_1.EntityManager !== "undefined" && typeorm_1.EntityManager) === "function" ? _l : Object]),
+    __metadata("design:returntype", typeof (_m = typeof Promise !== "undefined" && Promise) === "function" ? _m : Object)
 ], AuthService.prototype, "login", null);
 __decorate([
     (0, _Transaction_1.Transactional)(),
     __param(1, (0, _Transaction_1.TransactionManager)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, typeof (_o = typeof typeorm_1.EntityManager !== "undefined" && typeorm_1.EntityManager) === "function" ? _o : Object]),
-    __metadata("design:returntype", typeof (_p = typeof Promise !== "undefined" && Promise) === "function" ? _p : Object)
+    __metadata("design:paramtypes", [Object, typeof (_p = typeof typeorm_1.EntityManager !== "undefined" && typeorm_1.EntityManager) === "function" ? _p : Object]),
+    __metadata("design:returntype", typeof (_q = typeof Promise !== "undefined" && Promise) === "function" ? _q : Object)
 ], AuthService.prototype, "loginMobile", null);
 __decorate([
     (0, _Transaction_1.Transactional)(),
     __param(1, (0, _Transaction_1.TransactionManager)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [typeof (_q = typeof refresh_token_interface_1.RefreshInput !== "undefined" && refresh_token_interface_1.RefreshInput) === "function" ? _q : Object, typeof (_r = typeof typeorm_1.EntityManager !== "undefined" && typeorm_1.EntityManager) === "function" ? _r : Object]),
-    __metadata("design:returntype", typeof (_s = typeof Promise !== "undefined" && Promise) === "function" ? _s : Object)
+    __metadata("design:paramtypes", [typeof (_r = typeof refresh_token_interface_1.RefreshInput !== "undefined" && refresh_token_interface_1.RefreshInput) === "function" ? _r : Object, typeof (_s = typeof typeorm_1.EntityManager !== "undefined" && typeorm_1.EntityManager) === "function" ? _s : Object]),
+    __metadata("design:returntype", typeof (_t = typeof Promise !== "undefined" && Promise) === "function" ? _t : Object)
 ], AuthService.prototype, "refreshAccessToken", null);
 exports.AuthService = AuthService = AuthService_1 = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [typeof (_a = typeof jwt_service_1.JwtService !== "undefined" && jwt_service_1.JwtService) === "function" ? _a : Object, typeof (_b = typeof token_management_service_1.TokenManagementService !== "undefined" && token_management_service_1.TokenManagementService) === "function" ? _b : Object, typeof (_c = typeof user_validation_service_1.UserValidationService !== "undefined" && user_validation_service_1.UserValidationService) === "function" ? _c : Object, typeof (_d = typeof authentication_factory_service_1.AuthenticationFactory !== "undefined" && authentication_factory_service_1.AuthenticationFactory) === "function" ? _d : Object, typeof (_e = typeof auth_config_service_1.AuthConfigService !== "undefined" && auth_config_service_1.AuthConfigService) === "function" ? _e : Object])
+    __metadata("design:paramtypes", [typeof (_a = typeof jwt_service_1.JwtService !== "undefined" && jwt_service_1.JwtService) === "function" ? _a : Object, typeof (_b = typeof token_management_service_1.TokenManagementService !== "undefined" && token_management_service_1.TokenManagementService) === "function" ? _b : Object, typeof (_c = typeof user_validation_service_1.UserValidationService !== "undefined" && user_validation_service_1.UserValidationService) === "function" ? _c : Object, typeof (_d = typeof authentication_factory_service_1.AuthenticationFactory !== "undefined" && authentication_factory_service_1.AuthenticationFactory) === "function" ? _d : Object, typeof (_e = typeof auth_config_service_1.AuthConfigService !== "undefined" && auth_config_service_1.AuthConfigService) === "function" ? _e : Object, typeof (_f = typeof profile_repository_1.ProfileRepository !== "undefined" && profile_repository_1.ProfileRepository) === "function" ? _f : Object])
 ], AuthService);
 
 
@@ -3399,7 +3447,6 @@ let AuthenticationFactory = class AuthenticationFactory {
                 id: user.id,
                 email: user.email,
                 phone: user.phone,
-                name: user.fullName,
                 role: user.role,
             },
         };
@@ -4919,10 +4966,6 @@ __decorate([
     __metadata("design:type", typeof (_d = typeof post_status_enum_1.PostStatus !== "undefined" && post_status_enum_1.PostStatus) === "function" ? _d : Object)
 ], PostResponseDto.prototype, "status", void 0);
 __decorate([
-    (0, swagger_1.ApiProperty)({ example: 'uuid-456' }),
-    __metadata("design:type", String)
-], PostResponseDto.prototype, "customerId", void 0);
-__decorate([
     (0, swagger_1.ApiProperty)({
         description: 'Customer information',
         type: 'object',
@@ -5078,7 +5121,7 @@ __decorate([
     __metadata("design:type", String)
 ], PostCustomer.prototype, "customerId", void 0);
 __decorate([
-    (0, typeorm_1.ManyToOne)(() => user_entity_1.User, { eager: true, onDelete: 'CASCADE' }),
+    (0, typeorm_1.ManyToOne)(() => user_entity_1.User, { eager: false, onDelete: 'CASCADE' }),
     (0, typeorm_1.JoinColumn)({ name: 'customer_id' }),
     __metadata("design:type", typeof (_c = typeof user_entity_1.User !== "undefined" && user_entity_1.User) === "function" ? _c : Object)
 ], PostCustomer.prototype, "customer", void 0);
@@ -5156,9 +5199,10 @@ let PostService = PostService_1 = class PostService {
         this.businessService = businessService;
         this.logger = new common_1.Logger(PostService_1.name);
     }
-    async create(dto, jwtUser) {
+    async create(dto, jwtUser, context) {
         this.logger.log(`Creating post for user: ${jwtUser.id}`);
         await this.validationService.validateUserExists(jwtUser.id);
+        await this.validationService.validateAndModeratePostContent(dto, jwtUser.id, context);
         const post = await this.businessService.createPost(dto, jwtUser.id);
         this.logger.log(`Post created successfully: ${post.id}`);
         return this.mapperService.toResponseDto(post);
@@ -5179,17 +5223,18 @@ let PostService = PostService_1 = class PostService {
         const post = await this.validationService.validatePostExists(id);
         return this.mapperService.toResponseDto(post);
     }
-    async update(id, dto, jwtUser) {
+    async update(id, dto, jwtUser, context) {
         this.logger.log(`Updating post: ${id} by user: ${jwtUser.id}`);
-        const post = await this.validationService.validatePostOwnership(id, jwtUser.id);
+        const post = await this.validationService.validatePostOwnership(id);
         this.validationService.validatePostUpdateRules(post, dto);
+        await this.validationService.validateAndModeratePostUpdate(post, dto, jwtUser.id, context);
         const updatedPost = await this.businessService.updatePost(post, dto);
         this.logger.log(`Post updated successfully: ${updatedPost.id}`);
         return this.mapperService.toResponseDto(updatedPost);
     }
     async delete(id, jwtUser) {
         this.logger.log(`Deleting post: ${id} by user: ${jwtUser.id}`);
-        await this.validationService.validatePostOwnership(id, jwtUser.id);
+        await this.validationService.validatePostOwnership(id);
         await this.businessService.deletePost(id);
         this.logger.log(`Post deleted successfully: ${id}`);
         return {
@@ -5200,7 +5245,7 @@ let PostService = PostService_1 = class PostService {
     }
     async close(id, jwtUser) {
         this.logger.log(`Closing post: ${id} by user: ${jwtUser.id}`);
-        const post = await this.validationService.validatePostOwnership(id, jwtUser.id);
+        const post = await this.validationService.validatePostOwnership(id);
         this.validationService.validatePostNotClosed(post);
         const closedPost = await this.businessService.closePost(post);
         this.logger.log(`Post closed successfully: ${closedPost.id}`);
@@ -5263,17 +5308,25 @@ let PostController = class PostController {
     constructor(postService) {
         this.postService = postService;
     }
+    getRequestContext(ipAddress, userAgent) {
+        return {
+            ipAddress: ipAddress || 'unknown',
+            userAgent: userAgent || 'unknown',
+        };
+    }
     async getFeed(query) {
         return await this.postService.getFeed(query.limit, query.cursor);
     }
     async getPostById(id) {
         return await this.postService.getById(id);
     }
-    async createPost(dto, user) {
-        return await this.postService.create(dto, user);
+    async createPost(dto, user, ipAddress, userAgent) {
+        const context = this.getRequestContext(ipAddress, userAgent);
+        return await this.postService.create(dto, user, context);
     }
-    async updatePost(id, dto, user) {
-        return await this.postService.update(id, dto, user);
+    async updatePost(id, dto, user, ipAddress, userAgent) {
+        const context = this.getRequestContext(ipAddress, userAgent);
+        return await this.postService.update(id, dto, user, context);
     }
     async deletePost(id, user) {
         return await this.postService.delete(id, user);
@@ -5361,8 +5414,10 @@ __decorate([
     }),
     __param(0, (0, common_1.Body)()),
     __param(1, (0, _CurrentUser_1.CurrentUser)()),
+    __param(2, (0, common_1.Ip)()),
+    __param(3, (0, common_1.Headers)('user-agent')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [typeof (_e = typeof post_dto_1.CreatePostDto !== "undefined" && post_dto_1.CreatePostDto) === "function" ? _e : Object, typeof (_f = typeof jwt_payload_interface_1.JwtPayload !== "undefined" && jwt_payload_interface_1.JwtPayload) === "function" ? _f : Object]),
+    __metadata("design:paramtypes", [typeof (_e = typeof post_dto_1.CreatePostDto !== "undefined" && post_dto_1.CreatePostDto) === "function" ? _e : Object, typeof (_f = typeof jwt_payload_interface_1.JwtPayload !== "undefined" && jwt_payload_interface_1.JwtPayload) === "function" ? _f : Object, String, String]),
     __metadata("design:returntype", typeof (_g = typeof Promise !== "undefined" && Promise) === "function" ? _g : Object)
 ], PostController.prototype, "createPost", null);
 __decorate([
@@ -5391,8 +5446,10 @@ __decorate([
     __param(0, (0, common_1.Param)('id', common_1.ParseUUIDPipe)),
     __param(1, (0, common_1.Body)()),
     __param(2, (0, _CurrentUser_1.CurrentUser)()),
+    __param(3, (0, common_1.Ip)()),
+    __param(4, (0, common_1.Headers)('user-agent')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, typeof (_h = typeof post_dto_1.UpdatePostDto !== "undefined" && post_dto_1.UpdatePostDto) === "function" ? _h : Object, typeof (_j = typeof jwt_payload_interface_1.JwtPayload !== "undefined" && jwt_payload_interface_1.JwtPayload) === "function" ? _j : Object]),
+    __metadata("design:paramtypes", [String, typeof (_h = typeof post_dto_1.UpdatePostDto !== "undefined" && post_dto_1.UpdatePostDto) === "function" ? _h : Object, typeof (_j = typeof jwt_payload_interface_1.JwtPayload !== "undefined" && jwt_payload_interface_1.JwtPayload) === "function" ? _j : Object, String, String]),
     __metadata("design:returntype", typeof (_k = typeof Promise !== "undefined" && Promise) === "function" ? _k : Object)
 ], PostController.prototype, "updatePost", null);
 __decorate([
@@ -5494,6 +5551,7 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.PostsModule = void 0;
+const moderation_module_1 = __webpack_require__(Object(function webpackMissingModule() { var e = new Error("Cannot find module '@/modules/moderation/moderation.module'"); e.code = 'MODULE_NOT_FOUND'; throw e; }()));
 const users_module_1 = __webpack_require__(/*! @/modules/users/users.module */ "./src/modules/users/users.module.ts");
 const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
 const typeorm_1 = __webpack_require__(/*! @nestjs/typeorm */ "@nestjs/typeorm");
@@ -5512,6 +5570,7 @@ exports.PostsModule = PostsModule = __decorate([
         imports: [
             typeorm_1.TypeOrmModule.forFeature([post_entity_1.PostCustomer]),
             users_module_1.UsersModule,
+            moderation_module_1.ModerationModule
         ],
         controllers: [posts_controller_1.PostController],
         providers: [
@@ -5577,6 +5636,26 @@ let PostRepository = PostRepository_1 = class PostRepository {
         this.logger.log(`Post created: ${saved.id}`);
         return await this.findById(saved.id, manager);
     }
+    async findByIdWithRelations(id, manager) {
+        return this.getRepository(manager).findOne({
+            where: { id },
+            relations: {
+                customer: {
+                    profile: true,
+                },
+            },
+        });
+    }
+    async findPostsForFeed(limit = 20, offset = 0, manager) {
+        return this.getRepository(manager).createQueryBuilder('post')
+            .leftJoinAndSelect('post.customer', 'customer')
+            .leftJoinAndSelect('customer.profile', 'profile')
+            .where('post.deleted_at IS NULL')
+            .orderBy('post.created_at', 'DESC')
+            .take(limit)
+            .skip(offset)
+            .getMany();
+    }
     async updatePost(id, data, manager) {
         const repo = this.getRepository(manager);
         await repo.update(id, data);
@@ -5590,7 +5669,11 @@ let PostRepository = PostRepository_1 = class PostRepository {
     async findById(id, manager) {
         return await this.getRepository(manager).findOne({
             where: { id, deletedAt: (0, typeorm_2.IsNull)() },
-            relations: ['customer'],
+            relations: {
+                customer: {
+                    profile: true
+                }
+            },
         });
     }
     async findByIdAndCustomer(id, customerId, manager) {
@@ -5600,13 +5683,18 @@ let PostRepository = PostRepository_1 = class PostRepository {
                 customerId,
                 deletedAt: (0, typeorm_2.IsNull)(),
             },
-            relations: ['customer'],
+            relations: {
+                customer: {
+                    profile: true
+                }
+            },
         });
     }
     async findPublicPosts(limit, cursor, manager) {
         const qb = this.getRepository(manager)
             .createQueryBuilder('post')
             .leftJoinAndSelect('post.customer', 'customer')
+            .leftJoinAndSelect('customer.profile', 'profile')
             .where('post.status = :status', { status: post_status_enum_1.PostStatus.OPEN })
             .andWhere('post.deletedAt IS NULL')
             .orderBy('post.createdAt', 'DESC')
@@ -5620,6 +5708,7 @@ let PostRepository = PostRepository_1 = class PostRepository {
         const qb = this.getRepository(manager)
             .createQueryBuilder('post')
             .leftJoinAndSelect('post.customer', 'customer')
+            .leftJoinAndSelect('customer.profile', 'profile')
             .where('post.customerId = :customerId', { customerId })
             .andWhere('post.deletedAt IS NULL')
             .orderBy('post.createdAt', 'DESC')
@@ -5762,11 +5851,10 @@ let PostMapperService = class PostMapperService {
             desiredTime: post.desiredTime,
             budget: post.budget ? Number(post.budget) : undefined,
             status: post.status,
-            customerId: post.customerId,
             customer: {
-                id: post.customer.id,
-                fullName: post.customer.fullName,
-                avatarUrl: post.customer.avatarUrl,
+                customerId: post.customer.id,
+                fullName: post.customer.profile?.fullName,
+                avatarUrl: post.customer.profile?.avatarUrl,
             },
             createdAt: post.createdAt,
             updatedAt: post.updatedAt,
@@ -5800,16 +5888,18 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
-var _a, _b;
+var _a, _b, _c;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.PostValidationService = void 0;
+const moderation_service_1 = __webpack_require__(Object(function webpackMissingModule() { var e = new Error("Cannot find module '@/modules/moderation/moderation.service'"); e.code = 'MODULE_NOT_FOUND'; throw e; }()));
 const user_repository_1 = __webpack_require__(/*! @/modules/users/repositorys/user.repository */ "./src/modules/users/repositorys/user.repository.ts");
 const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
 const post_repository_1 = __webpack_require__(/*! ../repositories/post.repository */ "./src/modules/posts/repositories/post.repository.ts");
 let PostValidationService = class PostValidationService {
-    constructor(postRepository, userRepository) {
+    constructor(postRepository, userRepository, moderationService) {
         this.postRepository = postRepository;
         this.userRepository = userRepository;
+        this.moderationService = moderationService;
     }
     async validateUserExists(userId) {
         const user = await this.userRepository.findById(userId);
@@ -5821,7 +5911,7 @@ let PostValidationService = class PostValidationService {
         }
     }
     async validatePostExists(postId) {
-        const post = await this.postRepository.findById(postId);
+        const post = await this.postRepository.findByIdWithRelations(postId);
         if (!post) {
             throw new common_1.NotFoundException({
                 code: 'POST_NOT_FOUND',
@@ -5830,8 +5920,8 @@ let PostValidationService = class PostValidationService {
         }
         return post;
     }
-    async validatePostOwnership(postId, userId) {
-        const post = await this.postRepository.findByIdAndCustomer(postId, userId);
+    async validatePostOwnership(postId) {
+        const post = await this.postRepository.findByIdWithRelations(postId);
         if (!post) {
             throw new common_1.NotFoundException({
                 code: 'POST_NOT_FOUND',
@@ -5869,12 +5959,2136 @@ let PostValidationService = class PostValidationService {
             });
         }
     }
+    async validateAndModeratePostContent(dto, userId, context) {
+        const moderationResult = await this.moderationService.moderatePostContent(dto.title, dto.description, userId, {
+            ...context,
+            entityType: 'post',
+        });
+        if (!moderationResult.isAllowed) {
+            const violationMessages = moderationResult.violations
+                .map(v => `- ${this.getViolationTypeVietnamese(v.type)}: ${v.reason}`)
+                .join('\n');
+            throw new common_1.ForbiddenException({
+                code: 'CONTENT_MODERATION_FAILED',
+                message: 'Your content violates our community guidelines',
+                userMessage: `Nội dung của bạn vi phạm quy định cộng đồng:\n${violationMessages}\n\nVui lòng chỉnh sửa và thử lại.`,
+                details: {
+                    violations: moderationResult.violations,
+                    suggestions: moderationResult.moderatedContent,
+                },
+            });
+        }
+    }
+    async validateAndModeratePostUpdate(post, dto, userId, context) {
+        const isContentUpdate = dto.title || dto.description;
+        if (!isContentUpdate) {
+            return;
+        }
+        const title = dto.title || post.title;
+        const description = dto.description || post.description;
+        const moderationResult = await this.moderationService.moderatePostContent(title, description, userId, {
+            ...context,
+            entityType: 'post_update',
+            entityId: post.id,
+        });
+        if (!moderationResult.isAllowed) {
+            const violationMessages = moderationResult.violations
+                .map(v => `- ${this.getViolationTypeVietnamese(v.type)}: ${v.reason}`)
+                .join('\n');
+            throw new common_1.ForbiddenException({
+                code: 'CONTENT_MODERATION_FAILED',
+                message: 'Your updated content violates our community guidelines',
+                userMessage: `Nội dung cập nhật vi phạm quy định cộng đồng:\n${violationMessages}\n\nVui lòng chỉnh sửa và thử lại.`,
+                details: {
+                    violations: moderationResult.violations,
+                    suggestions: moderationResult.moderatedContent,
+                },
+            });
+        }
+    }
+    getViolationTypeVietnamese(type) {
+        const mapping = {
+            'SEXUAL': 'Nội dung tình dục',
+            'VIOLENCE': 'Nội dung bạo lực',
+            'HATE': 'Ngôn từ thù hận',
+            'HARASSMENT': 'Quấy rối',
+            'SELF_HARM': 'Tự gây hại',
+            'ILLEGAL': 'Nội dung bất hợp pháp',
+        };
+        return mapping[type] || type;
+    }
 };
 exports.PostValidationService = PostValidationService;
 exports.PostValidationService = PostValidationService = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [typeof (_a = typeof post_repository_1.PostRepository !== "undefined" && post_repository_1.PostRepository) === "function" ? _a : Object, typeof (_b = typeof user_repository_1.UserRepository !== "undefined" && user_repository_1.UserRepository) === "function" ? _b : Object])
+    __metadata("design:paramtypes", [typeof (_a = typeof post_repository_1.PostRepository !== "undefined" && post_repository_1.PostRepository) === "function" ? _a : Object, typeof (_b = typeof user_repository_1.UserRepository !== "undefined" && user_repository_1.UserRepository) === "function" ? _b : Object, typeof (_c = typeof moderation_service_1.ModerationService !== "undefined" && moderation_service_1.ModerationService) === "function" ? _c : Object])
 ], PostValidationService);
+
+
+/***/ }),
+
+/***/ "./src/modules/profile/controllers/profile.controller.ts":
+/*!***************************************************************!*\
+  !*** ./src/modules/profile/controllers/profile.controller.ts ***!
+  \***************************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var __param = (this && this.__param) || function (paramIndex, decorator) {
+    return function (target, key) { decorator(target, key, paramIndex); }
+};
+var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.ProfileController = void 0;
+const _CurrentUser_1 = __webpack_require__(/*! @/common/decorators/@CurrentUser */ "./src/common/decorators/@CurrentUser.ts");
+const jwt_auth_guard_1 = __webpack_require__(/*! @/common/guards/jwt-auth.guard */ "./src/common/guards/jwt-auth.guard.ts");
+const jwt_payload_interface_1 = __webpack_require__(/*! @/modules/auth/interfaces/jwt-payload.interface */ "./src/modules/auth/interfaces/jwt-payload.interface.ts");
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const swagger_1 = __webpack_require__(/*! @nestjs/swagger */ "@nestjs/swagger");
+const profile_dto_1 = __webpack_require__(/*! ../dtos/profile.dto */ "./src/modules/profile/dtos/profile.dto.ts");
+const profile_service_1 = __webpack_require__(/*! ../services/profile.service */ "./src/modules/profile/services/profile.service.ts");
+let ProfileController = class ProfileController {
+    constructor(profileService) {
+        this.profileService = profileService;
+    }
+    async getMyProfile(user) {
+        return this.profileService.getMyProfile(user);
+    }
+    async updateMyProfile(dto, user) {
+        return this.profileService.updateProfile(user, dto);
+    }
+    async updateContact(dto, user) {
+        return this.profileService.updateContact(user, dto);
+    }
+    async changeDisplayName(dto, user) {
+        return this.profileService.changeDisplayName(user, dto);
+    }
+    async updateAvatar(dto, user) {
+        return this.profileService.updateAvatar(user, dto.avatarUrl);
+    }
+    async deleteAccount(user) {
+        return this.profileService.deleteAccount(user);
+    }
+    async getPublicProfile(userId) {
+        return this.profileService.getPublicProfile(userId);
+    }
+    async searchProfiles(query) {
+        const { searchTerm = '', limit = 20, offset = 0 } = query;
+        const result = await this.profileService.searchProfiles(searchTerm, limit, offset);
+        return {
+            profiles: result.profiles,
+            total: result.total,
+            count: result.profiles.length,
+        };
+    }
+};
+exports.ProfileController = ProfileController;
+__decorate([
+    (0, common_1.Get)('me'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    (0, swagger_1.ApiBearerAuth)(),
+    (0, swagger_1.ApiOperation)({
+        summary: 'Get my profile',
+        description: 'Retrieve the authenticated user\'s complete profile information including private data',
+    }),
+    (0, swagger_1.ApiResponse)({
+        status: common_1.HttpStatus.OK,
+        description: 'Profile retrieved successfully',
+        type: profile_dto_1.ProfileResponseDto,
+    }),
+    (0, swagger_1.ApiResponse)({
+        status: common_1.HttpStatus.UNAUTHORIZED,
+        description: 'Unauthorized - Invalid or missing token',
+    }),
+    (0, swagger_1.ApiResponse)({
+        status: common_1.HttpStatus.NOT_FOUND,
+        description: 'User not found',
+    }),
+    __param(0, (0, _CurrentUser_1.CurrentUser)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [typeof (_b = typeof jwt_payload_interface_1.JwtPayload !== "undefined" && jwt_payload_interface_1.JwtPayload) === "function" ? _b : Object]),
+    __metadata("design:returntype", typeof (_c = typeof Promise !== "undefined" && Promise) === "function" ? _c : Object)
+], ProfileController.prototype, "getMyProfile", null);
+__decorate([
+    (0, common_1.Patch)('me'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    (0, swagger_1.ApiBearerAuth)(),
+    (0, swagger_1.ApiOperation)({
+        summary: 'Update my profile',
+        description: 'Update profile information (excluding display name and contact info - use dedicated endpoints)',
+    }),
+    (0, swagger_1.ApiResponse)({
+        status: common_1.HttpStatus.OK,
+        description: 'Profile updated successfully',
+        type: profile_dto_1.ProfileResponseDto,
+    }),
+    (0, swagger_1.ApiResponse)({
+        status: common_1.HttpStatus.BAD_REQUEST,
+        description: 'Invalid input or trying to update restricted fields',
+    }),
+    (0, swagger_1.ApiResponse)({
+        status: common_1.HttpStatus.UNAUTHORIZED,
+        description: 'Unauthorized - Invalid or missing token',
+    }),
+    __param(0, (0, common_1.Body)()),
+    __param(1, (0, _CurrentUser_1.CurrentUser)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [typeof (_d = typeof profile_dto_1.UpdateProfileDto !== "undefined" && profile_dto_1.UpdateProfileDto) === "function" ? _d : Object, typeof (_e = typeof jwt_payload_interface_1.JwtPayload !== "undefined" && jwt_payload_interface_1.JwtPayload) === "function" ? _e : Object]),
+    __metadata("design:returntype", typeof (_f = typeof Promise !== "undefined" && Promise) === "function" ? _f : Object)
+], ProfileController.prototype, "updateMyProfile", null);
+__decorate([
+    (0, common_1.Put)('contact'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    (0, swagger_1.ApiBearerAuth)(),
+    (0, swagger_1.ApiOperation)({
+        summary: 'Update contact information',
+        description: 'Update email and/or phone number with uniqueness validation',
+    }),
+    (0, swagger_1.ApiResponse)({
+        status: common_1.HttpStatus.OK,
+        description: 'Contact information updated successfully',
+        type: profile_dto_1.ProfileResponseDto,
+    }),
+    (0, swagger_1.ApiResponse)({
+        status: common_1.HttpStatus.BAD_REQUEST,
+        description: 'Invalid email or phone format',
+    }),
+    (0, swagger_1.ApiResponse)({
+        status: common_1.HttpStatus.CONFLICT,
+        description: 'Email or phone already in use by another account',
+    }),
+    (0, swagger_1.ApiResponse)({
+        status: common_1.HttpStatus.UNAUTHORIZED,
+        description: 'Unauthorized - Invalid or missing token',
+    }),
+    __param(0, (0, common_1.Body)()),
+    __param(1, (0, _CurrentUser_1.CurrentUser)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [typeof (_g = typeof profile_dto_1.UpdateContactDto !== "undefined" && profile_dto_1.UpdateContactDto) === "function" ? _g : Object, typeof (_h = typeof jwt_payload_interface_1.JwtPayload !== "undefined" && jwt_payload_interface_1.JwtPayload) === "function" ? _h : Object]),
+    __metadata("design:returntype", typeof (_j = typeof Promise !== "undefined" && Promise) === "function" ? _j : Object)
+], ProfileController.prototype, "updateContact", null);
+__decorate([
+    (0, common_1.Put)('display-name'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    (0, swagger_1.ApiBearerAuth)(),
+    (0, swagger_1.ApiOperation)({
+        summary: 'Change display name',
+        description: 'Change display name (restricted to once every 30 days)',
+    }),
+    (0, swagger_1.ApiResponse)({
+        status: common_1.HttpStatus.OK,
+        description: 'Display name changed successfully',
+        type: profile_dto_1.DisplayNameChangeResponseDto,
+    }),
+    (0, swagger_1.ApiResponse)({
+        status: common_1.HttpStatus.BAD_REQUEST,
+        description: 'Invalid display name format or same as current name',
+    }),
+    (0, swagger_1.ApiResponse)({
+        status: common_1.HttpStatus.FORBIDDEN,
+        description: 'Cannot change display name yet - 30-day restriction not elapsed',
+        schema: {
+            example: {
+                statusCode: 403,
+                message: 'You can only change your display name once every 30 days. Please wait 15 more day(s).',
+                error: 'Forbidden',
+                code: 'DISPLAY_NAME_CHANGE_RESTRICTED',
+                daysUntilCanChange: 15
+            }
+        }
+    }),
+    (0, swagger_1.ApiResponse)({
+        status: common_1.HttpStatus.UNAUTHORIZED,
+        description: 'Unauthorized - Invalid or missing token',
+    }),
+    __param(0, (0, common_1.Body)()),
+    __param(1, (0, _CurrentUser_1.CurrentUser)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [typeof (_k = typeof profile_dto_1.ChangeDisplayNameDto !== "undefined" && profile_dto_1.ChangeDisplayNameDto) === "function" ? _k : Object, typeof (_l = typeof jwt_payload_interface_1.JwtPayload !== "undefined" && jwt_payload_interface_1.JwtPayload) === "function" ? _l : Object]),
+    __metadata("design:returntype", typeof (_m = typeof Promise !== "undefined" && Promise) === "function" ? _m : Object)
+], ProfileController.prototype, "changeDisplayName", null);
+__decorate([
+    (0, common_1.Patch)('avatar'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    (0, swagger_1.ApiBearerAuth)(),
+    (0, swagger_1.ApiOperation)({
+        summary: 'Update avatar',
+        description: 'Update user avatar URL (must be a valid URL)',
+    }),
+    (0, swagger_1.ApiResponse)({
+        status: common_1.HttpStatus.OK,
+        description: 'Avatar updated successfully',
+        type: profile_dto_1.ProfileResponseDto,
+    }),
+    (0, swagger_1.ApiResponse)({
+        status: common_1.HttpStatus.BAD_REQUEST,
+        description: 'Invalid avatar URL format',
+    }),
+    (0, swagger_1.ApiResponse)({
+        status: common_1.HttpStatus.UNAUTHORIZED,
+        description: 'Unauthorized - Invalid or missing token',
+    }),
+    __param(0, (0, common_1.Body)()),
+    __param(1, (0, _CurrentUser_1.CurrentUser)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [typeof (_o = typeof profile_dto_1.UpdateAvatarDto !== "undefined" && profile_dto_1.UpdateAvatarDto) === "function" ? _o : Object, typeof (_p = typeof jwt_payload_interface_1.JwtPayload !== "undefined" && jwt_payload_interface_1.JwtPayload) === "function" ? _p : Object]),
+    __metadata("design:returntype", typeof (_q = typeof Promise !== "undefined" && Promise) === "function" ? _q : Object)
+], ProfileController.prototype, "updateAvatar", null);
+__decorate([
+    (0, common_1.Delete)('me'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    (0, swagger_1.ApiBearerAuth)(),
+    (0, swagger_1.ApiOperation)({
+        summary: 'Delete account',
+        description: 'Soft delete the authenticated user\'s account (can be recovered within 30 days)',
+    }),
+    (0, swagger_1.ApiResponse)({
+        status: common_1.HttpStatus.OK,
+        description: 'Account deleted successfully',
+        type: profile_dto_1.DeleteAccountResponseDto,
+    }),
+    (0, swagger_1.ApiResponse)({
+        status: common_1.HttpStatus.UNAUTHORIZED,
+        description: 'Unauthorized - Invalid or missing token',
+    }),
+    (0, swagger_1.ApiResponse)({
+        status: common_1.HttpStatus.INTERNAL_SERVER_ERROR,
+        description: 'Failed to delete account',
+    }),
+    __param(0, (0, _CurrentUser_1.CurrentUser)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [typeof (_r = typeof jwt_payload_interface_1.JwtPayload !== "undefined" && jwt_payload_interface_1.JwtPayload) === "function" ? _r : Object]),
+    __metadata("design:returntype", typeof (_s = typeof Promise !== "undefined" && Promise) === "function" ? _s : Object)
+], ProfileController.prototype, "deleteAccount", null);
+__decorate([
+    (0, common_1.Get)('user/:id'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    (0, swagger_1.ApiOperation)({
+        summary: 'Get public profile',
+        description: 'View public profile information of any user (limited data for privacy)',
+    }),
+    (0, swagger_1.ApiParam)({
+        name: 'id',
+        description: 'User UUID',
+        example: 'uuid-123'
+    }),
+    (0, swagger_1.ApiResponse)({
+        status: common_1.HttpStatus.OK,
+        description: 'Public profile retrieved successfully',
+        type: profile_dto_1.PublicProfileResponseDto,
+    }),
+    (0, swagger_1.ApiResponse)({
+        status: common_1.HttpStatus.BAD_REQUEST,
+        description: 'Invalid UUID format',
+    }),
+    (0, swagger_1.ApiResponse)({
+        status: common_1.HttpStatus.NOT_FOUND,
+        description: 'User not found or account inactive',
+    }),
+    __param(0, (0, common_1.Param)('id', common_1.ParseUUIDPipe)),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", typeof (_t = typeof Promise !== "undefined" && Promise) === "function" ? _t : Object)
+], ProfileController.prototype, "getPublicProfile", null);
+__decorate([
+    (0, common_1.Get)('search'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    (0, swagger_1.ApiOperation)({
+        summary: 'Search profiles',
+        description: 'Search for users by display name (public endpoint for user discovery)',
+    }),
+    (0, swagger_1.ApiQuery)({
+        name: 'searchTerm',
+        required: false,
+        description: 'Search term for display name',
+        example: 'John'
+    }),
+    (0, swagger_1.ApiQuery)({
+        name: 'limit',
+        required: false,
+        description: 'Maximum number of results',
+        example: 20
+    }),
+    (0, swagger_1.ApiQuery)({
+        name: 'offset',
+        required: false,
+        description: 'Number of results to skip',
+        example: 0
+    }),
+    (0, swagger_1.ApiResponse)({
+        status: common_1.HttpStatus.OK,
+        description: 'Profiles found',
+        type: profile_dto_1.ProfileListResponseDto,
+    }),
+    (0, swagger_1.ApiResponse)({
+        status: common_1.HttpStatus.BAD_REQUEST,
+        description: 'Invalid query parameters',
+    }),
+    __param(0, (0, common_1.Query)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [typeof (_u = typeof profile_dto_1.SearchProfilesQueryDto !== "undefined" && profile_dto_1.SearchProfilesQueryDto) === "function" ? _u : Object]),
+    __metadata("design:returntype", typeof (_v = typeof Promise !== "undefined" && Promise) === "function" ? _v : Object)
+], ProfileController.prototype, "searchProfiles", null);
+exports.ProfileController = ProfileController = __decorate([
+    (0, swagger_1.ApiTags)('Profile'),
+    (0, common_1.Controller)('profile'),
+    (0, common_1.UseInterceptors)(common_1.ClassSerializerInterceptor),
+    __metadata("design:paramtypes", [typeof (_a = typeof profile_service_1.ProfileService !== "undefined" && profile_service_1.ProfileService) === "function" ? _a : Object])
+], ProfileController);
+
+
+/***/ }),
+
+/***/ "./src/modules/profile/dtos/profile.dto.ts":
+/*!*************************************************!*\
+  !*** ./src/modules/profile/dtos/profile.dto.ts ***!
+  \*************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var _a, _b, _c, _d, _e, _f, _g, _h, _j;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.ProfileListResponseDto = exports.DeleteAccountResponseDto = exports.DisplayNameChangeResponseDto = exports.ProfileCompletionDto = exports.MinimalProfileDto = exports.PublicProfileResponseDto = exports.ProfileResponseDto = exports.DisplayNameChangeInfoDto = exports.SearchProfilesQueryDto = exports.UpdateAvatarDto = exports.ChangeDisplayNameDto = exports.UpdateContactDto = exports.UpdateProfileDto = void 0;
+const user_role_enum_1 = __webpack_require__(/*! @/common/enums/user-role.enum */ "./src/common/enums/user-role.enum.ts");
+const swagger_1 = __webpack_require__(/*! @nestjs/swagger */ "@nestjs/swagger");
+const class_transformer_1 = __webpack_require__(/*! class-transformer */ "class-transformer");
+const class_validator_1 = __webpack_require__(/*! class-validator */ "class-validator");
+class UpdateProfileDto {
+}
+exports.UpdateProfileDto = UpdateProfileDto;
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({
+        description: 'Full legal name',
+        example: 'Vo Van Tin',
+        maxLength: 255
+    }),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsNotEmpty)(),
+    (0, class_validator_1.MaxLength)(255, { message: 'Full name must not exceed 255 characters' }),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
+], UpdateProfileDto.prototype, "fullName", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({
+        description: 'Avatar URL (must be valid URL)',
+        example: 'https://example.com/avatar.jpg',
+        maxLength: 500
+    }),
+    (0, class_validator_1.IsUrl)({}, { message: 'Avatar URL must be a valid URL' }),
+    (0, class_validator_1.MaxLength)(500, { message: 'Avatar URL must not exceed 500 characters' }),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
+], UpdateProfileDto.prototype, "avatarUrl", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({
+        description: 'User biography/description (min 10 chars for completion)',
+        example: 'Experienced electrician with 10+ years in the industry',
+        maxLength: 500
+    }),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MaxLength)(500, { message: 'Bio must not exceed 500 characters' }),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
+], UpdateProfileDto.prototype, "bio", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({
+        description: 'Physical address',
+        example: '123 Nguyen Van Linh, Hai Chau, Da Nang',
+        maxLength: 255
+    }),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MaxLength)(255, { message: 'Address must not exceed 255 characters' }),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
+], UpdateProfileDto.prototype, "address", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({
+        description: 'Date of birth (must be at least 13 years old)',
+        example: '1990-01-15',
+        type: String
+    }),
+    (0, class_transformer_1.Type)(() => Date),
+    (0, class_validator_1.IsDate)({ message: 'Birthday must be a valid date' }),
+    (0, class_validator_1.MinDate)(new Date('1900-01-01'), {
+        message: 'Birthday must be after January 1, 1900'
+    }),
+    (0, class_validator_1.MaxDate)(new Date(new Date().setFullYear(new Date().getFullYear() - 13)), { message: 'You must be at least 13 years old' }),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", typeof (_a = typeof Date !== "undefined" && Date) === "function" ? _a : Object)
+], UpdateProfileDto.prototype, "birthday", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({
+        description: 'Gender',
+        example: 'male',
+        enum: ['male', 'female', 'other']
+    }),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsEnum)(['male', 'female', 'other'], {
+        message: 'Gender must be one of: male, female, other'
+    }),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
+], UpdateProfileDto.prototype, "gender", void 0);
+class UpdateContactDto {
+}
+exports.UpdateContactDto = UpdateContactDto;
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({
+        description: 'Email address',
+        example: 'user@example.com'
+    }),
+    (0, class_validator_1.IsEmail)({}, { message: 'Please provide a valid email address' }),
+    (0, class_validator_1.MaxLength)(255, { message: 'Email must not exceed 255 characters' }),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
+], UpdateContactDto.prototype, "email", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({
+        description: 'Phone number (10-11 digits, Vietnam format)',
+        example: '0901234567'
+    }),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.Matches)(/^(0|\+84)[0-9]{9,10}$/, {
+        message: 'Phone number must be a valid Vietnam phone number (10-11 digits)',
+    }),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
+], UpdateContactDto.prototype, "phone", void 0);
+class ChangeDisplayNameDto {
+}
+exports.ChangeDisplayNameDto = ChangeDisplayNameDto;
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'New display name (can only change every 30 days)',
+        example: 'Tin The Great',
+        minLength: 3,
+        maxLength: 100
+    }),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsNotEmpty)({ message: 'Display name is required' }),
+    (0, class_validator_1.Length)(3, 100, {
+        message: 'Display name must be between 3 and 100 characters'
+    }),
+    (0, class_validator_1.Matches)(/^[a-zA-Z0-9\s\u00C0-\u024F\u1E00-\u1EFF]+$/, {
+        message: 'Display name can only contain letters, numbers, and spaces',
+    }),
+    __metadata("design:type", String)
+], ChangeDisplayNameDto.prototype, "displayName", void 0);
+class UpdateAvatarDto {
+}
+exports.UpdateAvatarDto = UpdateAvatarDto;
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'Avatar URL',
+        example: 'https://example.com/avatar.jpg'
+    }),
+    (0, class_validator_1.IsUrl)({}, { message: 'Avatar URL must be a valid URL' }),
+    (0, class_validator_1.MaxLength)(500, { message: 'Avatar URL must not exceed 500 characters' }),
+    (0, class_validator_1.IsNotEmpty)({ message: 'Avatar URL is required' }),
+    __metadata("design:type", String)
+], UpdateAvatarDto.prototype, "avatarUrl", void 0);
+class SearchProfilesQueryDto {
+    constructor() {
+        this.limit = 20;
+        this.offset = 0;
+    }
+}
+exports.SearchProfilesQueryDto = SearchProfilesQueryDto;
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({
+        description: 'Search term for display name',
+        example: 'John'
+    }),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
+], SearchProfilesQueryDto.prototype, "searchTerm", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({
+        description: 'Number of results to return',
+        example: 20,
+        default: 20
+    }),
+    (0, class_transformer_1.Type)(() => Number),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", Number)
+], SearchProfilesQueryDto.prototype, "limit", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({
+        description: 'Number of results to skip',
+        example: 0,
+        default: 0
+    }),
+    (0, class_transformer_1.Type)(() => Number),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", Number)
+], SearchProfilesQueryDto.prototype, "offset", void 0);
+class DisplayNameChangeInfoDto {
+}
+exports.DisplayNameChangeInfoDto = DisplayNameChangeInfoDto;
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'Whether user can change display name now',
+        example: false
+    }),
+    __metadata("design:type", Boolean)
+], DisplayNameChangeInfoDto.prototype, "canChange", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({
+        description: 'Last display name change timestamp',
+        example: '2024-11-13T10:00:00Z'
+    }),
+    __metadata("design:type", typeof (_b = typeof Date !== "undefined" && Date) === "function" ? _b : Object)
+], DisplayNameChangeInfoDto.prototype, "lastChanged", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'Total number of display name changes',
+        example: 2
+    }),
+    __metadata("design:type", Number)
+], DisplayNameChangeInfoDto.prototype, "changeCount", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'Days remaining until next change is allowed',
+        example: 15
+    }),
+    __metadata("design:type", Number)
+], DisplayNameChangeInfoDto.prototype, "daysUntilNextChange", void 0);
+class ProfileResponseDto {
+}
+exports.ProfileResponseDto = ProfileResponseDto;
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'User unique identifier',
+        example: 'uuid-123'
+    }),
+    __metadata("design:type", String)
+], ProfileResponseDto.prototype, "id", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({
+        description: 'Email address',
+        example: 'user@example.com'
+    }),
+    __metadata("design:type", String)
+], ProfileResponseDto.prototype, "email", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({
+        description: 'Phone number',
+        example: '0901234567'
+    }),
+    __metadata("design:type", String)
+], ProfileResponseDto.prototype, "phone", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'User role',
+        enum: user_role_enum_1.UserRole,
+        example: user_role_enum_1.UserRole.CUSTOMER
+    }),
+    __metadata("design:type", typeof (_c = typeof user_role_enum_1.UserRole !== "undefined" && user_role_enum_1.UserRole) === "function" ? _c : Object)
+], ProfileResponseDto.prototype, "role", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({
+        description: 'Full legal name',
+        example: 'Vo Van Tin'
+    }),
+    __metadata("design:type", String)
+], ProfileResponseDto.prototype, "fullName", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({
+        description: 'Public display name',
+        example: 'Van Tin'
+    }),
+    __metadata("design:type", String)
+], ProfileResponseDto.prototype, "displayName", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({
+        description: 'Avatar image URL',
+        example: 'https://cdn.example.com/avatar.jpg'
+    }),
+    __metadata("design:type", String)
+], ProfileResponseDto.prototype, "avatarUrl", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({
+        description: 'User biography',
+        example: 'Professional electrician with 10 years experience'
+    }),
+    __metadata("design:type", String)
+], ProfileResponseDto.prototype, "bio", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({
+        description: 'Physical address',
+        example: '123 Nguyen Van Linh, Da Nang'
+    }),
+    __metadata("design:type", String)
+], ProfileResponseDto.prototype, "address", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({
+        description: 'Date of birth',
+        example: '1990-01-15'
+    }),
+    __metadata("design:type", typeof (_d = typeof Date !== "undefined" && Date) === "function" ? _d : Object)
+], ProfileResponseDto.prototype, "birthday", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({
+        description: 'Gender',
+        example: 'male',
+        enum: ['male', 'female', 'other']
+    }),
+    __metadata("design:type", String)
+], ProfileResponseDto.prototype, "gender", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'Email/phone verification status',
+        example: true
+    }),
+    __metadata("design:type", Boolean)
+], ProfileResponseDto.prototype, "isVerified", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'Account active status',
+        example: true
+    }),
+    __metadata("design:type", Boolean)
+], ProfileResponseDto.prototype, "isActive", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'Display name change information and restrictions',
+        type: DisplayNameChangeInfoDto
+    }),
+    __metadata("design:type", DisplayNameChangeInfoDto)
+], ProfileResponseDto.prototype, "displayNameChangeInfo", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'Account creation timestamp',
+        example: '2025-01-01T00:00:00Z'
+    }),
+    __metadata("design:type", typeof (_e = typeof Date !== "undefined" && Date) === "function" ? _e : Object)
+], ProfileResponseDto.prototype, "createdAt", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'Last profile update timestamp',
+        example: '2025-11-13T10:00:00Z'
+    }),
+    __metadata("design:type", typeof (_f = typeof Date !== "undefined" && Date) === "function" ? _f : Object)
+], ProfileResponseDto.prototype, "updatedAt", void 0);
+class PublicProfileResponseDto {
+}
+exports.PublicProfileResponseDto = PublicProfileResponseDto;
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'User unique identifier',
+        example: 'uuid-123'
+    }),
+    __metadata("design:type", String)
+], PublicProfileResponseDto.prototype, "id", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'User role',
+        enum: user_role_enum_1.UserRole,
+        example: user_role_enum_1.UserRole.PROVIDER
+    }),
+    __metadata("design:type", typeof (_g = typeof user_role_enum_1.UserRole !== "undefined" && user_role_enum_1.UserRole) === "function" ? _g : Object)
+], PublicProfileResponseDto.prototype, "role", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({
+        description: 'Public display name',
+        example: 'Van Tin'
+    }),
+    __metadata("design:type", String)
+], PublicProfileResponseDto.prototype, "displayName", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({
+        description: 'Avatar image URL',
+        example: 'https://cdn.example.com/avatar.jpg'
+    }),
+    __metadata("design:type", String)
+], PublicProfileResponseDto.prototype, "avatarUrl", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({
+        description: 'User biography',
+        example: 'Professional electrician'
+    }),
+    __metadata("design:type", String)
+], PublicProfileResponseDto.prototype, "bio", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'Verification badge status',
+        example: true
+    }),
+    __metadata("design:type", Boolean)
+], PublicProfileResponseDto.prototype, "isVerified", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'Member since date',
+        example: '2025-01-01T00:00:00Z'
+    }),
+    __metadata("design:type", typeof (_h = typeof Date !== "undefined" && Date) === "function" ? _h : Object)
+], PublicProfileResponseDto.prototype, "memberSince", void 0);
+class MinimalProfileDto {
+}
+exports.MinimalProfileDto = MinimalProfileDto;
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'User unique identifier',
+        example: 'uuid-123'
+    }),
+    __metadata("design:type", String)
+], MinimalProfileDto.prototype, "id", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'Display name',
+        example: 'VanA'
+    }),
+    __metadata("design:type", String)
+], MinimalProfileDto.prototype, "displayName", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({
+        description: 'Avatar URL',
+        example: 'https://cdn.example.com/avatar.jpg'
+    }),
+    __metadata("design:type", String)
+], MinimalProfileDto.prototype, "avatarUrl", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'Verification status',
+        example: true
+    }),
+    __metadata("design:type", Boolean)
+], MinimalProfileDto.prototype, "isVerified", void 0);
+class ProfileCompletionDto {
+}
+exports.ProfileCompletionDto = ProfileCompletionDto;
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'Whether profile is 100% complete',
+        example: false
+    }),
+    __metadata("design:type", Boolean)
+], ProfileCompletionDto.prototype, "isComplete", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'Completion percentage (0-100)',
+        example: 67
+    }),
+    __metadata("design:type", Number)
+], ProfileCompletionDto.prototype, "completionPercentage", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'Number of completed fields',
+        example: 4
+    }),
+    __metadata("design:type", Number)
+], ProfileCompletionDto.prototype, "completedFields", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'Total required fields',
+        example: 6
+    }),
+    __metadata("design:type", Number)
+], ProfileCompletionDto.prototype, "totalFields", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'List of missing field names',
+        example: ['bio', 'avatarUrl']
+    }),
+    __metadata("design:type", Array)
+], ProfileCompletionDto.prototype, "missingFields", void 0);
+class DisplayNameChangeResponseDto {
+}
+exports.DisplayNameChangeResponseDto = DisplayNameChangeResponseDto;
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'Operation success status',
+        example: true
+    }),
+    __metadata("design:type", Boolean)
+], DisplayNameChangeResponseDto.prototype, "success", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'Response message',
+        example: 'Display name changed successfully'
+    }),
+    __metadata("design:type", String)
+], DisplayNameChangeResponseDto.prototype, "message", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'New display name',
+        example: 'Van Tin Pro'
+    }),
+    __metadata("design:type", String)
+], DisplayNameChangeResponseDto.prototype, "newDisplayName", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'Change timestamp',
+        example: '2025-11-13T10:00:00Z'
+    }),
+    __metadata("design:type", typeof (_j = typeof Date !== "undefined" && Date) === "function" ? _j : Object)
+], DisplayNameChangeResponseDto.prototype, "changedAt", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'Days until next change allowed',
+        example: 30
+    }),
+    __metadata("design:type", Number)
+], DisplayNameChangeResponseDto.prototype, "daysUntilNextChange", void 0);
+class DeleteAccountResponseDto {
+}
+exports.DeleteAccountResponseDto = DeleteAccountResponseDto;
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'Operation success status',
+        example: true
+    }),
+    __metadata("design:type", Boolean)
+], DeleteAccountResponseDto.prototype, "success", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'Response message',
+        example: 'Account deleted successfully'
+    }),
+    __metadata("design:type", String)
+], DeleteAccountResponseDto.prototype, "message", void 0);
+class ProfileListResponseDto {
+}
+exports.ProfileListResponseDto = ProfileListResponseDto;
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'List of profiles',
+        type: [PublicProfileResponseDto]
+    }),
+    __metadata("design:type", Array)
+], ProfileListResponseDto.prototype, "profiles", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'Total number of profiles matching query',
+        example: 100
+    }),
+    __metadata("design:type", Number)
+], ProfileListResponseDto.prototype, "total", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'Number of results returned in this response',
+        example: 20
+    }),
+    __metadata("design:type", Number)
+], ProfileListResponseDto.prototype, "count", void 0);
+
+
+/***/ }),
+
+/***/ "./src/modules/profile/entities/profile.entity.ts":
+/*!********************************************************!*\
+  !*** ./src/modules/profile/entities/profile.entity.ts ***!
+  \********************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var _a, _b, _c, _d, _e, _f, _g;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.Profile = void 0;
+const user_entity_1 = __webpack_require__(/*! @/modules/users/entities/user.entity */ "./src/modules/users/entities/user.entity.ts");
+const typeorm_1 = __webpack_require__(/*! typeorm */ "typeorm");
+let Profile = class Profile {
+    constructor() {
+        this.displayNameChangeCount = 0;
+    }
+    setDefaults() {
+        if (!this.displayName && this.fullName) {
+            this.displayName = this.fullName;
+        }
+        if (!this.displayNameHistory) {
+            this.displayNameHistory = [];
+        }
+    }
+    updateTimestamp() {
+        this.updatedAt = new Date();
+    }
+    canChangeDisplayName() {
+        if (!this.lastDisplayNameChange)
+            return true;
+        const daysSinceLastChange = this.getDaysSinceLastDisplayNameChange();
+        return daysSinceLastChange >= 30;
+    }
+    getDaysSinceLastDisplayNameChange() {
+        if (!this.lastDisplayNameChange)
+            return Infinity;
+        const now = new Date();
+        const lastChange = new Date(this.lastDisplayNameChange);
+        const diffTime = Math.abs(now.getTime() - lastChange.getTime());
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        return diffDays;
+    }
+    getDaysUntilCanChangeDisplayName() {
+        if (!this.lastDisplayNameChange)
+            return 0;
+        const daysSinceLastChange = this.getDaysSinceLastDisplayNameChange();
+        return Math.max(0, 30 - daysSinceLastChange);
+    }
+    addDisplayNameToHistory(oldName, newName) {
+        if (!this.displayNameHistory) {
+            this.displayNameHistory = [];
+        }
+        if (this.displayNameHistory.length >= 10) {
+            this.displayNameHistory.shift();
+        }
+        this.displayNameHistory.push({
+            name: newName,
+            changedAt: new Date()
+        });
+    }
+    getAge() {
+        if (!this.birthday)
+            return null;
+        const today = new Date();
+        const birthDate = new Date(this.birthday);
+        let age = today.getFullYear() - birthDate.getFullYear();
+        const monthDiff = today.getMonth() - birthDate.getMonth();
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+            age--;
+        }
+        return age;
+    }
+    isProfileComplete() {
+        return !!(this.fullName &&
+            this.displayName &&
+            this.birthday &&
+            this.gender);
+    }
+};
+exports.Profile = Profile;
+__decorate([
+    (0, typeorm_1.PrimaryGeneratedColumn)('uuid'),
+    __metadata("design:type", String)
+], Profile.prototype, "id", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        name: 'user_id',
+        type: 'uuid',
+        unique: true
+    }),
+    __metadata("design:type", String)
+], Profile.prototype, "userId", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        name: 'full_name',
+        length: 255,
+        nullable: true,
+        comment: 'User full legal name'
+    }),
+    __metadata("design:type", String)
+], Profile.prototype, "fullName", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        name: 'display_name',
+        length: 100,
+        nullable: true,
+        comment: 'Public display name (changeable with restrictions)'
+    }),
+    __metadata("design:type", String)
+], Profile.prototype, "displayName", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        name: 'avatar_url',
+        length: 500,
+        nullable: true,
+        comment: 'Profile picture URL'
+    }),
+    __metadata("design:type", String)
+], Profile.prototype, "avatarUrl", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        type: 'text',
+        nullable: true,
+        comment: 'User biography/description'
+    }),
+    __metadata("design:type", String)
+], Profile.prototype, "bio", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        length: 255,
+        nullable: true,
+        comment: 'Physical address'
+    }),
+    __metadata("design:type", String)
+], Profile.prototype, "address", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        type: 'date',
+        nullable: true,
+        comment: 'Date of birth'
+    }),
+    __metadata("design:type", typeof (_a = typeof Date !== "undefined" && Date) === "function" ? _a : Object)
+], Profile.prototype, "birthday", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        length: 10,
+        nullable: true,
+        comment: 'Gender: male, female, other'
+    }),
+    __metadata("design:type", String)
+], Profile.prototype, "gender", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        name: 'last_display_name_change',
+        type: 'timestamp with time zone',
+        nullable: true,
+        comment: 'Timestamp of last display name change'
+    }),
+    __metadata("design:type", typeof (_b = typeof Date !== "undefined" && Date) === "function" ? _b : Object)
+], Profile.prototype, "lastDisplayNameChange", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        name: 'display_name_change_count',
+        type: 'int',
+        default: 0,
+        comment: 'Total number of display name changes'
+    }),
+    __metadata("design:type", Number)
+], Profile.prototype, "displayNameChangeCount", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        name: 'display_name_history',
+        type: 'jsonb',
+        nullable: true,
+        comment: 'History of display name changes for audit'
+    }),
+    __metadata("design:type", typeof (_c = typeof Array !== "undefined" && Array) === "function" ? _c : Object)
+], Profile.prototype, "displayNameHistory", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        type: 'jsonb',
+        nullable: true,
+        comment: 'Additional profile metadata (preferences, settings, etc.)'
+    }),
+    __metadata("design:type", typeof (_d = typeof Record !== "undefined" && Record) === "function" ? _d : Object)
+], Profile.prototype, "metadata", void 0);
+__decorate([
+    (0, typeorm_1.CreateDateColumn)({
+        name: 'created_at',
+        type: 'timestamp with time zone'
+    }),
+    __metadata("design:type", typeof (_e = typeof Date !== "undefined" && Date) === "function" ? _e : Object)
+], Profile.prototype, "createdAt", void 0);
+__decorate([
+    (0, typeorm_1.UpdateDateColumn)({
+        name: 'updated_at',
+        type: 'timestamp with time zone'
+    }),
+    __metadata("design:type", typeof (_f = typeof Date !== "undefined" && Date) === "function" ? _f : Object)
+], Profile.prototype, "updatedAt", void 0);
+__decorate([
+    (0, typeorm_1.OneToOne)(() => user_entity_1.User, user => user.profile, {
+        onDelete: 'CASCADE'
+    }),
+    (0, typeorm_1.JoinColumn)({ name: 'user_id' }),
+    __metadata("design:type", typeof (_g = typeof user_entity_1.User !== "undefined" && user_entity_1.User) === "function" ? _g : Object)
+], Profile.prototype, "user", void 0);
+__decorate([
+    (0, typeorm_1.BeforeInsert)(),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", void 0)
+], Profile.prototype, "setDefaults", null);
+__decorate([
+    (0, typeorm_1.BeforeUpdate)(),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", void 0)
+], Profile.prototype, "updateTimestamp", null);
+exports.Profile = Profile = __decorate([
+    (0, typeorm_1.Entity)('profiles'),
+    (0, typeorm_1.Index)(['userId'], { unique: true }),
+    (0, typeorm_1.Index)(['displayName']),
+    (0, typeorm_1.Index)(['updatedAt'])
+], Profile);
+
+
+/***/ }),
+
+/***/ "./src/modules/profile/mapper/profile-mapper.ts":
+/*!******************************************************!*\
+  !*** ./src/modules/profile/mapper/profile-mapper.ts ***!
+  \******************************************************/
+/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.toProfile = toProfile;
+exports.toProfiles = toProfiles;
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+function toProfile(profile) {
+    if (!profile?.id || !profile?.userId) {
+        throw new common_1.BadRequestException({
+            code: 'INVALID_PROFILE_DATA',
+            message: 'Profile data is incomplete - missing id or userId',
+        });
+    }
+    return {
+        id: profile.id,
+        userId: profile.userId,
+        fullName: profile.fullName,
+        displayName: profile.displayName,
+        avatarUrl: profile.avatarUrl,
+        bio: profile.bio,
+        address: profile.address,
+        birthday: profile.birthday,
+        gender: profile.gender,
+        lastDisplayNameChange: profile.lastDisplayNameChange,
+        displayNameChangeCount: profile.displayNameChangeCount ?? 0,
+        displayNameHistory: profile.displayNameHistory,
+        updatedAt: profile.updatedAt,
+        createdAt: profile.createdAt,
+    };
+}
+function toProfiles(profiles) {
+    return profiles
+        .filter(profile => profile?.id && profile?.userId)
+        .map(profile => toProfile(profile));
+}
+
+
+/***/ }),
+
+/***/ "./src/modules/profile/profile.module.ts":
+/*!***********************************************!*\
+  !*** ./src/modules/profile/profile.module.ts ***!
+  \***********************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.ProfileModule = void 0;
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const config_1 = __webpack_require__(/*! @nestjs/config */ "@nestjs/config");
+const typeorm_1 = __webpack_require__(/*! @nestjs/typeorm */ "@nestjs/typeorm");
+const user_entity_1 = __webpack_require__(/*! @/modules/users/entities/user.entity */ "./src/modules/users/entities/user.entity.ts");
+const profile_entity_1 = __webpack_require__(/*! ./entities/profile.entity */ "./src/modules/profile/entities/profile.entity.ts");
+const profile_controller_1 = __webpack_require__(/*! ./controllers/profile.controller */ "./src/modules/profile/controllers/profile.controller.ts");
+const profile_repository_1 = __webpack_require__(/*! ./repositorys/profile-repository */ "./src/modules/profile/repositorys/profile-repository.ts");
+const profile_domain_service_1 = __webpack_require__(/*! ./services/profile-domain.service */ "./src/modules/profile/services/profile-domain.service.ts");
+const profile_response_builder_service_1 = __webpack_require__(/*! ./services/profile-response-builder.service */ "./src/modules/profile/services/profile-response-builder.service.ts");
+const profile_service_1 = __webpack_require__(/*! ./services/profile.service */ "./src/modules/profile/services/profile.service.ts");
+let ProfileModule = class ProfileModule {
+};
+exports.ProfileModule = ProfileModule;
+exports.ProfileModule = ProfileModule = __decorate([
+    (0, common_1.Module)({
+        imports: [
+            typeorm_1.TypeOrmModule.forFeature([profile_entity_1.Profile, user_entity_1.User]),
+            config_1.ConfigModule,
+        ],
+        controllers: [profile_controller_1.ProfileController],
+        providers: [
+            profile_service_1.ProfileService,
+            profile_domain_service_1.ProfileDomainService,
+            profile_response_builder_service_1.ProfileResponseBuilder,
+            profile_repository_1.ProfileRepository,
+        ],
+        exports: [
+            profile_service_1.ProfileService,
+            profile_domain_service_1.ProfileDomainService,
+            profile_response_builder_service_1.ProfileResponseBuilder,
+            profile_repository_1.ProfileRepository,
+        ],
+    })
+], ProfileModule);
+
+
+/***/ }),
+
+/***/ "./src/modules/profile/repositorys/profile-repository.ts":
+/*!***************************************************************!*\
+  !*** ./src/modules/profile/repositorys/profile-repository.ts ***!
+  \***************************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var __param = (this && this.__param) || function (paramIndex, decorator) {
+    return function (target, key) { decorator(target, key, paramIndex); }
+};
+var ProfileRepository_1;
+var _a, _b;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.ProfileRepository = void 0;
+const user_entity_1 = __webpack_require__(/*! @/modules/users/entities/user.entity */ "./src/modules/users/entities/user.entity.ts");
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const typeorm_1 = __webpack_require__(/*! @nestjs/typeorm */ "@nestjs/typeorm");
+const typeorm_2 = __webpack_require__(/*! typeorm */ "typeorm");
+const profile_entity_1 = __webpack_require__(/*! ../entities/profile.entity */ "./src/modules/profile/entities/profile.entity.ts");
+let ProfileRepository = ProfileRepository_1 = class ProfileRepository {
+    constructor(profileRepo, userRepo) {
+        this.profileRepo = profileRepo;
+        this.userRepo = userRepo;
+        this.logger = new common_1.Logger(ProfileRepository_1.name);
+    }
+    getProfileRepository(manager) {
+        return manager ? manager.getRepository(profile_entity_1.Profile) : this.profileRepo;
+    }
+    getUserRepository(manager) {
+        return manager ? manager.getRepository(user_entity_1.User) : this.userRepo;
+    }
+    async findUserWithProfile(userId, manager) {
+        try {
+            return await this.getUserRepository(manager).findOne({
+                where: { id: userId, deletedAt: (0, typeorm_2.IsNull)() },
+                relations: ['profile'],
+            });
+        }
+        catch (error) {
+            this.logger.error(`Error finding user with profile: ${userId}`, error);
+            throw error;
+        }
+    }
+    async findProfileByUserId(userId, manager) {
+        try {
+            return await this.getProfileRepository(manager).findOne({
+                where: { userId },
+                relations: ['user'],
+            });
+        }
+        catch (error) {
+            this.logger.error(`Error finding profile for user: ${userId}`, error);
+            throw error;
+        }
+    }
+    async createProfile(userId, data, manager) {
+        try {
+            const profile = this.getProfileRepository(manager).create({
+                userId,
+                ...data,
+            });
+            return await this.getProfileRepository(manager).save(profile);
+        }
+        catch (error) {
+            this.logger.error(`Error creating profile for user: ${userId}`, error);
+            throw error;
+        }
+    }
+    async updateProfile(profile, dto, manager) {
+        try {
+            Object.keys(dto).forEach((key) => {
+                if (dto[key] !== undefined) {
+                    profile[key] = dto[key];
+                }
+            });
+            return await this.getProfileRepository(manager).save(profile);
+        }
+        catch (error) {
+            this.logger.error(`Error updating profile: ${profile.id}`, error);
+            throw error;
+        }
+    }
+    async updateContact(user, dto, manager) {
+        try {
+            if (dto.email !== undefined)
+                user.email = dto.email;
+            if (dto.phone !== undefined)
+                user.phone = dto.phone;
+            return await this.getUserRepository(manager).save(user);
+        }
+        catch (error) {
+            this.logger.error(`Error updating contact for user: ${user.id}`, error);
+            throw error;
+        }
+    }
+    async changeDisplayName(profile, newDisplayName, manager) {
+        try {
+            const oldDisplayName = profile.displayName;
+            profile.displayName = newDisplayName;
+            profile.lastDisplayNameChange = new Date();
+            profile.displayNameChangeCount += 1;
+            profile.addDisplayNameToHistory(oldDisplayName, newDisplayName);
+            return await this.getProfileRepository(manager).save(profile);
+        }
+        catch (error) {
+            this.logger.error(`Error changing display name for profile: ${profile.id}`, error);
+            throw error;
+        }
+    }
+    async updateAvatar(userId, avatarUrl, manager) {
+        try {
+            const profile = await this.findProfileByUserId(userId, manager);
+            if (!profile) {
+                throw new common_1.NotFoundException('Profile not found');
+            }
+            profile.avatarUrl = avatarUrl;
+            return await this.getProfileRepository(manager).save(profile);
+        }
+        catch (error) {
+            this.logger.error(`Error updating avatar for user: ${userId}`, error);
+            throw error;
+        }
+    }
+    async isEmailTaken(email, excludeUserId, manager) {
+        try {
+            const query = this.getUserRepository(manager)
+                .createQueryBuilder('user')
+                .where('LOWER(user.email) = LOWER(:email)', { email })
+                .andWhere('user.deletedAt IS NULL');
+            if (excludeUserId) {
+                query.andWhere('user.id != :userId', { userId: excludeUserId });
+            }
+            const count = await query.getCount();
+            return count > 0;
+        }
+        catch (error) {
+            this.logger.error(`Error checking email availability: ${email}`, error);
+            throw error;
+        }
+    }
+    async isPhoneTaken(phone, excludeUserId, manager) {
+        try {
+            const query = this.getUserRepository(manager)
+                .createQueryBuilder('user')
+                .where('user.phone = :phone', { phone })
+                .andWhere('user.deletedAt IS NULL');
+            if (excludeUserId) {
+                query.andWhere('user.id != :userId', { userId: excludeUserId });
+            }
+            const count = await query.getCount();
+            return count > 0;
+        }
+        catch (error) {
+            this.logger.error(`Error checking phone availability: ${phone}`, error);
+            throw error;
+        }
+    }
+    async softDeleteUser(userId, manager) {
+        try {
+            await this.getUserRepository(manager).softDelete(userId);
+            this.logger.log(`User soft deleted: ${userId}`);
+        }
+        catch (error) {
+            this.logger.error(`Error soft deleting user: ${userId}`, error);
+            throw error;
+        }
+    }
+    async findUsersByRole(role, limit = 100, offset = 0, manager) {
+        try {
+            return await this.getUserRepository(manager).findAndCount({
+                where: { role, deletedAt: (0, typeorm_2.IsNull)() },
+                relations: ['profile'],
+                take: limit,
+                skip: offset,
+                order: { createdAt: 'DESC' },
+            });
+        }
+        catch (error) {
+            this.logger.error(`Error finding users by role: ${role}`, error);
+            throw error;
+        }
+    }
+    async searchProfilesByDisplayName(searchTerm, limit = 20, offset = 0, manager) {
+        try {
+            const query = this.getProfileRepository(manager)
+                .createQueryBuilder('profile')
+                .leftJoinAndSelect('profile.user', 'user')
+                .where('profile.displayName ILIKE :searchTerm', {
+                searchTerm: `%${searchTerm}%`
+            })
+                .andWhere('user.deletedAt IS NULL')
+                .andWhere('user.isActive = :isActive', { isActive: true })
+                .take(limit)
+                .skip(offset)
+                .orderBy('profile.displayName', 'ASC');
+            return await query.getManyAndCount();
+        }
+        catch (error) {
+            this.logger.error(`Error searching profiles: ${searchTerm}`, error);
+            throw error;
+        }
+    }
+    async getProfileStats(manager) {
+        try {
+            const repo = this.getProfileRepository(manager);
+            const [totalProfiles, profilesWithAvatar,] = await Promise.all([
+                repo.count(),
+                repo.count({ where: { avatarUrl: (0, typeorm_2.IsNull)() } }),
+            ]);
+            return {
+                totalProfiles,
+                completeProfiles: 0,
+                incompleteProfiles: 0,
+                profilesWithAvatar,
+            };
+        }
+        catch (error) {
+            this.logger.error('Error getting profile stats', error);
+            throw error;
+        }
+    }
+};
+exports.ProfileRepository = ProfileRepository;
+exports.ProfileRepository = ProfileRepository = ProfileRepository_1 = __decorate([
+    (0, common_1.Injectable)(),
+    __param(0, (0, typeorm_1.InjectRepository)(profile_entity_1.Profile)),
+    __param(1, (0, typeorm_1.InjectRepository)(user_entity_1.User)),
+    __metadata("design:paramtypes", [typeof (_a = typeof typeorm_2.Repository !== "undefined" && typeorm_2.Repository) === "function" ? _a : Object, typeof (_b = typeof typeorm_2.Repository !== "undefined" && typeorm_2.Repository) === "function" ? _b : Object])
+], ProfileRepository);
+
+
+/***/ }),
+
+/***/ "./src/modules/profile/services/profile-domain.service.ts":
+/*!****************************************************************!*\
+  !*** ./src/modules/profile/services/profile-domain.service.ts ***!
+  \****************************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.ProfileDomainService = void 0;
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+let ProfileDomainService = class ProfileDomainService {
+    constructor() {
+        this.DISPLAY_NAME_CHANGE_COOLDOWN_DAYS = 30;
+    }
+    canChangeDisplayName(profile) {
+        if (!profile.lastDisplayNameChange) {
+            return true;
+        }
+        const daysSinceLastChange = this.getDaysSinceLastChange(profile.lastDisplayNameChange);
+        return daysSinceLastChange >= this.DISPLAY_NAME_CHANGE_COOLDOWN_DAYS;
+    }
+    getDaysUntilCanChangeDisplayName(profile) {
+        if (!profile.lastDisplayNameChange) {
+            return 0;
+        }
+        const daysSinceLastChange = this.getDaysSinceLastChange(profile.lastDisplayNameChange);
+        const daysRemaining = this.DISPLAY_NAME_CHANGE_COOLDOWN_DAYS - daysSinceLastChange;
+        return Math.max(0, Math.ceil(daysRemaining));
+    }
+    calculateCompletionPercentage(profile) {
+        const requiredFields = {
+            fullName: !!profile.fullName,
+            displayName: !!profile.displayName,
+            birthday: !!profile.birthday,
+            gender: !!profile.gender,
+            bio: !!profile.bio && profile.bio.length >= 10,
+            avatarUrl: !!profile.avatarUrl,
+        };
+        const totalFields = Object.keys(requiredFields).length;
+        const completedFields = Object.values(requiredFields).filter(Boolean).length;
+        const percentage = Math.round((completedFields / totalFields) * 100);
+        const missingFields = Object.entries(requiredFields)
+            .filter(([, value]) => !value)
+            .map(([key]) => key);
+        return {
+            isComplete: percentage === 100,
+            percentage,
+            completedFields,
+            totalFields,
+            missingFields,
+        };
+    }
+    validateDisplayNameChange(currentDisplayName, newDisplayName) {
+        if (!newDisplayName || newDisplayName.trim().length === 0) {
+            return { valid: false, error: 'Display name cannot be empty' };
+        }
+        if (currentDisplayName === newDisplayName) {
+            return {
+                valid: false,
+                error: 'New display name must be different from current one',
+            };
+        }
+        return { valid: true };
+    }
+    getDaysSinceLastChange(lastChangeDate) {
+        const now = new Date();
+        const lastChange = new Date(lastChangeDate);
+        const diffInMs = now.getTime() - lastChange.getTime();
+        return diffInMs / (1000 * 60 * 60 * 24);
+    }
+};
+exports.ProfileDomainService = ProfileDomainService;
+exports.ProfileDomainService = ProfileDomainService = __decorate([
+    (0, common_1.Injectable)()
+], ProfileDomainService);
+
+
+/***/ }),
+
+/***/ "./src/modules/profile/services/profile-response-builder.service.ts":
+/*!**************************************************************************!*\
+  !*** ./src/modules/profile/services/profile-response-builder.service.ts ***!
+  \**************************************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var ProfileResponseBuilder_1;
+var _a, _b;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.ProfileResponseBuilder = void 0;
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const config_1 = __webpack_require__(/*! @nestjs/config */ "@nestjs/config");
+const profile_domain_service_1 = __webpack_require__(/*! ./profile-domain.service */ "./src/modules/profile/services/profile-domain.service.ts");
+let ProfileResponseBuilder = ProfileResponseBuilder_1 = class ProfileResponseBuilder {
+    constructor(configService, profileDomainService) {
+        this.configService = configService;
+        this.profileDomainService = profileDomainService;
+        this.logger = new common_1.Logger(ProfileResponseBuilder_1.name);
+    }
+    buildProfileResponse(user, profile) {
+        this.validateInputs(user, profile, 'buildProfileResponse');
+        try {
+            return {
+                id: user.id,
+                email: user.email,
+                phone: user.phone,
+                role: user.role,
+                fullName: profile.fullName,
+                displayName: profile.displayName,
+                avatarUrl: this.buildAvatarUrl(profile.avatarUrl),
+                bio: profile.bio,
+                address: profile.address,
+                birthday: profile.birthday,
+                gender: profile.gender,
+                isVerified: user.isVerified,
+                isActive: user.isActive,
+                displayNameChangeInfo: this.buildDisplayNameChangeInfo(profile),
+                createdAt: user.createdAt,
+                updatedAt: profile.updatedAt,
+            };
+        }
+        catch (error) {
+            this.logger.error(`Failed to build profile response for user ${user.id}`, error);
+            throw new Error('Failed to build profile response');
+        }
+    }
+    buildPublicProfileResponse(user, profile) {
+        this.validateInputs(user, profile, 'buildPublicProfileResponse');
+        try {
+            return {
+                id: user.id,
+                role: user.role,
+                displayName: profile.displayName || 'Anonymous User',
+                avatarUrl: this.buildAvatarUrl(profile.avatarUrl),
+                bio: profile.bio,
+                isVerified: user.isVerified,
+                memberSince: user.createdAt,
+            };
+        }
+        catch (error) {
+            this.logger.error(`Failed to build public profile for user ${user.id}`, error);
+            throw new Error('Failed to build public profile');
+        }
+    }
+    buildMinimalProfile(user, profile) {
+        this.validateInputs(user, profile, 'buildMinimalProfile');
+        try {
+            return {
+                id: user.id,
+                displayName: profile.displayName || 'Anonymous',
+                avatarUrl: this.buildAvatarUrl(profile.avatarUrl),
+                isVerified: user.isVerified,
+            };
+        }
+        catch (error) {
+            this.logger.error(`Failed to build minimal profile for user ${user.id}`, error);
+            return {
+                id: user.id,
+                displayName: 'User',
+                avatarUrl: this.getDefaultAvatarUrl(),
+                isVerified: false,
+            };
+        }
+    }
+    buildProfileCompletionStatus(profile) {
+        if (!profile) {
+            this.logger.warn('Profile is null in buildProfileCompletionStatus');
+            return this.getEmptyCompletionStatus();
+        }
+        try {
+            const completion = this.profileDomainService.calculateCompletionPercentage(profile);
+            return {
+                isComplete: completion.isComplete,
+                completionPercentage: completion.percentage,
+                completedFields: completion.completedFields,
+                totalFields: completion.totalFields,
+                missingFields: completion.missingFields,
+            };
+        }
+        catch (error) {
+            this.logger.error('Failed to build profile completion status', error);
+            return this.getEmptyCompletionStatus();
+        }
+    }
+    buildMinimalProfiles(usersWithProfiles) {
+        if (!Array.isArray(usersWithProfiles)) {
+            this.logger.warn('Invalid input for buildMinimalProfiles');
+            return [];
+        }
+        return usersWithProfiles
+            .map(({ user, profile }) => {
+            try {
+                return this.buildMinimalProfile(user, profile);
+            }
+            catch (error) {
+                this.logger.warn(`Skipped building minimal profile for user ${user?.id}`, error);
+                return null;
+            }
+        })
+            .filter((profile) => profile !== null);
+    }
+    validateInputs(user, profile, method) {
+        if (!user || !profile) {
+            this.logger.error(`Invalid input in ${method}: user=${!!user}, profile=${!!profile}`);
+            throw new Error('User and Profile are required');
+        }
+        if (!user.id) {
+            this.logger.error(`User missing ID in ${method}`);
+            throw new Error('User ID is required');
+        }
+    }
+    buildDisplayNameChangeInfo(profile) {
+        try {
+            return {
+                canChange: this.profileDomainService.canChangeDisplayName(profile),
+                lastChanged: profile.lastDisplayNameChange,
+                changeCount: profile.displayNameChangeCount,
+                daysUntilNextChange: this.profileDomainService.getDaysUntilCanChangeDisplayName(profile),
+            };
+        }
+        catch (error) {
+            this.logger.warn('Failed to build display name change info', error);
+            return {
+                canChange: false,
+                lastChanged: undefined,
+                changeCount: 0,
+                daysUntilNextChange: 0,
+            };
+        }
+    }
+    buildAvatarUrl(avatarUrl) {
+        if (!avatarUrl) {
+            return this.getDefaultAvatarUrl();
+        }
+        if (avatarUrl.startsWith('http://') || avatarUrl.startsWith('https://')) {
+            return avatarUrl;
+        }
+        const cdnUrl = this.configService.get('CDN_URL');
+        if (!cdnUrl) {
+            this.logger.warn('CDN_URL not configured, returning relative path');
+            return avatarUrl;
+        }
+        return `${cdnUrl}/${avatarUrl}`;
+    }
+    getDefaultAvatarUrl() {
+        return (this.configService.get('DEFAULT_AVATAR_URL') ||
+            '/assets/default-avatar.png');
+    }
+    getEmptyCompletionStatus() {
+        return {
+            isComplete: false,
+            completionPercentage: 0,
+            completedFields: 0,
+            totalFields: 6,
+            missingFields: [
+                'fullName',
+                'displayName',
+                'birthday',
+                'gender',
+                'bio',
+                'avatarUrl',
+            ],
+        };
+    }
+};
+exports.ProfileResponseBuilder = ProfileResponseBuilder;
+exports.ProfileResponseBuilder = ProfileResponseBuilder = ProfileResponseBuilder_1 = __decorate([
+    (0, common_1.Injectable)(),
+    __metadata("design:paramtypes", [typeof (_a = typeof config_1.ConfigService !== "undefined" && config_1.ConfigService) === "function" ? _a : Object, typeof (_b = typeof profile_domain_service_1.ProfileDomainService !== "undefined" && profile_domain_service_1.ProfileDomainService) === "function" ? _b : Object])
+], ProfileResponseBuilder);
+
+
+/***/ }),
+
+/***/ "./src/modules/profile/services/profile.service.ts":
+/*!*********************************************************!*\
+  !*** ./src/modules/profile/services/profile.service.ts ***!
+  \*********************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var ProfileService_1;
+var _a, _b, _c, _d;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.ProfileService = void 0;
+const profile_mapper_1 = __webpack_require__(/*! @/modules/profile/mapper/profile-mapper */ "./src/modules/profile/mapper/profile-mapper.ts");
+const user_mapper_1 = __webpack_require__(/*! @/modules/users/mapper/user.mapper */ "./src/modules/users/mapper/user.mapper.ts");
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const typeorm_1 = __webpack_require__(/*! typeorm */ "typeorm");
+const profile_repository_1 = __webpack_require__(/*! ../repositorys/profile-repository */ "./src/modules/profile/repositorys/profile-repository.ts");
+const profile_domain_service_1 = __webpack_require__(/*! ./profile-domain.service */ "./src/modules/profile/services/profile-domain.service.ts");
+const profile_response_builder_service_1 = __webpack_require__(/*! ./profile-response-builder.service */ "./src/modules/profile/services/profile-response-builder.service.ts");
+let ProfileService = ProfileService_1 = class ProfileService {
+    constructor(profileRepo, profileBuilder, profileDomainService, dataSource) {
+        this.profileRepo = profileRepo;
+        this.profileBuilder = profileBuilder;
+        this.profileDomainService = profileDomainService;
+        this.dataSource = dataSource;
+        this.logger = new common_1.Logger(ProfileService_1.name);
+    }
+    async getMyProfile(jwtUser) {
+        try {
+            const user = await this.profileRepo.findUserWithProfile(jwtUser.id);
+            if (!user) {
+                throw new common_1.NotFoundException({
+                    code: 'USER_NOT_FOUND',
+                    message: 'User not found',
+                });
+            }
+            if (!user.profile) {
+                this.logger.warn(`Profile not found for user ${user.id}, creating...`);
+                user.profile = await this.profileRepo.createProfile(user.id);
+            }
+            const userMapper = (0, user_mapper_1.toUser)(user);
+            const profileMapper = (0, profile_mapper_1.toProfile)(user.profile);
+            return this.profileBuilder.buildProfileResponse(userMapper, profileMapper);
+        }
+        catch (error) {
+            if (error instanceof common_1.NotFoundException) {
+                throw error;
+            }
+            this.logger.error(`Failed to fetch profile for user: ${jwtUser.id}`, error);
+            throw new common_1.InternalServerErrorException({
+                code: 'PROFILE_FETCH_FAILED',
+                message: 'Failed to fetch profile',
+            });
+        }
+    }
+    async getPublicProfile(userId) {
+        try {
+            const user = await this.profileRepo.findUserWithProfile(userId);
+            if (!user) {
+                throw new common_1.NotFoundException({
+                    code: 'USER_NOT_FOUND',
+                    message: 'User not found',
+                });
+            }
+            if (!user.isActive) {
+                throw new common_1.NotFoundException({
+                    code: 'USER_NOT_ACTIVE',
+                    message: 'User account is not active',
+                });
+            }
+            if (!user.profile) {
+                throw new common_1.NotFoundException({
+                    code: 'PROFILE_NOT_FOUND',
+                    message: 'Profile not found',
+                });
+            }
+            const userMapper = (0, user_mapper_1.toUser)(user);
+            const profileMapper = (0, profile_mapper_1.toProfile)(user.profile);
+            return this.profileBuilder.buildPublicProfileResponse(userMapper, profileMapper);
+        }
+        catch (error) {
+            if (error instanceof common_1.NotFoundException) {
+                throw error;
+            }
+            this.logger.error(`Failed to fetch public profile: ${userId}`, error);
+            throw new common_1.InternalServerErrorException({
+                code: 'PUBLIC_PROFILE_FETCH_FAILED',
+                message: 'Failed to fetch public profile',
+            });
+        }
+    }
+    async updateProfile(jwtUser, dto) {
+        const queryRunner = this.dataSource.createQueryRunner();
+        await queryRunner.connect();
+        await queryRunner.startTransaction();
+        try {
+            const user = await this.profileRepo.findUserWithProfile(jwtUser.id, queryRunner.manager);
+            if (!user) {
+                throw new common_1.NotFoundException({
+                    code: 'USER_NOT_FOUND',
+                    message: 'User not found',
+                });
+            }
+            if (!user.profile) {
+                user.profile = await this.profileRepo.createProfile(user.id, dto, queryRunner.manager);
+            }
+            else {
+                user.profile = await this.profileRepo.updateProfile(user.profile, dto, queryRunner.manager);
+            }
+            await queryRunner.commitTransaction();
+            this.logger.log(`Profile updated for user: ${user.id}`);
+            const userMapper = (0, user_mapper_1.toUser)(user);
+            const profileMapper = (0, profile_mapper_1.toProfile)(user.profile);
+            return this.profileBuilder.buildProfileResponse(userMapper, profileMapper);
+        }
+        catch (error) {
+            await queryRunner.rollbackTransaction();
+            if (error instanceof common_1.NotFoundException ||
+                error instanceof common_1.BadRequestException) {
+                throw error;
+            }
+            this.logger.error(`Failed to update profile for user: ${jwtUser.id}`, error);
+            throw new common_1.InternalServerErrorException({
+                code: 'PROFILE_UPDATE_FAILED',
+                message: 'Failed to update profile',
+            });
+        }
+        finally {
+            await queryRunner.release();
+        }
+    }
+    async updateContact(jwtUser, dto) {
+        const queryRunner = this.dataSource.createQueryRunner();
+        await queryRunner.connect();
+        await queryRunner.startTransaction();
+        try {
+            const user = await this.profileRepo.findUserWithProfile(jwtUser.id, queryRunner.manager);
+            if (!user) {
+                throw new common_1.NotFoundException({
+                    code: 'USER_NOT_FOUND',
+                    message: 'User not found',
+                });
+            }
+            if (dto.email) {
+                const emailTaken = await this.profileRepo.isEmailTaken(dto.email, user.id, queryRunner.manager);
+                if (emailTaken) {
+                    throw new common_1.ConflictException({
+                        code: 'EMAIL_ALREADY_EXISTS',
+                        message: 'Email is already in use',
+                    });
+                }
+            }
+            if (dto.phone) {
+                const phoneTaken = await this.profileRepo.isPhoneTaken(dto.phone, user.id, queryRunner.manager);
+                if (phoneTaken) {
+                    throw new common_1.ConflictException({
+                        code: 'PHONE_ALREADY_EXISTS',
+                        message: 'Phone number is already in use',
+                    });
+                }
+            }
+            const updatedUser = await this.profileRepo.updateContact(user, dto, queryRunner.manager);
+            await queryRunner.commitTransaction();
+            this.logger.log(`Contact info updated for user: ${updatedUser.id}`);
+            const userMapper = (0, user_mapper_1.toUser)(updatedUser);
+            const profileMapper = (0, profile_mapper_1.toProfile)(user.profile);
+            return this.profileBuilder.buildProfileResponse(userMapper, profileMapper);
+        }
+        catch (error) {
+            await queryRunner.rollbackTransaction();
+            if (error instanceof common_1.NotFoundException ||
+                error instanceof common_1.ConflictException) {
+                throw error;
+            }
+            this.logger.error(`Failed to update contact for user: ${jwtUser.id}`, error);
+            throw new common_1.InternalServerErrorException({
+                code: 'CONTACT_UPDATE_FAILED',
+                message: 'Failed to update contact information',
+            });
+        }
+        finally {
+            await queryRunner.release();
+        }
+    }
+    async changeDisplayName(jwtUser, dto) {
+        const queryRunner = this.dataSource.createQueryRunner();
+        await queryRunner.connect();
+        await queryRunner.startTransaction();
+        try {
+            const user = await this.profileRepo.findUserWithProfile(jwtUser.id, queryRunner.manager);
+            if (!user || !user.profile) {
+                throw new common_1.NotFoundException({
+                    code: 'USER_NOT_FOUND',
+                    message: 'User or profile not found',
+                });
+            }
+            const profileMapper = (0, profile_mapper_1.toProfile)(user.profile);
+            if (!this.profileDomainService.canChangeDisplayName(profileMapper)) {
+                const daysUntilCanChange = this.profileDomainService.getDaysUntilCanChangeDisplayName(profileMapper);
+                throw new common_1.ForbiddenException({
+                    code: 'DISPLAY_NAME_CHANGE_RESTRICTED',
+                    message: `You can only change your display name once every 30 days. Please wait ${daysUntilCanChange} more day(s).`,
+                    daysUntilCanChange,
+                });
+            }
+            const validation = this.profileDomainService.validateDisplayNameChange(profileMapper.displayName, dto.displayName);
+            if (!validation.valid) {
+                throw new common_1.BadRequestException({
+                    code: 'INVALID_DISPLAY_NAME',
+                    message: validation.error,
+                });
+            }
+            const updatedProfile = await this.profileRepo.changeDisplayName(user.profile, dto.displayName, queryRunner.manager);
+            await queryRunner.commitTransaction();
+            this.logger.log(`Display name changed for user: ${user.id} ` +
+                `(Count: ${updatedProfile.displayNameChangeCount})`);
+            return {
+                success: true,
+                message: 'Display name changed successfully',
+                newDisplayName: updatedProfile.displayName,
+                changedAt: updatedProfile.lastDisplayNameChange,
+                daysUntilNextChange: 30,
+            };
+        }
+        catch (error) {
+            await queryRunner.rollbackTransaction();
+            if (error instanceof common_1.NotFoundException ||
+                error instanceof common_1.ForbiddenException ||
+                error instanceof common_1.BadRequestException) {
+                throw error;
+            }
+            this.logger.error(`Failed to change display name for user: ${jwtUser.id}`, error);
+            throw new common_1.InternalServerErrorException({
+                code: 'DISPLAY_NAME_CHANGE_FAILED',
+                message: 'Failed to change display name',
+            });
+        }
+        finally {
+            await queryRunner.release();
+        }
+    }
+    async updateAvatar(jwtUser, avatarUrl) {
+        const queryRunner = this.dataSource.createQueryRunner();
+        await queryRunner.connect();
+        await queryRunner.startTransaction();
+        try {
+            const updatedProfile = await this.profileRepo.updateAvatar(jwtUser.id, avatarUrl, queryRunner.manager);
+            const user = await this.profileRepo.findUserWithProfile(jwtUser.id, queryRunner.manager);
+            await queryRunner.commitTransaction();
+            this.logger.log(`Avatar updated for user: ${jwtUser.id}`);
+            const userMapper = (0, user_mapper_1.toUser)(user);
+            const profileMapper = (0, profile_mapper_1.toProfile)(updatedProfile);
+            return this.profileBuilder.buildProfileResponse(userMapper, profileMapper);
+        }
+        catch (error) {
+            await queryRunner.rollbackTransaction();
+            this.logger.error(`Failed to update avatar for user: ${jwtUser.id}`, error);
+            throw new common_1.InternalServerErrorException({
+                code: 'AVATAR_UPDATE_FAILED',
+                message: 'Failed to update avatar',
+            });
+        }
+        finally {
+            await queryRunner.release();
+        }
+    }
+    async deleteAccount(jwtUser) {
+        const queryRunner = this.dataSource.createQueryRunner();
+        await queryRunner.connect();
+        await queryRunner.startTransaction();
+        try {
+            await this.profileRepo.softDeleteUser(jwtUser.id, queryRunner.manager);
+            await queryRunner.commitTransaction();
+            this.logger.log(`Account deleted for user: ${jwtUser.id}`);
+            return {
+                success: true,
+                message: 'Account deleted successfully',
+            };
+        }
+        catch (error) {
+            await queryRunner.rollbackTransaction();
+            this.logger.error(`Failed to delete account for user: ${jwtUser.id}`, error);
+            throw new common_1.InternalServerErrorException({
+                code: 'ACCOUNT_DELETE_FAILED',
+                message: 'Failed to delete account',
+            });
+        }
+        finally {
+            await queryRunner.release();
+        }
+    }
+    async searchProfiles(searchTerm, limit = 20, offset = 0) {
+        try {
+            const [profiles, total] = await this.profileRepo.searchProfilesByDisplayName(searchTerm, limit, offset);
+            const mappedProfiles = profiles.map(profile => {
+                const userMapper = (0, user_mapper_1.toUser)(profile.user);
+                const profileMapper = (0, profile_mapper_1.toProfile)(profile);
+                return this.profileBuilder.buildPublicProfileResponse(userMapper, profileMapper);
+            });
+            return { profiles: mappedProfiles, total };
+        }
+        catch (error) {
+            this.logger.error(`Failed to search profiles: ${searchTerm}`, error);
+            throw new common_1.InternalServerErrorException({
+                code: 'PROFILE_SEARCH_FAILED',
+                message: 'Failed to search profiles',
+            });
+        }
+    }
+};
+exports.ProfileService = ProfileService;
+exports.ProfileService = ProfileService = ProfileService_1 = __decorate([
+    (0, common_1.Injectable)(),
+    __metadata("design:paramtypes", [typeof (_a = typeof profile_repository_1.ProfileRepository !== "undefined" && profile_repository_1.ProfileRepository) === "function" ? _a : Object, typeof (_b = typeof profile_response_builder_service_1.ProfileResponseBuilder !== "undefined" && profile_response_builder_service_1.ProfileResponseBuilder) === "function" ? _b : Object, typeof (_c = typeof profile_domain_service_1.ProfileDomainService !== "undefined" && profile_domain_service_1.ProfileDomainService) === "function" ? _c : Object, typeof (_d = typeof typeorm_1.DataSource !== "undefined" && typeorm_1.DataSource) === "function" ? _d : Object])
+], ProfileService);
 
 
 /***/ }),
@@ -6181,7 +8395,7 @@ __decorate([
     __metadata("design:type", String)
 ], Quote.prototype, "providerId", void 0);
 __decorate([
-    (0, typeorm_1.ManyToOne)(() => user_entity_1.User, { eager: true, onDelete: 'CASCADE' }),
+    (0, typeorm_1.ManyToOne)(() => user_entity_1.User, { eager: false, onDelete: 'CASCADE' }),
     (0, typeorm_1.JoinColumn)({ name: 'provider_id' }),
     __metadata("design:type", typeof (_b = typeof user_entity_1.User !== "undefined" && user_entity_1.User) === "function" ? _b : Object)
 ], Quote.prototype, "provider", void 0);
@@ -6491,7 +8705,7 @@ __decorate([
     __metadata("design:returntype", typeof (_p = typeof Promise !== "undefined" && Promise) === "function" ? _p : Object)
 ], QuoteController.prototype, "deleteQuote", null);
 exports.QuoteController = QuoteController = __decorate([
-    (0, swagger_1.ApiTags)('Quotes - Chào giá'),
+    (0, swagger_1.ApiTags)('Quotes'),
     (0, common_1.Controller)('quotes'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
     (0, swagger_1.ApiBearerAuth)(),
@@ -6794,7 +9008,7 @@ let QuoteNotificationService = class QuoteNotificationService {
         await this.notificationService.notifyNewQuote(customerId, {
             postId: post.id,
             quoteId: quote.id,
-            providerName: provider.displayName || provider.fullName || 'Thợ',
+            providerName: provider.profile?.fullName || 'Thợ',
             price: quote.price,
             postTitle: post.title,
         });
@@ -7110,25 +9324,18 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
-var _a, _b, _c, _d, _e, _f;
+var _a, _b, _c, _d, _e, _f, _g;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.User = void 0;
 const user_role_enum_1 = __webpack_require__(/*! @/common/enums/user-role.enum */ "./src/common/enums/user-role.enum.ts");
 const refresh_token_entity_1 = __webpack_require__(/*! @/modules/auth/entities/refresh-token.entity */ "./src/modules/auth/entities/refresh-token.entity.ts");
+const profile_entity_1 = __webpack_require__(/*! @/modules/profile/entities/profile.entity */ "./src/modules/profile/entities/profile.entity.ts");
 const typeorm_1 = __webpack_require__(/*! typeorm */ "typeorm");
 let User = class User {
     constructor() {
-        this.role = user_role_enum_1.UserRole.CUSTOMER;
-        this.displayNameChangeCount = 0;
         this.isVerified = false;
         this.isActive = true;
-    }
-    setDefaults() {
-        if (!this.role)
-            this.role = user_role_enum_1.UserRole.CUSTOMER;
-        if (!this.displayName && this.fullName) {
-            this.displayName = this.fullName;
-        }
+        this.failedLoginAttempts = 0;
     }
     isAdmin() {
         return this.role === user_role_enum_1.UserRole.ADMIN;
@@ -7136,29 +9343,18 @@ let User = class User {
     isCustomer() {
         return this.role === user_role_enum_1.UserRole.CUSTOMER;
     }
-    isWorker() {
+    isProvider() {
         return this.role === user_role_enum_1.UserRole.PROVIDER;
     }
-    canChangeDisplayName() {
-        if (!this.lastDisplayNameChange)
-            return true;
-        const daysSinceLastChange = this.getDaysSinceLastDisplayNameChange();
-        return daysSinceLastChange >= 30;
+    isAccountLocked() {
+        if (!this.accountLockedUntil)
+            return false;
+        return new Date() < this.accountLockedUntil;
     }
-    getDaysSinceLastDisplayNameChange() {
-        if (!this.lastDisplayNameChange)
-            return Infinity;
-        const now = new Date();
-        const lastChange = new Date(this.lastDisplayNameChange);
-        const diffTime = Math.abs(now.getTime() - lastChange.getTime());
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        return diffDays;
-    }
-    getDaysUntilCanChangeDisplayName() {
-        if (!this.lastDisplayNameChange)
-            return 0;
-        const daysSinceLastChange = this.getDaysSinceLastDisplayNameChange();
-        return Math.max(0, 30 - daysSinceLastChange);
+    canLogin() {
+        return this.isActive &&
+            !this.isAccountLocked() &&
+            this.deletedAt === null;
     }
 };
 exports.User = User;
@@ -7167,103 +9363,156 @@ __decorate([
     __metadata("design:type", String)
 ], User.prototype, "id", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ length: 255, nullable: true }),
-    (0, typeorm_1.Index)(),
+    (0, typeorm_1.Column)({
+        length: 255,
+        nullable: true,
+        comment: 'User email for authentication'
+    }),
     __metadata("design:type", String)
 ], User.prototype, "email", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ length: 20, nullable: true }),
-    (0, typeorm_1.Index)(),
+    (0, typeorm_1.Column)({
+        length: 20,
+        nullable: true,
+        comment: 'User phone for authentication'
+    }),
     __metadata("design:type", String)
 ], User.prototype, "phone", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ name: 'password_hash', length: 255, nullable: true, select: false }),
+    (0, typeorm_1.Column)({
+        name: 'password_hash',
+        length: 255,
+        nullable: true,
+        select: false,
+        comment: 'Hashed password - never select by default'
+    }),
     __metadata("design:type", String)
 ], User.prototype, "passwordHash", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'enum', enum: user_role_enum_1.UserRole, default: user_role_enum_1.UserRole.CUSTOMER }),
+    (0, typeorm_1.Column)({
+        type: 'enum',
+        enum: user_role_enum_1.UserRole,
+        default: user_role_enum_1.UserRole.CUSTOMER,
+        comment: 'User role for authorization and access control'
+    }),
     __metadata("design:type", typeof (_a = typeof user_role_enum_1.UserRole !== "undefined" && user_role_enum_1.UserRole) === "function" ? _a : Object)
 ], User.prototype, "role", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ name: 'full_name', length: 255, nullable: true }),
-    __metadata("design:type", String)
-], User.prototype, "fullName", void 0);
-__decorate([
-    (0, typeorm_1.Column)({ name: 'display_name', length: 100, nullable: true }),
-    __metadata("design:type", String)
-], User.prototype, "displayName", void 0);
-__decorate([
-    (0, typeorm_1.Column)({ name: 'avatar_url', length: 500, nullable: true }),
-    __metadata("design:type", String)
-], User.prototype, "avatarUrl", void 0);
-__decorate([
-    (0, typeorm_1.Column)({ type: 'text', nullable: true }),
-    __metadata("design:type", String)
-], User.prototype, "bio", void 0);
-__decorate([
-    (0, typeorm_1.Column)({ length: 255, nullable: true }),
-    __metadata("design:type", String)
-], User.prototype, "address", void 0);
-__decorate([
-    (0, typeorm_1.Column)({ type: 'date', nullable: true }),
-    __metadata("design:type", typeof (_b = typeof Date !== "undefined" && Date) === "function" ? _b : Object)
-], User.prototype, "birthday", void 0);
-__decorate([
-    (0, typeorm_1.Column)({ length: 10, nullable: true }),
-    __metadata("design:type", String)
-], User.prototype, "gender", void 0);
-__decorate([
     (0, typeorm_1.Column)({
-        name: 'last_display_name_change',
-        type: 'timestamp with time zone',
-        nullable: true
+        name: 'is_verified',
+        default: false,
+        comment: 'Email/Phone verification status'
     }),
-    __metadata("design:type", typeof (_c = typeof Date !== "undefined" && Date) === "function" ? _c : Object)
-], User.prototype, "lastDisplayNameChange", void 0);
-__decorate([
-    (0, typeorm_1.Column)({
-        name: 'display_name_change_count',
-        type: 'int',
-        default: 0
-    }),
-    __metadata("design:type", Number)
-], User.prototype, "displayNameChangeCount", void 0);
-__decorate([
-    (0, typeorm_1.Column)({ name: 'is_verified', default: false }),
     __metadata("design:type", Boolean)
 ], User.prototype, "isVerified", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ name: 'is_active', default: true }),
+    (0, typeorm_1.Column)({
+        name: 'is_active',
+        default: true,
+        comment: 'Account active status (can be deactivated by user or admin)'
+    }),
     __metadata("design:type", Boolean)
 ], User.prototype, "isActive", void 0);
 __decorate([
-    (0, typeorm_1.CreateDateColumn)({ name: 'created_at' }),
+    (0, typeorm_1.Column)({
+        name: 'last_login_at',
+        type: 'timestamp with time zone',
+        nullable: true,
+        comment: 'Last successful login timestamp'
+    }),
+    __metadata("design:type", typeof (_b = typeof Date !== "undefined" && Date) === "function" ? _b : Object)
+], User.prototype, "lastLoginAt", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        name: 'failed_login_attempts',
+        type: 'int',
+        default: 0,
+        comment: 'Counter for failed login attempts (for security)'
+    }),
+    __metadata("design:type", Number)
+], User.prototype, "failedLoginAttempts", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        name: 'account_locked_until',
+        type: 'timestamp with time zone',
+        nullable: true,
+        comment: 'Temporary account lock timestamp (after too many failed attempts)'
+    }),
+    __metadata("design:type", typeof (_c = typeof Date !== "undefined" && Date) === "function" ? _c : Object)
+], User.prototype, "accountLockedUntil", void 0);
+__decorate([
+    (0, typeorm_1.CreateDateColumn)({
+        name: 'created_at',
+        type: 'timestamp with time zone'
+    }),
     __metadata("design:type", typeof (_d = typeof Date !== "undefined" && Date) === "function" ? _d : Object)
 ], User.prototype, "createdAt", void 0);
 __decorate([
-    (0, typeorm_1.UpdateDateColumn)({ name: 'updated_at' }),
+    (0, typeorm_1.UpdateDateColumn)({
+        name: 'updated_at',
+        type: 'timestamp with time zone'
+    }),
     __metadata("design:type", typeof (_e = typeof Date !== "undefined" && Date) === "function" ? _e : Object)
 ], User.prototype, "updatedAt", void 0);
 __decorate([
-    (0, typeorm_1.DeleteDateColumn)({ name: 'deleted_at' }),
+    (0, typeorm_1.DeleteDateColumn)({
+        name: 'deleted_at',
+        type: 'timestamp with time zone'
+    }),
     __metadata("design:type", typeof (_f = typeof Date !== "undefined" && Date) === "function" ? _f : Object)
 ], User.prototype, "deletedAt", void 0);
 __decorate([
-    (0, typeorm_1.OneToMany)(() => refresh_token_entity_1.RefreshToken, (rt) => rt.user, { cascade: true }),
+    (0, typeorm_1.OneToOne)(() => profile_entity_1.Profile, profile => profile.user, {
+        cascade: true,
+        eager: false
+    }),
+    __metadata("design:type", typeof (_g = typeof profile_entity_1.Profile !== "undefined" && profile_entity_1.Profile) === "function" ? _g : Object)
+], User.prototype, "profile", void 0);
+__decorate([
+    (0, typeorm_1.OneToMany)(() => refresh_token_entity_1.RefreshToken, rt => rt.user, {
+        cascade: true
+    }),
     __metadata("design:type", Array)
 ], User.prototype, "refreshTokens", void 0);
-__decorate([
-    (0, typeorm_1.BeforeInsert)(),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
-    __metadata("design:returntype", void 0)
-], User.prototype, "setDefaults", null);
 exports.User = User = __decorate([
     (0, typeorm_1.Entity)('users'),
-    (0, typeorm_1.Unique)(['email']),
+    (0, typeorm_1.Index)(['email'], { unique: true, where: 'deleted_at IS NULL' }),
+    (0, typeorm_1.Index)(['phone'], { unique: true, where: 'deleted_at IS NULL AND phone IS NOT NULL' }),
     (0, typeorm_1.Index)(['role', 'deletedAt']),
+    (0, typeorm_1.Index)(['isActive', 'deletedAt']),
     (0, typeorm_1.Index)(['createdAt'])
 ], User);
+
+
+/***/ }),
+
+/***/ "./src/modules/users/mapper/user.mapper.ts":
+/*!*************************************************!*\
+  !*** ./src/modules/users/mapper/user.mapper.ts ***!
+  \*************************************************/
+/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.toUser = toUser;
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+function toUser(user) {
+    if (!user?.id || !user?.email || !user?.role) {
+        throw new common_1.BadRequestException({
+            code: 'INVALID_USER_DATA',
+            message: 'User data is incomplete',
+        });
+    }
+    return {
+        id: user.id,
+        email: user.email,
+        phone: user.phone,
+        role: user.role,
+        isVerified: user.isVerified,
+        isActive: user.isActive,
+        createdAt: user.createdAt,
+    };
+}
 
 
 /***/ }),
@@ -7316,7 +9565,7 @@ let UserRepository = UserRepository_1 = class UserRepository {
                 { email: identifier.toLowerCase() },
                 { phone: identifier },
             ],
-            select: ['id', 'email', 'phone', 'fullName', 'role', 'passwordHash'],
+            select: ['id', 'email', 'phone', 'role', 'passwordHash'],
         });
     }
     async findById(id, manager) {

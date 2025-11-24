@@ -1,3 +1,4 @@
+import { ModerationModule } from '@/modules/moderation/moderation.module';
 import { UsersModule } from '@/modules/users/users.module';
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -9,11 +10,11 @@ import { PostBusinessService } from './services/post-business.service';
 import { PostMapperService } from './services/post-mapper.service';
 import { PostValidationService } from './services/post-validation.service';
 
-
 @Module({
     imports: [
         TypeOrmModule.forFeature([PostCustomer]),
         UsersModule,
+        ModerationModule
     ],
     controllers: [PostController],
     providers: [

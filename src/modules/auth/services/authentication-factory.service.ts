@@ -47,7 +47,6 @@ export class AuthenticationFactory {
                 id: user.id,
                 email: user.email,
                 phone: user.phone,
-                name: user.fullName,
                 role: user.role,
             },
         };

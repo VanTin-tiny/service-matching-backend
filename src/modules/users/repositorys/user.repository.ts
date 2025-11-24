@@ -31,7 +31,7 @@ export class UserRepository {
                 { email: identifier.toLowerCase() },
                 { phone: identifier },
             ],
-            select: ['id', 'email', 'phone', 'fullName', 'role', 'passwordHash'],
+            select: ['id', 'email', 'phone', 'role', 'passwordHash'],
         });
     }
 
