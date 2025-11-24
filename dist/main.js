@@ -3744,6 +3744,937 @@ PasswordUtil.DUMMY_HASH = '$2b$12$dummyHashForTimingAttackPreventionXXXXXXXXXXXX
 
 /***/ }),
 
+/***/ "./src/modules/moderation/config/moderation-patterns.config.ts":
+/*!*********************************************************************!*\
+  !*** ./src/modules/moderation/config/moderation-patterns.config.ts ***!
+  \*********************************************************************/
+/***/ ((__unused_webpack_module, exports) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.SYSTEM_PROMPT = exports.SUSPICIOUS_PHRASES = exports.BLACKLIST_PATTERNS = void 0;
+exports.BLACKLIST_PATTERNS = [
+    /\b(địt|đít|lồn|cặc|buồi|cu|cứt|đụ|chịch|đéo|đệch|dmm|dcm|dm|cc|cl|đcm|đmm)\b/gi,
+    /\b(sex|sexx|sexy|porn|xxx|18\+|bú|mút|bóp|vú|ngực|dương vật|âm đạo)\b/gi,
+    /\b(s[e3]x+|s[e3][x×]|p[o0]rn|đ[ií]t|ch[ij]ch|đ[uủú]|bú+|mú+t)\b/gi,
+    /[s$][e3€][x×✗]/gi,
+    /\b(đ\.ụ|đ\.ị\.t|c\.h\.ị\.c\.h|l\.ồ\.n|c\.ặ\.c)\b/gi,
+    /\b(gái gọi|call\s*girl|cave|karaoke|mại dâm|bán dâm|đi khách|gái ngành|book gái)\b/gi,
+    /\b(nhận đi khách|nhận khách|tiếp khách|phục vụ khách|khách sạn vui vẻ)\b/gi,
+    /\b(má sa da|massage\s*(đặc biệt|kín đáo|toàn thân|happy ending|tận nơi|vip))/gi,
+    /\b(k[1-9]|hj|bj|full\s*service|tour|khách vip)\b/gi,
+    /\b(tàu nhanh|tầu nhanh|tau nhanh)\b/gi,
+    /\b(sinh viên\s*(còn trinh|trinh|sv|teen)\s*(nhận|đi|phục vụ)?\s*khách)\b/gi,
+    /\b(gái\s*(dâm|dâm đãng|múi|ngon|xinh)\s*(nhận|đi)?\s*khách)\b/gi,
+    /\b(đưa\s*(anh|chị|em)\s*(lên\s*mây|lên\s*tiên|lên\s*đỉnh|sướng))/gi,
+    /\b(bay\s*lắc|bay\s*phê|ma\s*túy|thuốc\s*lắc)\b/gi,
+    /\b(one\s*night|ons|fwb|fuck\s*buddy)\b/gi,
+    /\b(sugar\s*baby|sugar\s*daddy|bao\s*nuôi)\b/gi,
+    /\b(\d+\s*(?:tr|triệu|k|củ)\s*(?:\/|\s)?\s*(?:shot|lần|giờ|đêm))\b/gi,
+    /\b(giá\s*(?:ok|oke|tốt|rẻ|mềm)\s*(?:inbox|ib|zalo))/gi,
+    /\b(dịch vụ\s*(đêm|khuya|24\/7|đặc biệt|thư giãn toàn thân|riêng tư|kín đáo))/gi,
+    /\b(phục vụ\s*(tận tình|chu đáo|nhiệt tình)\s*(đêm|khuya|24h))/gi,
+    /\b(gái\s*(xinh|đẹp|múi|dâm|dễ thương)\s*(phục vụ|massage|tắm))/gi,
+    /\b(em\s*(sẽ|phục vụ|làm cho|chiều|thỏa mãn)\s*(anh|chị))/gi,
+    /\b((anh|chị)\s*muốn\s*em\s*(làm gì|phục vụ|chiều))/gi,
+    /\b(zalo|telegram|viber|whatapp)\s*[:\s]*(tình dục|sex|massage|gái|dịch vụ đêm)/gi,
+    /\b(bdsm|bạo dâm|sm|đánh đòn|trói|roi|xiềng xích|nô lệ tình dục)\b/gi,
+    /\b(địt mẹ|đụ má|con chó|đĩ|điếm|đéo má|đm|vãi|vkl|vl|vcl)\b/gi,
+    /\b(đjt|djt|dit|lon|cak|ku|đờ mờ)\b/gi,
+    /[🔞🍆🍑💦😈🔥]+/g,
+];
+exports.SUSPICIOUS_PHRASES = [
+    'massage', 'spa', 'thư giãn', 'kín đáo', 'riêng tư', 'tận nơi',
+    'phục vụ', 'dịch vụ', 'đêm', 'khuya', '24/7', '24h',
+    'vip', 'cao cấp', 'đặc biệt', 'full', 'toàn thân'
+];
+exports.SYSTEM_PROMPT = `Bạn là AI kiểm duyệt nội dung TIẾNG VIỆT cho nền tảng dịch vụ. Phát hiện nội dung vi phạm qua NGỮ NGHĨA.
+
+### CÁC LOẠI VI PHẠM (ưu tiên cao → thấp):
+
+**1. MẠI DÂM (PROSTITUTION)** - severity ≥ 0.6
+- Trực tiếp: "gái gọi", "cave", "đi khách", "book gái", "gái ngành"
+- Núp bóng: "massage kín đáo", "massage tận nơi đêm", "massage happy ending"
+- Ám chỉ: "dịch vụ đêm", "phục vụ 24/7 kín đáo", "thư giãn toàn thân riêng tư"
+- Kết hợp: "massage" + ("kín đáo"|"riêng tư"|"tận nơi"|"vip"|"24h")
+- Giá + sex: "1tr5 full service", "500k/shot", "giá ok inbox"
+
+**2. TÌNH DỤC (SEXUAL)** - severity ≥ 0.7
+- Từ lóng: "địt", "đụ", "chịch", "lồn", "cặc", "cu", "sexx", "69"
+- Biến thể: "đ!t", "ch!ch", "s3x", "xxx", "đ.ụ", "l.ồ.n"
+- Mô tả: "bú", "mút", "vú", "ngực", "dương vật", "bộ phận nhạy cảm"
+- Emoji: 🔞🍆🍑💦
+
+**3. BDSM** - severity ≥ 0.7
+- "bdsm", "bạo dâm", "sm", "trói", "đánh đòn", "roi", "nô lệ"
+
+**4. BẠO LỰC (VIOLENCE)** - severity ≥ 0.8
+- Đánh nhau, giết người, gây thương tích, đe dọa nghiêm trọng
+
+**5. THÙ HẬN (HATE)** - severity ≥ 0.8
+- Kỳ thị dân tộc, tôn giáo, giới tính
+
+### LOGIC PHÂN TÍCH:
+
+✅ **CHO PHÉP:**
+- Dịch vụ hợp pháp: "sửa điện", "sửa ống nước", "trang trí", "vận chuyển"
+- Làm đẹp chuyên nghiệp: "spa chăm sóc da", "nail", "cắt tóc", "massage trị liệu"
+- Từ trung tính: "dịch vụ tốt", "tận tâm", "uy tín"
+
+❌ **REJECT KHI:**
+1. Có từ lóng tình dục/mại dâm rõ ràng
+2. Massage/spa + ("kín đáo"|"riêng tư"|"tận nơi đêm"|"happy ending")
+3. "Dịch vụ" + ("đêm"|"khuya"|"24/7") + ("kín đáo"|"riêng tư")
+4. Giá tiền + từ khóa tình dục ("triệu/đêm", "k/shot")
+5. Bất kỳ dấu hiệu mại dâm núp bóng
+
+### OUTPUT (JSON only, NO explanation):
+{
+  "approved": true|false,
+  "confidence": 0.0-1.0,
+  "violations": [
+    {
+      "type": "PROSTITUTION|SEXUAL|BDSM|VIOLENCE|HATE",
+      "severity": 0.0-1.0,
+      "reason": "lý do ngắn gọn",
+      "location": "title|description|both",
+      "evidence": "đoạn text vi phạm"
+    }
+  ]
+}
+
+**QUY TẮC:**
+- Phân tích NGỮ NGHĨA, không chỉ từ khóa
+- confidence ≥ 0.8 khi chắc chắn
+- severity ≥ 0.6 cho mại dâm (nguy hiểm cao)
+- severity ≥ 0.7 cho tình dục
+- Luôn cung cấp evidence
+- REJECT khi có nghi ngờ hợp lý về mại dâm/tình dục`;
+
+
+/***/ }),
+
+/***/ "./src/modules/moderation/entities/moderation-log.entity.ts":
+/*!******************************************************************!*\
+  !*** ./src/modules/moderation/entities/moderation-log.entity.ts ***!
+  \******************************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var _a, _b;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.ModerationLog = void 0;
+const typeorm_1 = __webpack_require__(/*! typeorm */ "typeorm");
+const moderation_interface_1 = __webpack_require__(/*! ../interfaces/moderation.interface */ "./src/modules/moderation/interfaces/moderation.interface.ts");
+let ModerationLog = class ModerationLog {
+    constructor() {
+        this.violationTypes = [];
+    }
+};
+exports.ModerationLog = ModerationLog;
+__decorate([
+    (0, typeorm_1.PrimaryGeneratedColumn)('uuid'),
+    __metadata("design:type", String)
+], ModerationLog.prototype, "id", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'user_id' }),
+    (0, typeorm_1.Index)(),
+    __metadata("design:type", String)
+], ModerationLog.prototype, "userId", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'entity_type', length: 50 }),
+    __metadata("design:type", String)
+], ModerationLog.prototype, "entityType", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'entity_id', nullable: true }),
+    __metadata("design:type", String)
+], ModerationLog.prototype, "entityId", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'request_id' }),
+    __metadata("design:type", String)
+], ModerationLog.prototype, "requestId", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        type: 'enum',
+        enum: moderation_interface_1.ModerationStatus,
+    }),
+    __metadata("design:type", typeof (_a = typeof moderation_interface_1.ModerationStatus !== "undefined" && moderation_interface_1.ModerationStatus) === "function" ? _a : Object)
+], ModerationLog.prototype, "status", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'is_allowed' }),
+    __metadata("design:type", Boolean)
+], ModerationLog.prototype, "isAllowed", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'decimal', precision: 3, scale: 2 }),
+    __metadata("design:type", Number)
+], ModerationLog.prototype, "confidence", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        type: 'enum',
+        enum: moderation_interface_1.ViolationType,
+        array: true,
+        default: '{}',
+        name: 'violation_types',
+    }),
+    __metadata("design:type", Array)
+], ModerationLog.prototype, "violationTypes", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'jsonb', name: 'violations_detail', nullable: true }),
+    __metadata("design:type", Object)
+], ModerationLog.prototype, "violationsDetail", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'text', name: 'original_title' }),
+    __metadata("design:type", String)
+], ModerationLog.prototype, "originalTitle", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'text', name: 'original_description' }),
+    __metadata("design:type", String)
+], ModerationLog.prototype, "originalDescription", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'jsonb', name: 'moderated_content', nullable: true }),
+    __metadata("design:type", Object)
+], ModerationLog.prototype, "moderatedContent", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'jsonb' }),
+    __metadata("design:type", Object)
+], ModerationLog.prototype, "metadata", void 0);
+__decorate([
+    (0, typeorm_1.CreateDateColumn)({ name: 'created_at' }),
+    __metadata("design:type", typeof (_b = typeof Date !== "undefined" && Date) === "function" ? _b : Object)
+], ModerationLog.prototype, "createdAt", void 0);
+exports.ModerationLog = ModerationLog = __decorate([
+    (0, typeorm_1.Entity)('moderation_logs'),
+    (0, typeorm_1.Index)(['userId', 'createdAt']),
+    (0, typeorm_1.Index)(['status', 'createdAt']),
+    (0, typeorm_1.Index)(['entityType', 'entityId'])
+], ModerationLog);
+
+
+/***/ }),
+
+/***/ "./src/modules/moderation/interfaces/moderation.interface.ts":
+/*!*******************************************************************!*\
+  !*** ./src/modules/moderation/interfaces/moderation.interface.ts ***!
+  \*******************************************************************/
+/***/ ((__unused_webpack_module, exports) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.ViolationType = exports.ModerationStatus = void 0;
+var ModerationStatus;
+(function (ModerationStatus) {
+    ModerationStatus["APPROVED"] = "APPROVED";
+    ModerationStatus["REJECTED"] = "REJECTED";
+    ModerationStatus["PENDING"] = "PENDING";
+    ModerationStatus["ERROR"] = "ERROR";
+})(ModerationStatus || (exports.ModerationStatus = ModerationStatus = {}));
+var ViolationType;
+(function (ViolationType) {
+    ViolationType["SEXUAL"] = "SEXUAL";
+    ViolationType["VIOLENCE"] = "VIOLENCE";
+    ViolationType["HATE"] = "HATE";
+    ViolationType["HARASSMENT"] = "HARASSMENT";
+    ViolationType["SELF_HARM"] = "SELF_HARM";
+    ViolationType["ILLEGAL"] = "ILLEGAL";
+})(ViolationType || (exports.ViolationType = ViolationType = {}));
+
+
+/***/ }),
+
+/***/ "./src/modules/moderation/moderation.module.ts":
+/*!*****************************************************!*\
+  !*** ./src/modules/moderation/moderation.module.ts ***!
+  \*****************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.ModerationModule = void 0;
+const moderation_config_1 = __importDefault(__webpack_require__(/*! @/config/moderation.config */ "./src/config/moderation.config.ts"));
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const config_1 = __webpack_require__(/*! @nestjs/config */ "@nestjs/config");
+const typeorm_1 = __webpack_require__(/*! @nestjs/typeorm */ "@nestjs/typeorm");
+const moderation_log_entity_1 = __webpack_require__(/*! ./entities/moderation-log.entity */ "./src/modules/moderation/entities/moderation-log.entity.ts");
+const moderation_log_repository_1 = __webpack_require__(/*! ./repositories/moderation-log.repository */ "./src/modules/moderation/repositories/moderation-log.repository.ts");
+const al_moderation_service_1 = __webpack_require__(/*! ./services/al-moderation.service */ "./src/modules/moderation/services/al-moderation.service.ts");
+const moderation_service_1 = __webpack_require__(/*! ./moderation.service */ "./src/modules/moderation/moderation.service.ts");
+const ollama_moderation_service_1 = __webpack_require__(/*! ./services/ollama-moderation.service */ "./src/modules/moderation/services/ollama-moderation.service.ts");
+let ModerationModule = class ModerationModule {
+};
+exports.ModerationModule = ModerationModule;
+exports.ModerationModule = ModerationModule = __decorate([
+    (0, common_1.Module)({
+        imports: [
+            config_1.ConfigModule.forFeature(moderation_config_1.default),
+            typeorm_1.TypeOrmModule.forFeature([moderation_log_entity_1.ModerationLog]),
+        ],
+        providers: [
+            ollama_moderation_service_1.OllamaModerationService,
+            al_moderation_service_1.AIModerationService,
+            moderation_service_1.ModerationService,
+            moderation_log_repository_1.ModerationLogRepository,
+        ],
+        exports: [
+            moderation_service_1.ModerationService,
+            moderation_log_repository_1.ModerationLogRepository,
+            al_moderation_service_1.AIModerationService,
+        ],
+    })
+], ModerationModule);
+
+
+/***/ }),
+
+/***/ "./src/modules/moderation/moderation.service.ts":
+/*!******************************************************!*\
+  !*** ./src/modules/moderation/moderation.service.ts ***!
+  \******************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var ModerationService_1;
+var _a, _b, _c;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.ModerationService = void 0;
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const config_1 = __webpack_require__(/*! @nestjs/config */ "@nestjs/config");
+const moderation_log_repository_1 = __webpack_require__(/*! ./repositories/moderation-log.repository */ "./src/modules/moderation/repositories/moderation-log.repository.ts");
+const al_moderation_service_1 = __webpack_require__(/*! ./services/al-moderation.service */ "./src/modules/moderation/services/al-moderation.service.ts");
+let ModerationService = ModerationService_1 = class ModerationService {
+    constructor(aiModerationService, moderationLogRepository, configService) {
+        this.aiModerationService = aiModerationService;
+        this.moderationLogRepository = moderationLogRepository;
+        this.configService = configService;
+        this.logger = new common_1.Logger(ModerationService_1.name);
+    }
+    async moderatePostContent(title, description, userId, context) {
+        const requestId = this.generateRequestId();
+        this.logger.log(`[${requestId}] Moderating post content for user: ${userId}`);
+        const userStats = await this.moderationLogRepository.getUserModerationStats(userId);
+        if (userStats.recentRejections >= 5) {
+            this.logger.warn(`[${requestId}] User ${userId} has ${userStats.recentRejections} recent rejections`);
+        }
+        const request = {
+            title,
+            description,
+            userId,
+            requestId,
+        };
+        const result = await this.aiModerationService.moderateContent(request);
+        await this.logModerationResult(userId, requestId, result, title, description, context);
+        return result;
+    }
+    async logModerationResult(userId, requestId, result, originalTitle, originalDescription, context) {
+        try {
+            await this.moderationLogRepository.createLog({
+                userId,
+                entityType: context?.entityType || 'post',
+                entityId: context?.entityId,
+                requestId,
+                result,
+                originalTitle,
+                originalDescription,
+                ipAddress: context?.ipAddress,
+                userAgent: context?.userAgent,
+            });
+        }
+        catch (error) {
+            this.logger.error(`Failed to log moderation result: ${error instanceof Error ? error.message : 'Unknown'}`, error instanceof Error ? error.stack : undefined);
+        }
+    }
+    async getUserModerationHistory(userId, limit = 20) {
+        return this.moderationLogRepository.findByUser(userId, limit);
+    }
+    async getUserModerationStats(userId) {
+        return this.moderationLogRepository.getUserModerationStats(userId);
+    }
+    generateRequestId() {
+        return `mod_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    }
+};
+exports.ModerationService = ModerationService;
+exports.ModerationService = ModerationService = ModerationService_1 = __decorate([
+    (0, common_1.Injectable)(),
+    __metadata("design:paramtypes", [typeof (_a = typeof al_moderation_service_1.AIModerationService !== "undefined" && al_moderation_service_1.AIModerationService) === "function" ? _a : Object, typeof (_b = typeof moderation_log_repository_1.ModerationLogRepository !== "undefined" && moderation_log_repository_1.ModerationLogRepository) === "function" ? _b : Object, typeof (_c = typeof config_1.ConfigService !== "undefined" && config_1.ConfigService) === "function" ? _c : Object])
+], ModerationService);
+
+
+/***/ }),
+
+/***/ "./src/modules/moderation/repositories/moderation-log.repository.ts":
+/*!**************************************************************************!*\
+  !*** ./src/modules/moderation/repositories/moderation-log.repository.ts ***!
+  \**************************************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var __param = (this && this.__param) || function (paramIndex, decorator) {
+    return function (target, key) { decorator(target, key, paramIndex); }
+};
+var ModerationLogRepository_1;
+var _a;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.ModerationLogRepository = void 0;
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const typeorm_1 = __webpack_require__(/*! @nestjs/typeorm */ "@nestjs/typeorm");
+const typeorm_2 = __webpack_require__(/*! typeorm */ "typeorm");
+const moderation_log_entity_1 = __webpack_require__(/*! ../entities/moderation-log.entity */ "./src/modules/moderation/entities/moderation-log.entity.ts");
+let ModerationLogRepository = ModerationLogRepository_1 = class ModerationLogRepository {
+    constructor(repository) {
+        this.repository = repository;
+        this.logger = new common_1.Logger(ModerationLogRepository_1.name);
+    }
+    async createLog(dto) {
+        const log = this.repository.create({
+            userId: dto.userId,
+            entityType: dto.entityType,
+            entityId: dto.entityId,
+            requestId: dto.requestId,
+            status: dto.result.status,
+            isAllowed: dto.result.isAllowed,
+            confidence: dto.result.confidence,
+            violationTypes: dto.result.violations.map(v => v.type),
+            violationsDetail: dto.result.violations,
+            originalTitle: dto.originalTitle,
+            originalDescription: dto.originalDescription,
+            moderatedContent: dto.result.moderatedContent,
+            metadata: {
+                ...dto.result.metadata,
+                ipAddress: dto.ipAddress,
+                userAgent: dto.userAgent,
+            },
+        });
+        const saved = await this.repository.save(log);
+        this.logger.log(`Moderation log created: ${saved.id}`);
+        return saved;
+    }
+    async findByUser(userId, limit = 50) {
+        return this.repository.find({
+            where: { userId },
+            order: { createdAt: 'DESC' },
+            take: limit,
+        });
+    }
+    async findByEntity(entityType, entityId) {
+        return this.repository.findOne({
+            where: { entityType, entityId },
+            order: { createdAt: 'DESC' },
+        });
+    }
+    async countUserRejections(userId, withinHours = 24) {
+        const since = new Date();
+        since.setHours(since.getHours() - withinHours);
+        return this.repository.count({
+            where: {
+                userId,
+                isAllowed: false,
+            },
+        });
+    }
+    async getUserModerationStats(userId) {
+        const [total, rejected, recentRejections] = await Promise.all([
+            this.repository.count({ where: { userId } }),
+            this.repository.count({ where: { userId, isAllowed: false } }),
+            this.countUserRejections(userId, 24),
+        ]);
+        return {
+            total,
+            approved: total - rejected,
+            rejected,
+            recentRejections,
+        };
+    }
+};
+exports.ModerationLogRepository = ModerationLogRepository;
+exports.ModerationLogRepository = ModerationLogRepository = ModerationLogRepository_1 = __decorate([
+    (0, common_1.Injectable)(),
+    __param(0, (0, typeorm_1.InjectRepository)(moderation_log_entity_1.ModerationLog)),
+    __metadata("design:paramtypes", [typeof (_a = typeof typeorm_2.Repository !== "undefined" && typeorm_2.Repository) === "function" ? _a : Object])
+], ModerationLogRepository);
+
+
+/***/ }),
+
+/***/ "./src/modules/moderation/services/al-moderation.service.ts":
+/*!******************************************************************!*\
+  !*** ./src/modules/moderation/services/al-moderation.service.ts ***!
+  \******************************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var AIModerationService_1;
+var _a, _b;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.AIModerationService = void 0;
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const config_1 = __webpack_require__(/*! @nestjs/config */ "@nestjs/config");
+const ollama_moderation_service_1 = __webpack_require__(/*! ./ollama-moderation.service */ "./src/modules/moderation/services/ollama-moderation.service.ts");
+let AIModerationService = AIModerationService_1 = class AIModerationService {
+    constructor(configService, ollamaService) {
+        this.configService = configService;
+        this.ollamaService = ollamaService;
+        this.logger = new common_1.Logger(AIModerationService_1.name);
+        this.config = this.configService.get('moderation');
+        this.logger.log(`AI Moderation Service initialized with provider: ${this.config.provider}`);
+    }
+    async moderateContent(request) {
+        if (!this.config.enabled) {
+            this.logger.log('Moderation disabled, allowing content');
+            return this.createDisabledResult();
+        }
+        switch (this.config.provider) {
+            case 'ollama':
+                this.logger.debug('Using Ollama provider');
+                return this.ollamaService.moderateContent(request);
+            default:
+                this.logger.error(`Unknown provider: ${this.config.provider}, using Ollama`);
+                return this.ollamaService.moderateContent(request);
+        }
+    }
+    async checkHealth() {
+        try {
+            const provider = this.config.provider;
+            if (provider === 'ollama') {
+                const isHealthy = await this.ollamaService.checkHealth();
+                return {
+                    provider: 'ollama',
+                    isHealthy,
+                    message: isHealthy ? 'Ollama service is operational' : 'Ollama service is down',
+                };
+            }
+            return {
+                provider,
+                isHealthy: true,
+                message: 'Health check not implemented for this provider',
+            };
+        }
+        catch (error) {
+            this.logger.error('Health check failed', error);
+            return {
+                provider: this.config.provider,
+                isHealthy: false,
+                message: error instanceof Error ? error.message : 'Unknown error',
+            };
+        }
+    }
+    createDisabledResult() {
+        return {
+            status: 'APPROVED',
+            isAllowed: true,
+            violations: [],
+            confidence: 1.0,
+            metadata: {
+                model: 'disabled',
+                processingTime: 0,
+                timestamp: new Date(),
+            },
+        };
+    }
+};
+exports.AIModerationService = AIModerationService;
+exports.AIModerationService = AIModerationService = AIModerationService_1 = __decorate([
+    (0, common_1.Injectable)(),
+    __metadata("design:paramtypes", [typeof (_a = typeof config_1.ConfigService !== "undefined" && config_1.ConfigService) === "function" ? _a : Object, typeof (_b = typeof ollama_moderation_service_1.OllamaModerationService !== "undefined" && ollama_moderation_service_1.OllamaModerationService) === "function" ? _b : Object])
+], AIModerationService);
+
+
+/***/ }),
+
+/***/ "./src/modules/moderation/services/ollama-moderation.service.ts":
+/*!**********************************************************************!*\
+  !*** ./src/modules/moderation/services/ollama-moderation.service.ts ***!
+  \**********************************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var OllamaModerationService_1;
+var _a;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.OllamaModerationService = void 0;
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const config_1 = __webpack_require__(/*! @nestjs/config */ "@nestjs/config");
+const moderation_patterns_config_1 = __webpack_require__(/*! ../config/moderation-patterns.config */ "./src/modules/moderation/config/moderation-patterns.config.ts");
+const moderation_interface_1 = __webpack_require__(/*! ../interfaces/moderation.interface */ "./src/modules/moderation/interfaces/moderation.interface.ts");
+let OllamaModerationService = OllamaModerationService_1 = class OllamaModerationService {
+    constructor(configService) {
+        this.configService = configService;
+        this.logger = new common_1.Logger(OllamaModerationService_1.name);
+        this.BLACKLIST_PATTERNS = moderation_patterns_config_1.BLACKLIST_PATTERNS;
+        this.SUSPICIOUS_PHRASES = moderation_patterns_config_1.SUSPICIOUS_PHRASES;
+        this.config = this.configService.get('moderation');
+        this.baseUrl = this.config.ollama.baseUrl;
+        this.logger.log(`Ollama moderation initialized: ${this.baseUrl}`);
+        this.logger.log(`Using model: ${this.config.ollama.model}`);
+    }
+    async moderateContent(request) {
+        const startTime = Date.now();
+        const requestId = request.requestId || this.generateRequestId();
+        this.logger.log(`[${requestId}] Starting moderation for user: ${request.userId}`);
+        try {
+            if (!this.config.enabled) {
+                return this.createApprovedResult(startTime);
+            }
+            const blacklistResult = this.quickBlacklistCheck(request);
+            if (!blacklistResult.passed) {
+                this.logger.warn(`[${requestId}] REJECTED by blacklist: ${blacklistResult.reason}`);
+                return this.createBlacklistRejection(blacklistResult, startTime);
+            }
+            const riskScore = this.calculateRiskScore(request);
+            this.logger.debug(`[${requestId}] Risk score: ${riskScore.toFixed(2)}`);
+            if (riskScore < 0.3) {
+                this.logger.log(`[${requestId}] Low risk (${riskScore.toFixed(2)}), auto-approved`);
+                return this.createApprovedResult(startTime, riskScore);
+            }
+            const analysis = await this.callOllama(request, requestId, riskScore);
+            const result = this.processAnalysis(analysis, startTime, requestId);
+            this.logger.log(`[${requestId}] Completed: ${result.status} ` +
+                `(confidence: ${result.confidence.toFixed(2)}, time: ${Date.now() - startTime}ms)`);
+            return result;
+        }
+        catch (error) {
+            this.logger.error(`[${requestId}] Error: ${error instanceof Error ? error.message : 'Unknown'}`, error instanceof Error ? error.stack : undefined);
+            return this.handleModerationError(startTime);
+        }
+    }
+    quickBlacklistCheck(request) {
+        const fullText = `${request.title} ${request.description || ''}`.toLowerCase();
+        for (const pattern of this.BLACKLIST_PATTERNS) {
+            const match = fullText.match(pattern);
+            if (match) {
+                return {
+                    passed: false,
+                    reason: 'Chứa từ ngữ cấm rõ ràng',
+                    evidence: match[0]
+                };
+            }
+        }
+        return { passed: true };
+    }
+    calculateRiskScore(request) {
+        const fullText = `${request.title} ${request.description || ''}`.toLowerCase();
+        let score = 0;
+        let suspiciousCount = 0;
+        for (const phrase of this.SUSPICIOUS_PHRASES) {
+            if (fullText.includes(phrase)) {
+                suspiciousCount++;
+            }
+        }
+        score += Math.min(suspiciousCount * 0.15, 0.6);
+        const dangerousCombos = [
+            ['massage', 'kín đáo'],
+            ['massage', 'tận nơi'],
+            ['dịch vụ', 'đêm'],
+            ['dịch vụ', 'khuya'],
+            ['spa', 'vip'],
+            ['thư giãn', 'toàn thân'],
+            ['phục vụ', '24/7'],
+            ['giá', 'triệu', 'đêm'],
+        ];
+        for (const combo of dangerousCombos) {
+            if (combo.every(word => fullText.includes(word))) {
+                score += 0.25;
+            }
+        }
+        if (/\d+\s*(triệu|tr|k|nghìn)/i.test(fullText)) {
+            if (fullText.includes('đêm') || fullText.includes('giờ') || fullText.includes('lần')) {
+                score += 0.3;
+            }
+        }
+        if (fullText.length < 50 && suspiciousCount > 2) {
+            score += 0.2;
+        }
+        return Math.min(score, 1.0);
+    }
+    async callOllama(request, requestId, riskScore) {
+        const systemPrompt = this.buildOptimizedSystemPrompt();
+        const userPrompt = this.buildOptimizedUserPrompt(request, riskScore);
+        this.logger.debug(`[${requestId}] Calling Ollama API (risk: ${riskScore.toFixed(2)})`);
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), this.config.ollama.timeoutMs);
+        try {
+            const response = await fetch(`${this.baseUrl}/api/chat`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    model: this.config.ollama.model,
+                    messages: [
+                        {
+                            role: 'system',
+                            content: systemPrompt,
+                        },
+                        {
+                            role: 'user',
+                            content: userPrompt,
+                        },
+                    ],
+                    stream: false,
+                    options: {
+                        temperature: 0.1,
+                        top_p: 0.85,
+                        num_predict: 400,
+                        repeat_penalty: 1.1,
+                    },
+                }),
+                signal: controller.signal,
+            });
+            clearTimeout(timeoutId);
+            if (!response.ok) {
+                throw new Error(`Ollama API error: ${response.status} ${response.statusText}`);
+            }
+            const data = await response.json();
+            const content = data.message.content.trim();
+            this.logger.debug(`[${requestId}] AI response: ${content.substring(0, 150)}...`);
+            const parsed = this.extractJSON(content, requestId);
+            if (typeof parsed.approved !== 'boolean') {
+                throw new Error('Invalid AI response: missing approved field');
+            }
+            if (typeof parsed.confidence !== 'number') {
+                parsed.confidence = parsed.approved ? 0.7 : 0.8;
+            }
+            parsed.risk_score = riskScore;
+            return parsed;
+        }
+        catch (error) {
+            clearTimeout(timeoutId);
+            if (error instanceof Error && error.name === 'AbortError') {
+                throw new Error('Ollama request timeout');
+            }
+            throw error;
+        }
+    }
+    extractJSON(content, requestId) {
+        let jsonStr = content;
+        if (content.includes('```')) {
+            const match = content.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+            jsonStr = match ? match[1].trim() : content;
+        }
+        const jsonMatch = jsonStr.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+            jsonStr = jsonMatch[0];
+        }
+        try {
+            return JSON.parse(jsonStr);
+        }
+        catch (e) {
+            this.logger.error(`[${requestId}] JSON parse failed: ${e}`);
+            return {
+                approved: false,
+                confidence: 0.5,
+                violations: [{
+                        type: 'UNKNOWN',
+                        severity: 0.5,
+                        reason: 'AI response parse error',
+                        location: 'both'
+                    }],
+            };
+        }
+    }
+    buildOptimizedSystemPrompt() {
+        return moderation_patterns_config_1.SYSTEM_PROMPT;
+    }
+    buildOptimizedUserPrompt(request, riskScore) {
+        return `Risk score: ${riskScore.toFixed(2)}
+
+TIÊU ĐỀ: ${request.title}
+
+MÔ TẢ: ${request.description || '(Không có)'}
+
+Trả về JSON, không giải thích gì thêm.`;
+    }
+    processAnalysis(analysis, startTime, requestId) {
+        const violations = (analysis.violations || []).map(v => ({
+            type: v.type,
+            severity: v.severity,
+            reason: v.reason,
+            location: v.location,
+            evidence: v.evidence,
+        }));
+        const criticalViolations = violations.filter(v => {
+            const threshold = this.getThresholdForType(v.type);
+            return v.severity >= threshold;
+        });
+        let finalApproved = analysis.approved;
+        let finalConfidence = analysis.confidence;
+        if (criticalViolations.length > 0) {
+            finalApproved = false;
+            finalConfidence = Math.max(...criticalViolations.map(v => v.severity));
+            this.logger.warn(`[${requestId}] REJECTED: ${criticalViolations.length} critical violations`);
+        }
+        if (analysis.approved && (analysis.risk_score || 0) > 0.7) {
+            this.logger.warn(`[${requestId}] WARNING: AI approved but high risk score (${analysis.risk_score?.toFixed(2)})`);
+        }
+        return this.buildModerationResult(finalApproved, finalConfidence, criticalViolations, startTime, requestId);
+    }
+    buildModerationResult(approved, confidence, violations, startTime, requestId) {
+        const processingTime = Date.now() - startTime;
+        this.logger.log(`[${requestId}] Result: ${approved ? 'APPROVED' : 'REJECTED'} ` +
+            `(confidence: ${confidence.toFixed(2)}, violations: ${violations.length}, time: ${processingTime}ms)`);
+        if (!approved && violations.length > 0) {
+            this.logger.warn(`[${requestId}] Violations:\n` +
+                violations.map(v => `  - ${v.type} (${v.severity.toFixed(2)}): ${v.reason}` +
+                    (v.evidence ? `\n    Evidence: "${v.evidence}"` : '')).join('\n'));
+        }
+        return {
+            status: approved ? moderation_interface_1.ModerationStatus.APPROVED : moderation_interface_1.ModerationStatus.REJECTED,
+            isAllowed: approved,
+            violations,
+            confidence,
+            metadata: {
+                model: this.config.ollama.model,
+                processingTime,
+                timestamp: new Date(),
+            },
+        };
+    }
+    getThresholdForType(type) {
+        const typeUpper = type.toUpperCase();
+        switch (typeUpper) {
+            case 'PROSTITUTION':
+                return 0.55;
+            case 'SEXUAL':
+                return this.config.thresholds.sexual || 0.7;
+            case 'BDSM':
+                return 0.7;
+            case 'VIOLENCE':
+                return this.config.thresholds.violence || 0.8;
+            case 'HATE':
+                return this.config.thresholds.hate || 0.8;
+            case 'HARASSMENT':
+                return this.config.thresholds.harassment || 0.7;
+            default:
+                return 0.7;
+        }
+    }
+    createApprovedResult(startTime, riskScore = 0) {
+        return {
+            status: moderation_interface_1.ModerationStatus.APPROVED,
+            isAllowed: true,
+            violations: [],
+            confidence: 1.0 - riskScore * 0.2,
+            metadata: {
+                model: this.config.ollama.model,
+                processingTime: Date.now() - startTime,
+                timestamp: new Date(),
+            },
+        };
+    }
+    createBlacklistRejection(blacklistResult, startTime) {
+        return {
+            status: moderation_interface_1.ModerationStatus.REJECTED,
+            isAllowed: false,
+            violations: [{
+                    type: 'SEXUAL',
+                    severity: 1.0,
+                    reason: blacklistResult.reason || 'Chứa từ ngữ cấm',
+                    location: 'both',
+                    evidence: blacklistResult.evidence,
+                }],
+            confidence: 1.0,
+            metadata: {
+                model: 'blacklist',
+                processingTime: Date.now() - startTime,
+                timestamp: new Date(),
+            },
+        };
+    }
+    handleModerationError(startTime) {
+        const fallbackMode = this.config.fallbackMode;
+        this.logger.error(`Moderation error, using fallback mode: ${fallbackMode}`);
+        const shouldBlock = fallbackMode === 'block';
+        return {
+            status: moderation_interface_1.ModerationStatus.ERROR,
+            isAllowed: !shouldBlock,
+            violations: [],
+            confidence: 0,
+            metadata: {
+                model: 'error-fallback',
+                processingTime: Date.now() - startTime,
+                timestamp: new Date(),
+            },
+        };
+    }
+    generateRequestId() {
+        return `mod_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    }
+    async checkHealth() {
+        try {
+            const response = await fetch(`${this.baseUrl}/api/tags`, {
+                method: 'GET',
+                signal: AbortSignal.timeout(3000),
+            });
+            return response.ok;
+        }
+        catch (error) {
+            this.logger.error('Ollama health check failed', error);
+            return false;
+        }
+    }
+};
+exports.OllamaModerationService = OllamaModerationService;
+exports.OllamaModerationService = OllamaModerationService = OllamaModerationService_1 = __decorate([
+    (0, common_1.Injectable)(),
+    __metadata("design:paramtypes", [typeof (_a = typeof config_1.ConfigService !== "undefined" && config_1.ConfigService) === "function" ? _a : Object])
+], OllamaModerationService);
+
+
+/***/ }),
+
 /***/ "./src/modules/notifications/dtos/notification.dto.ts":
 /*!************************************************************!*\
   !*** ./src/modules/notifications/dtos/notification.dto.ts ***!
@@ -5551,7 +6482,7 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.PostsModule = void 0;
-const moderation_module_1 = __webpack_require__(Object(function webpackMissingModule() { var e = new Error("Cannot find module '@/modules/moderation/moderation.module'"); e.code = 'MODULE_NOT_FOUND'; throw e; }()));
+const moderation_module_1 = __webpack_require__(/*! @/modules/moderation/moderation.module */ "./src/modules/moderation/moderation.module.ts");
 const users_module_1 = __webpack_require__(/*! @/modules/users/users.module */ "./src/modules/users/users.module.ts");
 const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
 const typeorm_1 = __webpack_require__(/*! @nestjs/typeorm */ "@nestjs/typeorm");
@@ -5891,7 +6822,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var _a, _b, _c;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.PostValidationService = void 0;
-const moderation_service_1 = __webpack_require__(Object(function webpackMissingModule() { var e = new Error("Cannot find module '@/modules/moderation/moderation.service'"); e.code = 'MODULE_NOT_FOUND'; throw e; }()));
+const moderation_service_1 = __webpack_require__(/*! @/modules/moderation/moderation.service */ "./src/modules/moderation/moderation.service.ts");
 const user_repository_1 = __webpack_require__(/*! @/modules/users/repositorys/user.repository */ "./src/modules/users/repositorys/user.repository.ts");
 const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
 const post_repository_1 = __webpack_require__(/*! ../repositories/post.repository */ "./src/modules/posts/repositories/post.repository.ts");
