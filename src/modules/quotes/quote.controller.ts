@@ -1,10 +1,7 @@
-import { CurrentUser } from '@/common/decorators/@CurrentUser';
 import { Roles } from '@/common/decorators/@Roles';
-import { BaseResponseDto } from '@/common/dtos/base-response.dto';
 import { UserRole } from '@/common/enums/user-role.enum';
 import { JwtAuthGuard } from '@/common/guards/jwt-auth.guard';
 import { RolesGuard } from '@/common/guards/roles.guard';
-
 import {
     Body,
     Controller,
@@ -13,8 +10,8 @@ import {
     HttpCode,
     HttpStatus,
     Param,
+    Patch,
     Post,
-    Put,
     Query,
     UseGuards,
 } from '@nestjs/common';
@@ -26,10 +23,11 @@ import {
 } from '@nestjs/swagger';
 import { CurrentUserId } from '../../common/decorators/@CurrentUserId';
 import {
+    CancelQuoteDto,
     CreateQuoteDto,
     QuoteResponseDto,
     RejectQuoteDto,
-    StatusQuoteDto,
+    ReviseQuoteDto,
     UpdateQuoteDto
 } from './dtos/quote.dto';
 import { QuoteService } from './quote.service';
@@ -41,125 +39,211 @@ import { QuoteService } from './quote.service';
 export class QuoteController {
     constructor(private readonly quoteService: QuoteService) { }
 
+
     @Post()
-    @HttpCode(HttpStatus.CREATED)
     @Roles(UserRole.PROVIDER)
-    @ApiOperation({ summary: 'Create new quote (Worker)' })
-    @ApiResponse({ status: 201, description: 'Create success' })
-    @ApiResponse({ status: 400, description: 'Invalid data' })
-    @ApiResponse({ status: 403, description: 'No active' })
-    @ApiResponse({ status: 409, description: 'Already quote' })
+    @HttpCode(HttpStatus.CREATED)
+    @ApiOperation({
+        summary: '[Provider] Tạo quote mới cho post',
+        description: 'Provider chào giá lần đầu cho một post của customer'
+    })
+    @ApiResponse({ status: 201, description: 'Quote created successfully' })
+    @ApiResponse({ status: 400, description: 'Validation failed' })
+    @ApiResponse({ status: 409, description: 'Already quoted this post' })
     async createQuote(
         @CurrentUserId('id') providerId: string,
-        @Body() dto: CreateQuoteDto
-    ): Promise<QuoteResponseDto> {
+        @Body() dto: CreateQuoteDto,
+    ) {
         return await this.quoteService.createQuote(providerId, dto);
     }
 
-    @Put(':id')
+    @Post(':id/revise')
     @Roles(UserRole.PROVIDER)
-    @ApiOperation({ summary: 'Update price quote (Worker)' })
-    @ApiResponse({ status: 200, description: 'Update successful' })
-    @ApiResponse({ status: 400, description: 'Unable to update' })
-    @ApiResponse({ status: 404, description: 'Not found' })
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({
+        summary: '[Provider] Chào giá lại trong chat',
+        description: 'Provider thay đổi giá sau khi chat đã mở. Tạo revision mới.'
+    })
+    @ApiResponse({ status: 200, description: 'Quote revised successfully' })
+    @ApiResponse({ status: 400, description: 'Cannot revise at current status' })
+    async reviseQuote(
+        @Param('id') quoteId: string,
+        @CurrentUserId('id') providerId: string,
+        @Body() dto: ReviseQuoteDto,
+    ) {
+        return await this.quoteService.reviseQuote(quoteId, providerId, dto);
+    }
+
+    @Patch(':id')
+    @Roles(UserRole.PROVIDER)
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({
+        summary: '[Provider] Sửa quote (chỉ khi PENDING)',
+        description: 'Chỉ có thể sửa khi quote chưa được accept. Không tạo revision mới.'
+    })
+    @ApiResponse({ status: 200, description: 'Quote updated successfully' })
+    @ApiResponse({ status: 400, description: 'Cannot edit accepted quote' })
     async updateQuote(
         @Param('id') quoteId: string,
         @CurrentUserId('id') providerId: string,
-        @Body() dto: UpdateQuoteDto
-    ): Promise<QuoteResponseDto> {
+        @Body() dto: UpdateQuoteDto,
+    ) {
         return await this.quoteService.updateQuote(quoteId, providerId, dto);
     }
 
     @Post(':id/cancel')
     @Roles(UserRole.PROVIDER)
     @HttpCode(HttpStatus.OK)
-    @ApiOperation({ summary: 'Cancel quote (Worker)' })
-    @ApiResponse({ status: 200, description: 'Cancellation successful' })
+    @ApiOperation({
+        summary: '[Provider] Hủy quote',
+        description: 'Provider hủy quote. Có thể hủy trước khi order được tạo.'
+    })
+    @ApiResponse({ status: 200, description: 'Quote cancelled successfully' })
+    @ApiResponse({ status: 400, description: 'Cannot cancel' })
     async cancelQuote(
         @Param('id') quoteId: string,
-        @CurrentUser('id') providerId: string,
-        @Body('reason') reason?: string
-    ): Promise<StatusQuoteDto> {
-        return await this.quoteService.cancelQuote(quoteId, providerId, reason);
-    }
-
-    @Post(':id/accept')
-    @Roles(UserRole.CUSTOMER)
-    @HttpCode(HttpStatus.OK)
-    @ApiOperation({ summary: 'Accepted quote (Customer)' })
-    @ApiResponse({ status: 200, description: 'Accept success' })
-    @ApiResponse({ status: 400, description: 'Unacceptable' })
-    async acceptQuote(
-        @Param('id') quoteId: string,
-        @CurrentUser('id') customerId: string
-    ): Promise<StatusQuoteDto> {
-        return await this.quoteService.acceptQuote(quoteId, customerId);
-    }
-
-    @Post(':id/reject')
-    @Roles(UserRole.CUSTOMER)
-    @HttpCode(HttpStatus.OK)
-    @ApiOperation({ summary: 'Refused to bid (Customer)' })
-    @ApiResponse({ status: 200, description: 'Rejection successful' })
-    async rejectQuote(
-        @Param('id') quoteId: string,
-        @CurrentUser('id') customerId: string,
-        @Body() dto: RejectQuoteDto
-    ): Promise<StatusQuoteDto> {
-        return await this.quoteService.rejectQuote(
+        @CurrentUserId('id') providerId: string,
+        @Body() dto: CancelQuoteDto,
+    ) {
+        return await this.quoteService.cancelQuote(
             quoteId,
-            customerId,
-            dto.reason
-        );
-    }
-
-    @Get('my-quotes')
-    @Roles(UserRole.PROVIDER)
-    @ApiOperation({ summary: 'Get my quote list (Worker)' })
-    @ApiResponse({ status: 200, description: 'Success' })
-    async getMyQuotes(
-        @CurrentUser('id') providerId: string,
-        @Query() query: StatusQuoteDto
-    ): Promise<QuoteResponseDto[]> {
-        return await this.quoteService.getProviderQuotes(
             providerId,
-            query.status
+            dto.reason,
         );
-    }
-
-    @Get('post/:postId')
-    @Roles(UserRole.CUSTOMER)
-    @ApiOperation({ summary: 'Get post bids (Customer)' })
-    @ApiResponse({ status: 200, description: 'Success' })
-    async getPostQuotes(
-        @Param('postId') postId: string,
-        @CurrentUser('id') customerId: string
-    ): Promise<QuoteResponseDto[]> {
-        return await this.quoteService.getPostQuotes(postId, customerId);
-    }
-
-    @Get(':id')
-    @ApiOperation({ summary: 'See detailed quote' })
-    @ApiResponse({ status: 200, description: 'Success' })
-    @ApiResponse({ status: 403, description: 'No active' })
-    @ApiResponse({ status: 404, description: 'Not found' })
-    async getQuoteById(
-        @Param('id') quoteId: string,
-        @CurrentUser('id') userId: string
-    ): Promise<QuoteResponseDto> {
-        return await this.quoteService.getQuoteById(quoteId, userId);
     }
 
     @Delete(':id')
     @Roles(UserRole.PROVIDER)
     @HttpCode(HttpStatus.OK)
-    @ApiOperation({ summary: 'Delete quote (Worker)' })
-    @ApiResponse({ status: 204, description: 'Delete successful' })
+    @ApiOperation({
+        summary: '[Provider] Xóa quote',
+        description: 'Soft delete quote. Chỉ có thể xóa khi chưa có order.'
+    })
+    @ApiResponse({ status: 200, description: 'Quote deleted successfully' })
     async deleteQuote(
         @Param('id') quoteId: string,
-        @CurrentUser('id') providerId: string
-    ): Promise<BaseResponseDto<void>> {
+        @CurrentUserId('id') providerId: string,
+    ) {
         await this.quoteService.deleteQuote(quoteId, providerId);
-        return { success: true }
+        return { success: true, message: 'Quote deleted' };
+    }
+
+    @Get('my-quotes')
+    @Roles(UserRole.PROVIDER)
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({
+        summary: '[Provider] Lấy danh sách quote của tôi',
+        description: 'Xem tất cả quotes đã tạo, có thể filter theo status'
+    })
+    @ApiResponse({ status: 200, description: 'Success' })
+    async getMyQuotes(
+        @CurrentUserId('id') providerId: string,
+        @Query() query: QuoteResponseDto,
+    ) {
+        return await this.quoteService.getProviderQuotes(providerId, query.status);
+    }
+
+
+    @Post(':id/accept-for-chat')
+    @Roles(UserRole.CUSTOMER)
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({
+        summary: '[Customer] Chấp nhận quote để mở chat',
+        description: 'Customer chấp nhận quote, mở conversation để thương lượng. KHÔNG tạo order ngay.'
+    })
+    @ApiResponse({ status: 200, description: 'Chat opened successfully' })
+    @ApiResponse({ status: 400, description: 'Cannot accept quote' })
+    async acceptQuoteForChat(
+        @Param('id') quoteId: string,
+        @CurrentUserId('id') customerId: string,
+    ) {
+        return await this.quoteService.acceptQuoteForChat(quoteId, customerId);
+    }
+
+    @Post(':id/request-order')
+    @Roles(UserRole.CUSTOMER)
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({
+        summary: '[Customer] Nhấn đặt đơn với revision cụ thể',
+        description: 'Customer chọn một revision (hoặc revision hiện tại) để tạo order. Provider cần confirm.'
+    })
+    @ApiResponse({ status: 200, description: 'Order requested successfully' })
+    @ApiResponse({ status: 400, description: 'Cannot request order' })
+    async requestOrderFromRevision(
+        @Param('id') quoteId: string,
+        @CurrentUserId('id') customerId: string,
+        @Body() dto: CreateQuoteDto,
+    ) {
+        return await this.quoteService.reviseQuote(
+            quoteId,
+            customerId,
+            dto,
+        );
+    }
+
+    @Post(':id/reject')
+    @Roles(UserRole.CUSTOMER)
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({
+        summary: '[Customer] Từ chối quote',
+        description: 'Customer từ chối quote khi còn PENDING'
+    })
+    @ApiResponse({ status: 200, description: 'Quote rejected successfully' })
+    async rejectQuote(
+        @Param('id') quoteId: string,
+        @CurrentUserId('id') customerId: string,
+        @Body() dto: RejectQuoteDto,
+    ) {
+        return await this.quoteService.rejectQuote(
+            quoteId,
+            customerId,
+            dto.reason,
+        );
+    }
+
+    @Get('post/:postId')
+    @Roles(UserRole.CUSTOMER)
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({
+        summary: '[Customer] Lấy tất cả quote của một post',
+        description: 'Xem tất cả quotes cho post của mình'
+    })
+    @ApiResponse({ status: 200, description: 'Success' })
+    async getPostQuotes(
+        @Param('postId') postId: string,
+        @CurrentUserId('id') customerId: string,
+    ) {
+        return await this.quoteService.getPostQuotes(postId, customerId);
+    }
+
+
+    @Get(':id')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({
+        summary: 'Xem chi tiết quote',
+        description: 'Lấy thông tin quote (không bao gồm revisions)'
+    })
+    @ApiResponse({ status: 200, description: 'Success' })
+    @ApiResponse({ status: 403, description: 'No access' })
+    async getQuoteById(
+        @Param('id') quoteId: string,
+        @CurrentUserId('id') userId: string,
+    ) {
+        return await this.quoteService.getQuoteById(quoteId, userId);
+    }
+
+    @Get(':id/with-revisions')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({
+        summary: 'Xem quote với toàn bộ lịch sử revisions',
+        description: 'Dùng cho chat để hiển thị lịch sử chào giá. Customer có thể chọn revision để tạo order.'
+    })
+    @ApiResponse({ status: 200, description: 'Success' })
+    @ApiResponse({ status: 403, description: 'No access' })
+    async getQuoteWithRevisions(
+        @Param('id') quoteId: string,
+        @CurrentUserId('id') userId: string,
+    ) {
+        return await this.quoteService.getQuoteRevisionHistory(quoteId, userId);
     }
 }

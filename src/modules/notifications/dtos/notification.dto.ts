@@ -103,3 +103,13 @@ export class SuccessResponseDto {
     @ApiProperty({ description: 'Success status' })
     success!: boolean;
 }
+
+
+export class CreateNotification {
+    userId?: string;
+    type?: NotificationType;
+    title?: string;
+    message?: string;
+    metadata?: Record<string, any>;
+    actionUrl?: string;
+}

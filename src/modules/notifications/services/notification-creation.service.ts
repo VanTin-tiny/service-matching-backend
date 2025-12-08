@@ -1,8 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { CreateNotification } from '../dtos/notification.dto';
 import { Notification } from '../entities/notification.entity';
-import { NotificationType } from '../enums/notification.enum';
 import { NotificationRepository } from '../repositories/notification.repository';
+import { NotificationType } from '../enums/notification.enum';
+
+
 
 @Injectable()
 export class NotificationCreationService {
@@ -11,49 +14,52 @@ export class NotificationCreationService {
         private readonly eventEmitter: EventEmitter2,
     ) { }
 
-    
-    async createNotification(
-        userId: string,
-        type: NotificationType,
-        title: string,
-        message: string,
-        metadata?: Record<string, any>,
-        actionUrl?: string,
+
+    async createNotification(data:
+        CreateNotification
     ): Promise<Notification> {
         const notification = this.notificationRepo.create({
-            userId,
-            type,
-            title,
-            message,
-            metadata,
-            actionUrl,
+            userId: data.userId!,
+            type: data.type!,
+            title: data.title!,
+            message: data.message!,
+            metadata: data.metadata,
+            actionUrl: data.actionUrl,
             isRead: false,
         });
 
         const saved = await this.notificationRepo.save(notification);
 
-        //event for realtime(WebSocket)
         this.eventEmitter.emit('notification.created', {
-            userId,
+            userId: data.userId,
             notification: saved,
         });
 
         return saved;
     }
 
-    
     async createBulkNotifications(
-        userIds: string[],
-        type: NotificationType,
-        title: string,
-        message: string,
-        metadata?: Record<string, any>,
-        actionUrl?: string,
+        notifications: Array<{
+            userId: string;
+            type: NotificationType;
+            title: string;
+            message: string;
+            metadata?: Record<string, any>;
+            actionUrl?: string;
+        }>
     ): Promise<void> {
-        const notifications = userIds.map((userId) =>
-            this.createNotification(userId, type, title, message, metadata, actionUrl),
+        const entities = notifications.map(notif =>
+            this.notificationRepo.create({
+                userId: notif.userId,
+                type: notif.type,
+                title: notif.title,
+                message: notif.message,
+                metadata: notif.metadata,
+                actionUrl: notif.actionUrl,
+                isRead: false,
+            })
         );
 
-        await Promise.all(notifications);
+        await this.notificationRepo.insert(entities);
     }
 }

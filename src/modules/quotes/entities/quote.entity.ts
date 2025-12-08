@@ -8,10 +8,12 @@ import {
     Index,
     JoinColumn,
     ManyToOne,
+    OneToMany,
     PrimaryGeneratedColumn,
     UpdateDateColumn,
 } from 'typeorm';
 import { QuoteStatus } from '../enums/quote-status.enum';
+import { QuoteRevision } from './quote-revision.entity';
 
 @Entity('quotes')
 @Index(['postId', 'providerId', 'status'])
@@ -72,7 +74,35 @@ export class Quote {
         enum: QuoteStatus,
         default: QuoteStatus.PENDING,
     })
+    @Index()
     status: QuoteStatus = QuoteStatus.PENDING;
+
+    @Column({
+        name: 'revision_count',
+        type: 'int',
+        default: 1,
+        comment: 'Số lần đã chào giá (bắt đầu từ 1)',
+    })
+    revisionCount: number = 1;
+
+    @OneToMany(() => QuoteRevision, (revision) => revision.quote, { cascade: true })
+    revisions!: QuoteRevision[];
+
+    @Column({
+        name: 'chat_opened_at',
+        type: 'timestamp with time zone',
+        nullable: true,
+        comment: 'Thời điểm khách chấp nhận và mở chat',
+    })
+    chatOpenedAt?: Date;
+
+    @Column({
+        name: 'order_requested_at',
+        type: 'timestamp with time zone',
+        nullable: true,
+        comment: 'Thời điểm khách nhấn đặt đơn với revision hiện tại',
+    })
+    orderRequestedAt?: Date;
 
     @Column({
         name: 'accepted_at',
@@ -94,6 +124,14 @@ export class Quote {
         nullable: true
     })
     cancelledAt?: Date;
+
+    @Column({
+        name: 'confirmed_at',
+        type: 'timestamp with time zone',
+        nullable: true,
+        comment: 'Thời điểm thợ xác nhận làm (tạo order)',
+    })
+    confirmedAt?: Date;
 
     @Column({
         name: 'rejection_reason',
@@ -118,13 +156,25 @@ export class Quote {
     @DeleteDateColumn({ name: 'deleted_at' })
     deletedAt?: Date;
 
-    //methods
+
     isPending(): boolean {
         return this.status === QuoteStatus.PENDING && !this.deletedAt;
     }
 
-    isAccepted(): boolean {
-        return this.status === QuoteStatus.ACCEPTED;
+    isAcceptedForChat(): boolean {
+        return this.status === QuoteStatus.ACCEPTED_FOR_CHAT;
+    }
+
+    isRevising(): boolean {
+        return this.status === QuoteStatus.REVISING;
+    }
+
+    isOrderRequested(): boolean {
+        return this.status === QuoteStatus.ORDER_REQUESTED;
+    }
+
+    isConfirmed(): boolean {
+        return this.status === QuoteStatus.CONFIRMED;
     }
 
     isRejected(): boolean {
@@ -139,11 +189,41 @@ export class Quote {
         return this.status === QuoteStatus.PENDING && !this.deletedAt;
     }
 
+    canRevise(): boolean {
+        return (
+            this.status === QuoteStatus.ACCEPTED_FOR_CHAT ||
+            this.status === QuoteStatus.REVISING
+        ) && !this.deletedAt;
+    }
+
     canCancel(): boolean {
-        return this.status === QuoteStatus.PENDING && !this.deletedAt;
+        return (
+            this.status === QuoteStatus.PENDING ||
+            this.status === QuoteStatus.ACCEPTED_FOR_CHAT ||
+            this.status === QuoteStatus.REVISING ||
+            this.status === QuoteStatus.ORDER_REQUESTED
+        ) && !this.deletedAt;
+    }
+
+    canRequestOrder(): boolean {
+        return (
+            this.status === QuoteStatus.ACCEPTED_FOR_CHAT ||
+            this.status === QuoteStatus.REVISING
+        ) && !this.deletedAt;
+    }
+
+    canConfirmOrder(): boolean {
+        return this.status === QuoteStatus.ORDER_REQUESTED && !this.deletedAt;
     }
 
     belongsTo(providerId: string): boolean {
         return this.providerId === providerId;
+    }
+
+    isActive(): boolean {
+        return !this.deletedAt &&
+            this.status !== QuoteStatus.REJECTED &&
+            this.status !== QuoteStatus.CANCELLED &&
+            this.status !== QuoteStatus.CONFIRMED;
     }
 }

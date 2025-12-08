@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
+import { Expose, Type } from 'class-transformer';
 import {
     ArrayMaxSize,
     IsArray,
@@ -134,16 +134,17 @@ export class PostResponseDto {
         description: 'Customer information',
         type: 'object',
         properties: {
-            id: { type: 'string' },
+            customerId: { type: 'string' },
             fullName: { type: 'string' },
             avatarUrl: { type: 'string' },
         }
     })
+    @Expose()
     customer!: {
         customerId: string;
-        fullName?: string;
-        avatarUrl?: string;
-        displayName?: string
+        fullName?: string | null;
+        avatarUrl?: string | null;
+        displayName?: string | null
     };
 
     @ApiProperty({ example: '2025-11-13T10:00:00Z' })

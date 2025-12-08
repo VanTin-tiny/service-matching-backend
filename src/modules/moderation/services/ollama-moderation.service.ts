@@ -22,7 +22,6 @@ export class OllamaModerationService {
     private readonly config: ModerationConfig;
     private readonly baseUrl: string;
 
-    // ✅ Sử dụng patterns từ file import
     private readonly BLACKLIST_PATTERNS = BLACKLIST_PATTERNS;
     private readonly SUSPICIOUS_PHRASES = SUSPICIOUS_PHRASES;
 

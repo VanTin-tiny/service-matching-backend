@@ -1,33 +1,37 @@
 import { PostRepository } from '@/modules/posts/repositories/post.repository';
 import { UserRepository } from '@/modules/users/repositorys/user.repository';
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { CreateQuoteDto, UpdateQuoteDto } from './dtos/quote.dto';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+    CreateQuoteDto,
+    ReviseQuoteDto,
+    UpdateQuoteDto
+} from './dtos/quote.dto';
 import { Quote } from './entities/quote.entity';
-import { QuoteStatus } from './enums/quote-status.enum';
 import { QuoteRepository } from './repositories/quote.repository';
 import { QuoteNotificationService } from './services/quote-notification.service';
 import { QuoteQueryService } from './services/quote-query.service';
+import { QuoteRevisionService } from './services/quote-revision.service';
 import { QuoteStatusService } from './services/quote-status.service';
 import { QuoteValidationService } from './services/quote-validation.service';
 
 @Injectable()
 export class QuoteService {
+    private readonly logger = new Logger(QuoteService.name);
+
     constructor(
-
-
         private readonly postRepository: PostRepository,
         private readonly userRepository: UserRepository,
         private readonly quoteRepo: QuoteRepository,
         private readonly validationService: QuoteValidationService,
         private readonly statusService: QuoteStatusService,
         private readonly queryService: QuoteQueryService,
+        private readonly revisionService: QuoteRevisionService,
         private readonly notificationService: QuoteNotificationService,
     ) { }
 
     
     async createQuote(providerId: string, dto: CreateQuoteDto): Promise<Quote> {
         const provider = await this.validationService.validateProvider(providerId);
-
         const post = await this.validationService.validatePostForQuote(dto.postId, providerId);
 
         this.validationService.validatePrice(dto.price, post.budget);
@@ -40,7 +44,6 @@ export class QuoteService {
             terms: dto.terms,
             estimatedDuration: dto.estimatedDuration,
             imageUrls: dto.imageUrls || [],
-            status: QuoteStatus.PENDING,
         });
 
         const savedQuote = await this.quoteRepo.save(quote);
@@ -52,9 +55,64 @@ export class QuoteService {
             post,
         );
 
+        this.logger.log(`Quote created: ${savedQuote.id} for post ${post.id}`);
         return savedQuote;
     }
 
+    
+    async acceptQuoteForChat(quoteId: string, customerId: string): Promise<Quote> {
+        const quote = await this.queryService.findQuoteWithRelations(quoteId, [
+            'post',
+            'provider',
+        ]);
+
+        this.validationService.validatePostOwnership(quote.post, customerId);
+        this.validationService.validateQuoteIsPending(quote);
+        this.validationService.validatePostIsOpen(quote.post);
+
+        return await this.statusService.acceptForChat(quote, customerId);
+    }
+
+    
+    async reviseQuote(
+        quoteId: string,
+        providerId: string,
+        dto: ReviseQuoteDto,
+    ): Promise<Quote> {
+        const quote = await this.queryService.findQuoteWithRelations(quoteId, ['post']);
+
+        this.validationService.validateQuoteOwnership(quote, providerId);
+
+        if (!quote.canRevise()) {
+            throw new BadRequestException('Quote cannot be revised at this stage');
+        }
+
+        this.validationService.validatePrice(dto.price, quote.post.budget);
+
+        return await this.statusService.reviseQuote(
+            quote,
+            dto.price,
+            dto.description,
+            dto.terms,
+            dto.estimatedDuration,
+            dto.changeReason,
+        );
+    }
+
+    
+    async requestOrder(quoteId: string, customerId: string): Promise<Quote> {
+        const quote = await this.queryService.findQuoteWithRelations(quoteId, ['post']);
+
+        this.validationService.validatePostOwnership(quote.post, customerId);
+
+        if (!quote.canRequestOrder()) {
+            throw new BadRequestException('Cannot request order for this quote');
+        }
+
+        return await this.statusService.requestOrder(quote, customerId);
+    }
+
+    
     async updateQuote(
         quoteId: string,
         providerId: string,
@@ -78,6 +136,7 @@ export class QuoteService {
         return await this.quoteRepo.save(quote);
     }
 
+    
     async cancelQuote(
         quoteId: string,
         providerId: string,
@@ -91,19 +150,7 @@ export class QuoteService {
         return await this.statusService.cancelQuote(quote, reason);
     }
 
-    async acceptQuote(quoteId: string, customerId: string): Promise<Quote> {
-        const quote = await this.queryService.findQuoteWithRelations(quoteId, [
-            'post',
-            'provider',
-        ]);
-
-        this.validationService.validatePostOwnership(quote.post, customerId);
-        this.validationService.validateQuoteIsPending(quote);
-        this.validationService.validatePostIsOpen(quote.post);
-
-        return await this.statusService.acceptQuote(quote, customerId);
-    }
-
+    
     async rejectQuote(
         quoteId: string,
         customerId: string,
@@ -117,12 +164,12 @@ export class QuoteService {
         return await this.statusService.rejectQuote(quote, reason);
     }
 
-   
+    
     async getProviderQuotes(
         providerId: string,
-        status?: QuoteStatus,
+        status?: string,
     ): Promise<Quote[]> {
-        return await this.queryService.findProviderQuotes(providerId, status);
+        return await this.queryService.findProviderQuotes(providerId, status as any);
     }
 
     
@@ -130,7 +177,7 @@ export class QuoteService {
         const post = await this.postRepository.findById(postId);
 
         if (!post) {
-            throw new NotFoundException('Not found post');
+            throw new NotFoundException('Post not found');
         }
 
         this.validationService.validatePostOwnership(post, customerId);
@@ -138,7 +185,7 @@ export class QuoteService {
         return await this.queryService.findPostQuotes(postId);
     }
 
-   
+    
     async getQuoteById(quoteId: string, userId: string): Promise<Quote> {
         const quote = await this.queryService.findQuoteWithRelations(quoteId, [
             'post',
@@ -151,7 +198,22 @@ export class QuoteService {
         return quote;
     }
 
-   
+    
+    async getQuoteRevisionHistory(quoteId: string, userId: string) {
+        const quote = await this.queryService.findQuoteWithRelations(quoteId, ['post']);
+        this.validationService.validateQuoteAccess(quote, userId);
+
+        const revisions = await this.revisionService.getRevisionHistory(quoteId);
+        const priceChanges = await this.revisionService.getPriceChanges(quoteId);
+
+        return {
+            quote,
+            revisions,
+            priceChanges,
+        };
+    }
+
+    
     async deleteQuote(quoteId: string, providerId: string): Promise<void> {
         const quote = await this.queryService.findQuoteById(quoteId);
 
@@ -161,7 +223,6 @@ export class QuoteService {
         await this.quoteRepo.softDelete(quoteId);
     }
 
-    
     private updateQuoteFields(quote: Quote, dto: UpdateQuoteDto): void {
         if (dto.description !== undefined) {
             quote.description = dto.description;

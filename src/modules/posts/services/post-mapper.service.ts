@@ -5,7 +5,7 @@ import { PostCustomer } from '../entities/post.entity';
 
 @Injectable()
 export class PostMapperService {
-    
+
     toResponseDto(post: PostCustomer): PostResponseDto {
         return {
             id: post.id,
@@ -18,8 +18,8 @@ export class PostMapperService {
             status: post.status,
             customer: {
                 customerId: post.customer.id,
-                fullName: post.customer.profile?.fullName,
-                avatarUrl: post.customer.profile?.avatarUrl,
+                fullName: post.customer.profile?.fullName ?? null,
+                avatarUrl: post.customer.profile?.avatarUrl ?? null,
             },
             createdAt: post.createdAt,
             updatedAt: post.updatedAt,

@@ -28,6 +28,15 @@ export class NotificationRepository {
         return this.getRepository(manager).create(data);
     }
 
+
+    async insert(entities: Partial<Notification>[]): Promise<void> {
+        await this.createQueryBuilder()
+            .insert()
+            .into(Notification)
+            .values(entities)
+            .execute();
+    }
+
     async save(notification: Notification, manager?: EntityManager): Promise<Notification> {
         return await this.getRepository(manager).save(notification);
     }

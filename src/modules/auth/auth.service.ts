@@ -180,7 +180,7 @@ export class AuthService {
             const errorStack = ErrorUtil.getStack(error);
             this.logger.error(`Mobile login failed: ${errorMessage}`, errorStack);
 
-            throw new InternalServerException('Mobile login failed');
+            throw new InternalServerException('Mobile login failed: ${errorMessage}');
         }
     }
 

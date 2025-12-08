@@ -1,4 +1,3 @@
-// profile.mapper.ts
 import { BadRequestException } from '@nestjs/common';
 import { Profile } from '../entities/profile.entity';
 import { ProfileMapper } from '../interfaces/profile.interface';
