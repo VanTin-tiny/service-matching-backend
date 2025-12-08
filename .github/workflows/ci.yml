@@ -32,6 +32,9 @@ jobs:
     - name: Run tests
       run: npm run test -- --passWithNoTests
     
+    - name: Create moderation config file
+      run: |
+        echo "export default { patterns: [] };" > src/modules/moderation/config/moderation-patterns.config.ts
 
     
     - name: Build application
