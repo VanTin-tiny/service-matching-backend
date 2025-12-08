@@ -171,7 +171,6 @@ export class SearchProfilesQueryDto {
     offset?: number = 0;
 }
 
-// ==================== OUTPUT DTOs (Response) ====================
 
 export class DisplayNameChangeInfoDto {
     @ApiProperty({

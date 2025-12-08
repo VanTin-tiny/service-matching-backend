@@ -1,4 +1,4 @@
-import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Expose, Type } from 'class-transformer';
 import {
     IsArray,
@@ -10,6 +10,7 @@ import {
     IsUUID,
     MaxLength,
     Min,
+    IsPositive
 } from 'class-validator';
 import { QuoteStatus } from '../enums/quote-status.enum';
 
@@ -96,7 +97,7 @@ export class RejectQuoteDto {
 
 
 
-export class StatusQuoteDto extends PartialType(CreateQuoteDto) {
+export class StatusQuoteDto {
     @ApiPropertyOptional({
         description: 'Post status',
         enum: QuoteStatus,
@@ -185,5 +186,86 @@ export class QuoteResponseDto {
     @Type(() => Date)
     updatedAt?: Date;
 
+}
+
+
+
+
+export class CreateQuoteToCustomerDto {
+    @ApiProperty({ description: 'ID post' })
+    @IsUUID()
+    providerId!: string;
+
+    @ApiProperty({ description: 'the price of a quote ', example: 500000 })
+    @IsNumber()
+    @Min(0)
+    @Type(() => Number)
+    price!: number;
+
+    @ApiProperty({ description: 'Detailed description quote' })
+    @IsString()
+    @MaxLength(2000)
+    description!: string;
+
+    @ApiPropertyOptional({ description: 'Terms and conditions' })
+    @IsOptional()
+    @IsString()
+    @MaxLength(1000)
+    terms?: string;
+
+    @ApiPropertyOptional({ description: 'Estimated time (minutes)', example: 120 })
+    @IsOptional()
+    @IsNumber()
+    @Min(0)
+    @Type(() => Number)
+    estimatedDuration?: number;
+
+    @ApiPropertyOptional({ description: 'List of image URLs' })
+    @IsOptional()
+    @IsArray()
+    @IsUrl({}, { each: true })
+    imageUrls?: string[];
+}
+
+
+
+export class ReviseQuoteDto {
+    @ApiProperty({ description: 'Giá mới' })
+    @IsNumber()
+    @IsPositive()
+    price!: number;
+
+    @ApiPropertyOptional({ description: 'Mô tả cập nhật (nếu có)' })
+    @IsString()
+    @IsOptional()
+    @MaxLength(2000)
+    description?: string;
+
+    @ApiPropertyOptional()
+    @IsString()
+    @IsOptional()
+    @MaxLength(1000)
+    terms?: string;
+
+    @ApiPropertyOptional()
+    @IsNumber()
+    @IsOptional()
+    @Min(1)
+    estimatedDuration?: number;
+
+    @ApiPropertyOptional({ description: 'Lý do thay đổi giá' })
+    @IsString()
+    @IsOptional()
+    @MaxLength(500)
+    changeReason?: string;
+}
+
+
+export class CancelQuoteDto {
+    @ApiPropertyOptional({ description: 'Lý do hủy' })
+    @IsString()
+    @IsOptional()
+    @MaxLength(500)
+    reason?: string;
 }
 

@@ -1,4 +1,5 @@
-import { CurrentUser } from '@/common/decorators/@CurrentUser';
+import { CurrentUserId } from '@/common/decorators/@CurrentUserId';
+
 import { BaseResponseDto } from '@/common/dtos/base-response.dto';
 import { JwtAuthGuard } from '@/common/guards/jwt-auth.guard';
 import {
@@ -34,9 +35,12 @@ export class NotificationController {
         summary: 'get successful list',
         description: 'get list of successful notifications',
     })
-    @ApiOkResponse({ description: 'success' })
+    @ApiOkResponse({
+        description: 'success',
+        type: NotificationListResponseDto
+    })
     async getNotifications(
-        @CurrentUser('id') userId: string,
+        @CurrentUserId('id') userId: string,
         @Query() query: GetNotificationsQueryDto,
     ): Promise<NotificationListResponseDto> {
         return await this.notificationService.getUserNotifications(
@@ -50,9 +54,12 @@ export class NotificationController {
     @Get('unread-count')
     @HttpCode(HttpStatus.OK)
     @ApiOperation({ summary: 'count unread notifications' })
-    @ApiOkResponse({ status: 200, description: 'success' })
+    @ApiOkResponse({
+        status: 200, description: 'success',
+        type: UnreadCountResponseDto,
+    })
     async getUnreadCount(
-        @CurrentUser('id') userId: string,
+        @CurrentUserId('id') userId: string,
     ): Promise<UnreadCountResponseDto> {
         const count = await this.notificationService.getUnreadCount(userId);
         return { count };
@@ -64,7 +71,7 @@ export class NotificationController {
     @ApiOkResponse({ description: 'success' })
     async markAsRead(
         @Param('id') notificationId: string,
-        @CurrentUser('id') userId: string,
+        @CurrentUserId('id') userId: string,
     ): Promise<BaseResponseDto<void>> {
         await this.notificationService.markAsRead(notificationId, userId);
         return { success: true };
@@ -75,7 +82,7 @@ export class NotificationController {
     @ApiOperation({ summary: 'mark all read' })
     @ApiOkResponse({ description: 'success' })
     async markAllAsRead(
-        @CurrentUser('id') userId: string,
+        @CurrentUserId('id') userId: string,
     ): Promise<BaseResponseDto<void>> {
         await this.notificationService.markAllAsRead(userId);
         return { success: true };
@@ -87,7 +94,7 @@ export class NotificationController {
     @ApiOkResponse({ description: 'Deleted successfully' })
     async deleteNotification(
         @Param('id') notificationId: string,
-        @CurrentUser('id') userId: string,
+        @CurrentUserId('id') userId: string,
     ): Promise<BaseResponseDto<void>> {
         await this.notificationService.deleteNotification(
             notificationId,
@@ -101,7 +108,7 @@ export class NotificationController {
     @ApiOperation({ summary: 'delete all read receipts' })
     @ApiOkResponse({ description: 'Deleted successfully' })
     async deleteReadNotifications(
-        @CurrentUser('id') userId: string,
+        @CurrentUserId('id') userId: string,
     ): Promise<BaseResponseDto<void>> {
         await this.notificationService.deleteReadNotifications(userId);
         return { success: true }

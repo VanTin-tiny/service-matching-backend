@@ -10,22 +10,23 @@ import {
     Controller,
     Delete,
     Get,
+    Headers,
     HttpCode,
     HttpStatus,
+    Ip,
     Param,
     ParseUUIDPipe,
     Patch,
     Post,
     Query,
-    Headers,
-    UseGuards,
-    Ip
+    UseGuards
 } from '@nestjs/common';
 import {
     ApiBearerAuth,
     ApiOperation,
+    ApiQuery,
     ApiResponse,
-    ApiTags,
+    ApiTags
 } from '@nestjs/swagger';
 import {
     CreatePostDto,
@@ -37,8 +38,6 @@ import {
 } from './dtos/post.dto';
 import { PostService } from './post.service';
 import { ModerationContext } from './services/post-validation.service';
-
-
 
 @ApiTags('Posts')
 @Controller('posts')
@@ -69,6 +68,7 @@ export class PostController {
         description: 'Feed retrieved successfully',
         type: FeedResponseDto,
     })
+    @ApiQuery({ type: GetFeedQueryDto })
     @ApiResponse({
         status: HttpStatus.BAD_REQUEST,
         description: 'Invalid cursor format',
@@ -96,6 +96,7 @@ export class PostController {
         status: HttpStatus.NOT_FOUND,
         description: 'Post not found',
     })
+
     async getPostById(
         @Param('id', ParseUUIDPipe) id: string,
     ): Promise<PostResponseDto> {
@@ -176,7 +177,7 @@ export class PostController {
         @Headers('user-agent') userAgent: string,
     ): Promise<PostResponseDto> {
         const context = this.getRequestContext(ipAddress, userAgent);
-        return await this.postService.update(id, dto, user,context);
+        return await this.postService.update(id, dto, user, context);
     }
 
     @Delete(':id')
@@ -248,6 +249,8 @@ export class PostController {
         description: 'Posts retrieved successfully',
         type: FeedResponseDto,
     })
+
+    @ApiQuery({ type: GetFeedQueryDto })
     async getMyPosts(
         @Query() query: GetFeedQueryDto,
         @CurrentUser() user: JwtPayload,
@@ -255,4 +258,6 @@ export class PostController {
         return await this.postService.getMyPosts(user, query.limit, query.cursor);
 
     }
+
+
 }

@@ -1534,10 +1534,12 @@ const common_module_1 = __webpack_require__(/*! @/common/common.module */ "./src
 const config_module_1 = __webpack_require__(/*! @/config/config.module */ "./src/config/config.module.ts");
 const typeorm_module_1 = __webpack_require__(/*! @/database/typeorm.module */ "./src/database/typeorm.module.ts");
 const auth_module_1 = __webpack_require__(/*! @/modules/auth/auth.module */ "./src/modules/auth/auth.module.ts");
+const chat_module_1 = __webpack_require__(/*! @/modules/chat/chat.module */ "./src/modules/chat/chat.module.ts");
 const notifications_module_1 = __webpack_require__(/*! @/modules/notifications/notifications.module */ "./src/modules/notifications/notifications.module.ts");
+const orders_module_1 = __webpack_require__(/*! @/modules/orders/orders.module */ "./src/modules/orders/orders.module.ts");
 const posts_module_1 = __webpack_require__(/*! @/modules/posts/posts.module */ "./src/modules/posts/posts.module.ts");
-const quotes_module_1 = __webpack_require__(/*! @/modules/quotes/quotes.module */ "./src/modules/quotes/quotes.module.ts");
 const profile_module_1 = __webpack_require__(/*! @/modules/profile/profile.module */ "./src/modules/profile/profile.module.ts");
+const quotes_module_1 = __webpack_require__(/*! @/modules/quotes/quotes.module */ "./src/modules/quotes/quotes.module.ts");
 const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
 const event_emitter_1 = __webpack_require__(/*! @nestjs/event-emitter */ "@nestjs/event-emitter");
 const throttler_1 = __webpack_require__(/*! @nestjs/throttler */ "@nestjs/throttler");
@@ -1555,6 +1557,8 @@ exports.AppModule = AppModule = __decorate([
             profile_module_1.ProfileModule,
             notifications_module_1.NotificationsModule,
             quotes_module_1.QuoteModule,
+            chat_module_1.ChatModule,
+            orders_module_1.OrdersModule,
             event_emitter_1.EventEmitterModule.forRoot(),
             throttler_1.ThrottlerModule.forRoot([{
                     ttl: 60000,
@@ -2263,7 +2267,7 @@ let AuthService = AuthService_1 = class AuthService {
             const errorMessage = error_util_1.ErrorUtil.getMessage(error);
             const errorStack = error_util_1.ErrorUtil.getStack(error);
             this.logger.error(`Mobile login failed: ${errorMessage}`, errorStack);
-            throw new exceptions_1.InternalServerException('Mobile login failed');
+            throw new exceptions_1.InternalServerException('Mobile login failed: ${errorMessage}');
         }
     }
     async refreshAccessToken(data, manager) {
@@ -3744,6 +3748,1321 @@ PasswordUtil.DUMMY_HASH = '$2b$12$dummyHashForTimingAttackPreventionXXXXXXXXXXXX
 
 /***/ }),
 
+/***/ "./src/modules/chat/chat.controller.ts":
+/*!*********************************************!*\
+  !*** ./src/modules/chat/chat.controller.ts ***!
+  \*********************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var __param = (this && this.__param) || function (paramIndex, decorator) {
+    return function (target, key) { decorator(target, key, paramIndex); }
+};
+var _a, _b, _c, _d;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.ChatController = void 0;
+const jwt_auth_guard_1 = __webpack_require__(/*! @/common/guards/jwt-auth.guard */ "./src/common/guards/jwt-auth.guard.ts");
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const swagger_1 = __webpack_require__(/*! @nestjs/swagger */ "@nestjs/swagger");
+const _CurrentUserId_1 = __webpack_require__(/*! ../../common/decorators/@CurrentUserId */ "./src/common/decorators/@CurrentUserId.ts");
+const chat_service_1 = __webpack_require__(/*! ./chat.service */ "./src/modules/chat/chat.service.ts");
+const chat_dto_1 = __webpack_require__(/*! ./dto/chat.dto */ "./src/modules/chat/dto/chat.dto.ts");
+let ChatController = class ChatController {
+    constructor(chatService) {
+        this.chatService = chatService;
+    }
+    async getConversations(userId) {
+        return await this.chatService.getUserConversations(userId);
+    }
+    async getConversation(conversationId, userId) {
+        return await this.chatService.getConversationById(conversationId, userId);
+    }
+    async createDirectConversation(customerId, dto) {
+        return await this.chatService.createDirectConversation(customerId, dto.providerId);
+    }
+    async sendMessage(conversationId, userId, dto) {
+        return await this.chatService.sendMessage(conversationId, userId, dto);
+    }
+    async getMessages(conversationId, userId, query) {
+        return await this.chatService.getMessages(conversationId, userId, query);
+    }
+    async markAsRead(conversationId, userId) {
+        await this.chatService.markMessagesAsRead(conversationId, userId);
+        return { success: true };
+    }
+    async getUnreadCount(userId) {
+        const count = await this.chatService.getTotalUnreadCount(userId);
+        return { count };
+    }
+    async closeConversation(conversationId, userId) {
+        await this.chatService.closeConversation(conversationId, userId);
+        return { success: true };
+    }
+    async deleteConversation(conversationId, userId) {
+        await this.chatService.deleteConversation(conversationId, userId);
+    }
+    async searchMessages(userId, keyword, conversationId) {
+        return await this.chatService.searchMessages(userId, keyword, conversationId);
+    }
+};
+exports.ChatController = ChatController;
+__decorate([
+    (0, common_1.Get)('conversations'),
+    (0, swagger_1.ApiOperation)({ summary: 'Lấy danh sách conversations' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Thành công' }),
+    __param(0, (0, _CurrentUserId_1.CurrentUserId)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], ChatController.prototype, "getConversations", null);
+__decorate([
+    (0, common_1.Get)('conversations/:id'),
+    (0, swagger_1.ApiOperation)({ summary: 'Xem chi tiết conversation' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Thành công' }),
+    (0, swagger_1.ApiResponse)({ status: 403, description: 'Không có quyền' }),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, _CurrentUserId_1.CurrentUserId)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:returntype", Promise)
+], ChatController.prototype, "getConversation", null);
+__decorate([
+    (0, common_1.Post)('conversations/direct'),
+    (0, swagger_1.ApiOperation)({ summary: 'Tạo conversation riêng với thợ' }),
+    (0, swagger_1.ApiResponse)({ status: 201, description: 'Tạo thành công' }),
+    __param(0, (0, _CurrentUserId_1.CurrentUserId)('id')),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, typeof (_b = typeof chat_dto_1.CreateDirectConversationDto !== "undefined" && chat_dto_1.CreateDirectConversationDto) === "function" ? _b : Object]),
+    __metadata("design:returntype", Promise)
+], ChatController.prototype, "createDirectConversation", null);
+__decorate([
+    (0, common_1.Post)('conversations/:id/messages'),
+    (0, swagger_1.ApiOperation)({ summary: 'Gửi tin nhắn' }),
+    (0, swagger_1.ApiResponse)({ status: 201, description: 'Gửi thành công' }),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, _CurrentUserId_1.CurrentUserId)('id')),
+    __param(2, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String, typeof (_c = typeof chat_dto_1.SendMessageDto !== "undefined" && chat_dto_1.SendMessageDto) === "function" ? _c : Object]),
+    __metadata("design:returntype", Promise)
+], ChatController.prototype, "sendMessage", null);
+__decorate([
+    (0, common_1.Get)('conversations/:id/messages'),
+    (0, swagger_1.ApiOperation)({ summary: 'Lấy tin nhắn của conversation' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Thành công' }),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, _CurrentUserId_1.CurrentUserId)('id')),
+    __param(2, (0, common_1.Query)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String, typeof (_d = typeof chat_dto_1.GetMessagesQueryDto !== "undefined" && chat_dto_1.GetMessagesQueryDto) === "function" ? _d : Object]),
+    __metadata("design:returntype", Promise)
+], ChatController.prototype, "getMessages", null);
+__decorate([
+    (0, common_1.Post)('conversations/:id/read'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    (0, swagger_1.ApiOperation)({ summary: 'Đánh dấu tin nhắn đã đọc' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Thành công' }),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, _CurrentUserId_1.CurrentUserId)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:returntype", Promise)
+], ChatController.prototype, "markAsRead", null);
+__decorate([
+    (0, common_1.Get)('unread-count'),
+    (0, swagger_1.ApiOperation)({ summary: 'Đếm tổng tin nhắn chưa đọc' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Thành công' }),
+    __param(0, (0, _CurrentUserId_1.CurrentUserId)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], ChatController.prototype, "getUnreadCount", null);
+__decorate([
+    (0, common_1.Post)('conversations/:id/close'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    (0, swagger_1.ApiOperation)({ summary: 'Đóng conversation' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Đóng thành công' }),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, _CurrentUserId_1.CurrentUserId)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:returntype", Promise)
+], ChatController.prototype, "closeConversation", null);
+__decorate([
+    (0, common_1.Delete)('conversations/:id'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.NO_CONTENT),
+    (0, swagger_1.ApiOperation)({ summary: 'Xóa conversation' }),
+    (0, swagger_1.ApiResponse)({ status: 204, description: 'Xóa thành công' }),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, _CurrentUserId_1.CurrentUserId)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:returntype", Promise)
+], ChatController.prototype, "deleteConversation", null);
+__decorate([
+    (0, common_1.Get)('search'),
+    (0, swagger_1.ApiOperation)({ summary: 'Tìm kiếm tin nhắn' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Thành công' }),
+    __param(0, (0, _CurrentUserId_1.CurrentUserId)('id')),
+    __param(1, (0, common_1.Query)('keyword')),
+    __param(2, (0, common_1.Query)('conversationId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String, String]),
+    __metadata("design:returntype", Promise)
+], ChatController.prototype, "searchMessages", null);
+exports.ChatController = ChatController = __decorate([
+    (0, swagger_1.ApiTags)('Chat'),
+    (0, common_1.Controller)('chat'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, swagger_1.ApiBearerAuth)(),
+    __metadata("design:paramtypes", [typeof (_a = typeof chat_service_1.ChatService !== "undefined" && chat_service_1.ChatService) === "function" ? _a : Object])
+], ChatController);
+
+
+/***/ }),
+
+/***/ "./src/modules/chat/chat.gateway.ts":
+/*!******************************************!*\
+  !*** ./src/modules/chat/chat.gateway.ts ***!
+  \******************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var __param = (this && this.__param) || function (paramIndex, decorator) {
+    return function (target, key) { decorator(target, key, paramIndex); }
+};
+var ChatGateway_1;
+var _a, _b, _c, _d, _e, _f, _g, _h;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.ChatGateway = void 0;
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const event_emitter_1 = __webpack_require__(/*! @nestjs/event-emitter */ "@nestjs/event-emitter");
+const jwt_1 = __webpack_require__(/*! @nestjs/jwt */ "@nestjs/jwt");
+const websockets_1 = __webpack_require__(/*! @nestjs/websockets */ "@nestjs/websockets");
+const socket_io_1 = __webpack_require__(/*! socket.io */ "socket.io");
+const chat_service_1 = __webpack_require__(/*! ./chat.service */ "./src/modules/chat/chat.service.ts");
+let ChatGateway = ChatGateway_1 = class ChatGateway {
+    constructor(jwtService, chatService) {
+        this.jwtService = jwtService;
+        this.chatService = chatService;
+        this.logger = new common_1.Logger(ChatGateway_1.name);
+        this.userSockets = new Map();
+        this.socketUsers = new Map();
+    }
+    async handleConnection(client) {
+        try {
+            const token = client.handshake.auth.token ||
+                client.handshake.headers.authorization?.split(' ')[1];
+            if (!token) {
+                client.disconnect();
+                return;
+            }
+            const payload = await this.jwtService.verifyAsync(token);
+            const userId = payload.sub || payload.id;
+            if (!userId) {
+                client.disconnect();
+                return;
+            }
+            client.data.userId = userId;
+            this.socketUsers.set(client.id, userId);
+            if (!this.userSockets.has(userId)) {
+                this.userSockets.set(userId, new Set());
+            }
+            this.userSockets.get(userId).add(client.id);
+            await client.join(`user:${userId}`);
+            const conversations = await this.chatService.getUserConversations(userId);
+            for (const conv of conversations) {
+                await client.join(`conversation:${conv.id}`);
+            }
+            this.logger.log(`Chat client connected: ${client.id} (User: ${userId})`);
+            const unreadCount = await this.chatService.getTotalUnreadCount(userId);
+            client.emit('connected', { userId, unreadCount });
+        }
+        catch (error) {
+            this.logger.error('Chat connection error:', error);
+            client.disconnect();
+        }
+    }
+    handleDisconnect(client) {
+        const userId = this.socketUsers.get(client.id);
+        if (userId) {
+            const sockets = this.userSockets.get(userId);
+            if (sockets) {
+                sockets.delete(client.id);
+                if (sockets.size === 0) {
+                    this.userSockets.delete(userId);
+                }
+            }
+            this.socketUsers.delete(client.id);
+        }
+        this.logger.log(`Chat client disconnected: ${client.id} (User: ${userId})`);
+    }
+    async handleSendMessage(client, data) {
+        try {
+            const userId = client.data.userId;
+            const message = await this.chatService.sendMessage(data.conversationId, userId, data.message);
+            return { success: true, message };
+        }
+        catch (error) {
+            this.logger.error('Send message error:', error);
+            return { success: false, error: error.message };
+        }
+    }
+    async handleMarkRead(client, data) {
+        try {
+            const userId = client.data.userId;
+            await this.chatService.markMessagesAsRead(data.conversationId, userId);
+            return { success: true };
+        }
+        catch (error) {
+            this.logger.error('Mark read error:', error);
+            return { success: false, error: error.message };
+        }
+    }
+    handleTyping(client, data) {
+        const userId = client.data.userId;
+        client.to(`conversation:${data.conversationId}`).emit('user_typing', {
+            conversationId: data.conversationId,
+            userId,
+            isTyping: data.isTyping,
+        });
+    }
+    async handleJoinConversation(client, data) {
+        try {
+            const userId = client.data.userId;
+            const conversation = await this.chatService.getConversationById(data.conversationId, userId);
+            if (conversation) {
+                await client.join(`conversation:${data.conversationId}`);
+                return { success: true };
+            }
+            return { success: false, error: 'Not a participant' };
+        }
+        catch (error) {
+            return { success: false, error: error.message };
+        }
+    }
+    async handleLeaveConversation(client, data) {
+        await client.leave(`conversation:${data.conversationId}`);
+        return { success: true };
+    }
+    handleMessageSent(payload) {
+        this.server
+            .to(`conversation:${payload.conversationId}`)
+            .emit('new_message', {
+            conversationId: payload.conversationId,
+            message: payload.message,
+        });
+        this.server.to(`user:${payload.receiverId}`).emit('unread_updated', {
+            conversationId: payload.conversationId,
+            increment: 1,
+        });
+        this.logger.log(`Message sent to conversation: ${payload.conversationId}`);
+    }
+    handleMessagesRead(payload) {
+        this.server.to(`conversation:${payload.conversationId}`).emit('messages_read', {
+            conversationId: payload.conversationId,
+            readBy: payload.userId,
+        });
+    }
+    isUserOnline(userId) {
+        const sockets = this.userSockets.get(userId);
+        return !!sockets && sockets.size > 0;
+    }
+    sendToUser(userId, event, data) {
+        this.server.to(`user:${userId}`).emit(event, data);
+    }
+    sendToConversation(conversationId, event, data) {
+        this.server.to(`conversation:${conversationId}`).emit(event, data);
+    }
+    getOnlineUsersCount() {
+        return this.userSockets.size;
+    }
+    getOnlineUsers() {
+        return Array.from(this.userSockets.keys());
+    }
+};
+exports.ChatGateway = ChatGateway;
+__decorate([
+    (0, websockets_1.WebSocketServer)(),
+    __metadata("design:type", typeof (_c = typeof socket_io_1.Server !== "undefined" && socket_io_1.Server) === "function" ? _c : Object)
+], ChatGateway.prototype, "server", void 0);
+__decorate([
+    (0, websockets_1.SubscribeMessage)('send_message'),
+    __param(0, (0, websockets_1.ConnectedSocket)()),
+    __param(1, (0, websockets_1.MessageBody)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [typeof (_d = typeof socket_io_1.Socket !== "undefined" && socket_io_1.Socket) === "function" ? _d : Object, Object]),
+    __metadata("design:returntype", Promise)
+], ChatGateway.prototype, "handleSendMessage", null);
+__decorate([
+    (0, websockets_1.SubscribeMessage)('mark_read'),
+    __param(0, (0, websockets_1.ConnectedSocket)()),
+    __param(1, (0, websockets_1.MessageBody)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [typeof (_e = typeof socket_io_1.Socket !== "undefined" && socket_io_1.Socket) === "function" ? _e : Object, Object]),
+    __metadata("design:returntype", Promise)
+], ChatGateway.prototype, "handleMarkRead", null);
+__decorate([
+    (0, websockets_1.SubscribeMessage)('typing'),
+    __param(0, (0, websockets_1.ConnectedSocket)()),
+    __param(1, (0, websockets_1.MessageBody)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [typeof (_f = typeof socket_io_1.Socket !== "undefined" && socket_io_1.Socket) === "function" ? _f : Object, Object]),
+    __metadata("design:returntype", void 0)
+], ChatGateway.prototype, "handleTyping", null);
+__decorate([
+    (0, websockets_1.SubscribeMessage)('join_conversation'),
+    __param(0, (0, websockets_1.ConnectedSocket)()),
+    __param(1, (0, websockets_1.MessageBody)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [typeof (_g = typeof socket_io_1.Socket !== "undefined" && socket_io_1.Socket) === "function" ? _g : Object, Object]),
+    __metadata("design:returntype", Promise)
+], ChatGateway.prototype, "handleJoinConversation", null);
+__decorate([
+    (0, websockets_1.SubscribeMessage)('leave_conversation'),
+    __param(0, (0, websockets_1.ConnectedSocket)()),
+    __param(1, (0, websockets_1.MessageBody)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [typeof (_h = typeof socket_io_1.Socket !== "undefined" && socket_io_1.Socket) === "function" ? _h : Object, Object]),
+    __metadata("design:returntype", Promise)
+], ChatGateway.prototype, "handleLeaveConversation", null);
+__decorate([
+    (0, event_emitter_1.OnEvent)('message.sent'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", void 0)
+], ChatGateway.prototype, "handleMessageSent", null);
+__decorate([
+    (0, event_emitter_1.OnEvent)('messages.read'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", void 0)
+], ChatGateway.prototype, "handleMessagesRead", null);
+exports.ChatGateway = ChatGateway = ChatGateway_1 = __decorate([
+    (0, common_1.Injectable)(),
+    (0, websockets_1.WebSocketGateway)({
+        namespace: 'chat',
+        cors: {
+            origin: process.env.FRONTEND_URL || '*',
+            credentials: true,
+        },
+    }),
+    __metadata("design:paramtypes", [typeof (_a = typeof jwt_1.JwtService !== "undefined" && jwt_1.JwtService) === "function" ? _a : Object, typeof (_b = typeof chat_service_1.ChatService !== "undefined" && chat_service_1.ChatService) === "function" ? _b : Object])
+], ChatGateway);
+
+
+/***/ }),
+
+/***/ "./src/modules/chat/chat.module.ts":
+/*!*****************************************!*\
+  !*** ./src/modules/chat/chat.module.ts ***!
+  \*****************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.ChatModule = void 0;
+const notifications_module_1 = __webpack_require__(/*! @/modules/notifications/notifications.module */ "./src/modules/notifications/notifications.module.ts");
+const quote_entity_1 = __webpack_require__(/*! @/modules/quotes/entities/quote.entity */ "./src/modules/quotes/entities/quote.entity.ts");
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const jwt_1 = __webpack_require__(/*! @nestjs/jwt */ "@nestjs/jwt");
+const typeorm_1 = __webpack_require__(/*! @nestjs/typeorm */ "@nestjs/typeorm");
+const chat_controller_1 = __webpack_require__(/*! ./chat.controller */ "./src/modules/chat/chat.controller.ts");
+const chat_gateway_1 = __webpack_require__(/*! ./chat.gateway */ "./src/modules/chat/chat.gateway.ts");
+const chat_service_1 = __webpack_require__(/*! ./chat.service */ "./src/modules/chat/chat.service.ts");
+const conversation_entity_1 = __webpack_require__(/*! ./entities/conversation.entity */ "./src/modules/chat/entities/conversation.entity.ts");
+const message_entity_1 = __webpack_require__(/*! ./entities/message.entity */ "./src/modules/chat/entities/message.entity.ts");
+let ChatModule = class ChatModule {
+};
+exports.ChatModule = ChatModule;
+exports.ChatModule = ChatModule = __decorate([
+    (0, common_1.Module)({
+        imports: [
+            typeorm_1.TypeOrmModule.forFeature([conversation_entity_1.Conversation, message_entity_1.Message, quote_entity_1.Quote]),
+            jwt_1.JwtModule.register({
+                secret: process.env.JWT_SECRET || 'your-secret-key',
+                signOptions: { expiresIn: '7d' },
+            }),
+            notifications_module_1.NotificationsModule,
+        ],
+        controllers: [chat_controller_1.ChatController],
+        providers: [chat_service_1.ChatService, chat_gateway_1.ChatGateway],
+        exports: [chat_service_1.ChatService, chat_gateway_1.ChatGateway],
+    })
+], ChatModule);
+
+
+/***/ }),
+
+/***/ "./src/modules/chat/chat.service.ts":
+/*!******************************************!*\
+  !*** ./src/modules/chat/chat.service.ts ***!
+  \******************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var __param = (this && this.__param) || function (paramIndex, decorator) {
+    return function (target, key) { decorator(target, key, paramIndex); }
+};
+var ChatService_1;
+var _a, _b, _c, _d, _e;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.ChatService = void 0;
+const notification_service_1 = __webpack_require__(/*! @/modules/notifications/notification.service */ "./src/modules/notifications/notification.service.ts");
+const quote_entity_1 = __webpack_require__(/*! @/modules/quotes/entities/quote.entity */ "./src/modules/quotes/entities/quote.entity.ts");
+const quote_status_enum_1 = __webpack_require__(/*! @/modules/quotes/enums/quote-status.enum */ "./src/modules/quotes/enums/quote-status.enum.ts");
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const event_emitter_1 = __webpack_require__(/*! @nestjs/event-emitter */ "@nestjs/event-emitter");
+const typeorm_1 = __webpack_require__(/*! @nestjs/typeorm */ "@nestjs/typeorm");
+const typeorm_2 = __webpack_require__(/*! typeorm */ "typeorm");
+const conversation_entity_1 = __webpack_require__(/*! ./entities/conversation.entity */ "./src/modules/chat/entities/conversation.entity.ts");
+const message_entity_1 = __webpack_require__(/*! ./entities/message.entity */ "./src/modules/chat/entities/message.entity.ts");
+let ChatService = ChatService_1 = class ChatService {
+    constructor(conversationRepo, messageRepo, quoteRepo, notificationService, eventEmitter) {
+        this.conversationRepo = conversationRepo;
+        this.messageRepo = messageRepo;
+        this.quoteRepo = quoteRepo;
+        this.notificationService = notificationService;
+        this.eventEmitter = eventEmitter;
+        this.logger = new common_1.Logger(ChatService_1.name);
+        this.SYSTEM_USER_ID = '00000000-0000-0000-0000-000000000001';
+    }
+    async createConversationFromQuote(quoteId) {
+        const quote = await this.quoteRepo.findOne({
+            where: { id: quoteId },
+            relations: ['post', 'post.customer', 'provider'],
+        });
+        if (!quote) {
+            throw new common_1.NotFoundException('Quote not found');
+        }
+        if (quote.status !== quote_status_enum_1.QuoteStatus.ACCEPTED_FOR_CHAT) {
+            throw new common_1.BadRequestException('Quote must be accepted for chat first. Current status: ' + quote.status);
+        }
+        const existing = await this.conversationRepo.findOne({
+            where: { quoteId },
+        });
+        if (existing) {
+            this.logger.log(`Conversation already exists for quote ${quoteId}`);
+            return existing;
+        }
+        const conversation = this.conversationRepo.create({
+            customerId: quote.post.customerId,
+            providerId: quote.providerId,
+            quoteId,
+            type: conversation_entity_1.ConversationType.QUOTE_BASED,
+            isActive: true,
+        });
+        const saved = await this.conversationRepo.save(conversation);
+        await this.sendSystemMessage(saved.id, `Cuộc trò chuyện bắt đầu từ chào giá được chấp nhận.\n` +
+            `Giá hiện tại: ${parseFloat(quote.price.toString()).toLocaleString('vi-VN')}đ\n` +
+            `Thời gian ước tính: ${quote.estimatedDuration || 'Chưa xác định'} phút`);
+        this.logger.log(`Conversation created from quote: ${saved.id}`);
+        return saved;
+    }
+    async createDirectConversation(customerId, providerId) {
+        if (customerId === providerId) {
+            throw new common_1.BadRequestException('Cannot create conversation with yourself');
+        }
+        const existing = await this.conversationRepo.findOne({
+            where: {
+                customerId,
+                providerId,
+                type: conversation_entity_1.ConversationType.DIRECT_REQUEST,
+            },
+        });
+        if (existing) {
+            this.logger.log(`Direct conversation already exists: ${existing.id}`);
+            return existing;
+        }
+        const conversation = this.conversationRepo.create({
+            customerId,
+            providerId,
+            type: conversation_entity_1.ConversationType.DIRECT_REQUEST,
+            isActive: true,
+        });
+        const saved = await this.conversationRepo.save(conversation);
+        const systemMessage = this.messageRepo.create({
+            conversationId: saved.id,
+            senderId: this.SYSTEM_USER_ID,
+            type: message_entity_1.MessageType.SYSTEM,
+            content: 'Cuộc trò chuyện đã được tạo. Hãy thảo luận về yêu cầu dịch vụ của bạn.',
+            isRead: false,
+        });
+        const savedMessage = await this.messageRepo.save(systemMessage);
+        saved.lastMessageAt = savedMessage.createdAt;
+        await this.conversationRepo.save(saved);
+        this.eventEmitter.emit('message.sent', {
+            conversationId: saved.id,
+            message: savedMessage,
+            receiverId: customerId,
+        });
+        this.eventEmitter.emit('message.sent', {
+            conversationId: saved.id,
+            message: savedMessage,
+            receiverId: providerId,
+        });
+        await this.sendNotificationToBoth(saved, savedMessage, customerId, providerId);
+        this.logger.log(`Direct conversation created: ${saved.id}`);
+        return saved;
+    }
+    async sendNotificationToBoth(conversation, message, customerId, providerId) {
+        try {
+            this.eventEmitter.emit('notification.send', {
+                userId: customerId,
+                type: 'NEW_MESSAGE',
+                title: 'Cuộc trò chuyện mới',
+                body: message.content,
+                data: {
+                    conversationId: conversation.id,
+                    messageId: message.id,
+                },
+            });
+            this.eventEmitter.emit('notification.send', {
+                userId: providerId,
+                type: 'NEW_MESSAGE',
+                title: 'Cuộc trò chuyện mới',
+                body: message.content,
+                data: {
+                    conversationId: conversation.id,
+                    messageId: message.id,
+                },
+            });
+        }
+        catch (error) {
+            this.logger.error('Failed to send notifications', error);
+        }
+    }
+    async sendMessage(conversationId, senderId, dto) {
+        const conversation = await this.conversationRepo.findOne({
+            where: { id: conversationId },
+            relations: ['customer', 'provider'],
+        });
+        if (!conversation) {
+            throw new common_1.NotFoundException('Conversation not found');
+        }
+        if (!conversation.isParticipant(senderId)) {
+            throw new common_1.ForbiddenException('You are not a participant in this conversation');
+        }
+        if (!conversation.isActive) {
+            throw new common_1.BadRequestException('Conversation is closed');
+        }
+        const normalizedSenderId = senderId === 'system' || senderId === message_entity_1.MessageType.SYSTEM
+            ? this.SYSTEM_USER_ID
+            : senderId;
+        if (!conversation.isParticipant(normalizedSenderId) && normalizedSenderId !== this.SYSTEM_USER_ID) {
+            throw new common_1.ForbiddenException('You are not a participant in this conversation');
+        }
+        this.validateMessageContent(dto);
+        const message = this.messageRepo.create({
+            conversationId,
+            senderId,
+            type: dto.type,
+            content: dto.content?.trim(),
+            fileUrls: dto.fileUrls || [],
+            fileNames: dto.fileNames,
+            isRead: false,
+        });
+        const saved = await this.messageRepo.save(message);
+        await this.updateConversationAfterMessage(conversation, saved, normalizedSenderId);
+        this.eventEmitter.emit('message.sent', {
+            conversationId,
+            message: saved,
+            receiverId: conversation.getOtherUserId(normalizedSenderId),
+        });
+        await this.sendMessageNotification(conversation, saved, normalizedSenderId);
+        return saved;
+    }
+    async sendSystemMessage(conversationId, content) {
+        const message = this.messageRepo.create({
+            conversationId,
+            senderId: this.SYSTEM_USER_ID,
+            type: message_entity_1.MessageType.SYSTEM,
+            content,
+            isRead: true,
+        });
+        const saved = await this.messageRepo.save(message);
+        await this.conversationRepo.update(conversationId, {
+            lastMessageAt: new Date(),
+            lastMessagePreview: content,
+        });
+        this.eventEmitter.emit('system.message.sent', {
+            conversationId,
+            message: saved,
+        });
+        return saved;
+    }
+    async getUserConversations(userId) {
+        return await this.conversationRepo.find({
+            where: [{ customerId: userId }, { providerId: userId }],
+            relations: ['customer', 'customer.profile', 'provider', 'provider.profile', 'quote'],
+            order: { lastMessageAt: 'DESC' },
+        });
+    }
+    async getConversationById(conversationId, userId) {
+        const conversation = await this.conversationRepo.findOne({
+            where: { id: conversationId },
+            relations: ['customer', 'customer.profile', 'provider', 'provider.profile', 'quote'],
+        });
+        if (!conversation) {
+            throw new common_1.NotFoundException('Conversation not found');
+        }
+        if (!conversation.isParticipant(userId)) {
+            throw new common_1.ForbiddenException('You are not a participant in this conversation');
+        }
+        return conversation;
+    }
+    async getMessages(conversationId, userId, query) {
+        const conversation = await this.conversationRepo.findOne({
+            where: { id: conversationId },
+        });
+        if (!conversation) {
+            throw new common_1.NotFoundException('Conversation not found');
+        }
+        if (!conversation.isParticipant(userId)) {
+            throw new common_1.ForbiddenException('You are not a participant in this conversation');
+        }
+        const limit = Math.min(query.limit || 50, 100);
+        const queryBuilder = this.messageRepo
+            .createQueryBuilder('message')
+            .where('message.conversation_id = :conversationId', { conversationId })
+            .orderBy('message.created_at', 'DESC')
+            .limit(limit + 1);
+        if (query.before) {
+            queryBuilder.andWhere('message.created_at < :before', {
+                before: new Date(query.before),
+            });
+        }
+        const messages = await queryBuilder
+            .leftJoinAndSelect('message.sender', 'sender')
+            .leftJoinAndSelect('sender.profile', 'profile')
+            .getMany();
+        const hasMore = messages.length > limit;
+        if (hasMore) {
+            messages.pop();
+        }
+        return {
+            messages: messages.reverse(),
+            hasMore,
+        };
+    }
+    async markMessagesAsRead(conversationId, userId) {
+        const conversation = await this.conversationRepo.findOne({
+            where: { id: conversationId },
+        });
+        if (!conversation) {
+            throw new common_1.NotFoundException('Conversation not found');
+        }
+        if (!conversation.isParticipant(userId)) {
+            throw new common_1.ForbiddenException('You are not a participant in this conversation');
+        }
+        await this.messageRepo
+            .createQueryBuilder()
+            .update(message_entity_1.Message)
+            .set({ isRead: true, readAt: new Date() })
+            .where('conversation_id = :conversationId', { conversationId })
+            .andWhere('sender_id != :userId', { userId })
+            .andWhere('sender_id != :system', { system: 'system' })
+            .andWhere('is_read = false')
+            .execute();
+        const isCustomer = userId === conversation.customerId;
+        await this.conversationRepo.update(conversationId, {
+            ...(isCustomer
+                ? { customerUnreadCount: 0 }
+                : { providerUnreadCount: 0 }),
+        });
+        this.eventEmitter.emit('messages.read', {
+            conversationId,
+            userId,
+        });
+    }
+    async closeConversation(conversationId, userId) {
+        const conversation = await this.conversationRepo.findOne({
+            where: { id: conversationId },
+        });
+        if (!conversation) {
+            throw new common_1.NotFoundException('Conversation not found');
+        }
+        if (!conversation.isParticipant(userId)) {
+            throw new common_1.ForbiddenException('You are not a participant in this conversation');
+        }
+        await this.conversationRepo.update(conversationId, {
+            isActive: false,
+        });
+        await this.sendSystemMessage(conversationId, 'Cuộc trò chuyện đã đóng.');
+        this.logger.log(`Conversation closed: ${conversationId}`);
+    }
+    async deleteConversation(conversationId, userId) {
+        const conversation = await this.conversationRepo.findOne({
+            where: { id: conversationId },
+        });
+        if (!conversation) {
+            throw new common_1.NotFoundException('Conversation not found');
+        }
+        if (!conversation.isParticipant(userId)) {
+            throw new common_1.ForbiddenException('You are not a participant in this conversation');
+        }
+        await this.conversationRepo.delete(conversationId);
+        this.logger.log(`Conversation deleted: ${conversationId}`);
+    }
+    async getTotalUnreadCount(userId) {
+        const result = await this.conversationRepo
+            .createQueryBuilder('conversation')
+            .select(`SUM(CASE 
+                    WHEN conversation.customer_id = :userId THEN conversation.customer_unread_count 
+                    WHEN conversation.provider_id = :userId THEN conversation.provider_unread_count 
+                    ELSE 0 
+                END)`, 'total')
+            .where('conversation.customer_id = :userId OR conversation.provider_id = :userId', {
+            userId,
+        })
+            .getRawOne();
+        return parseInt(result?.total || '0', 10);
+    }
+    async searchMessages(userId, keyword, conversationId) {
+        if (!keyword || keyword.trim().length < 2) {
+            throw new common_1.BadRequestException('Keyword must be at least 2 characters');
+        }
+        const queryBuilder = this.messageRepo
+            .createQueryBuilder('message')
+            .leftJoin('message.conversation', 'conversation')
+            .where('(conversation.customer_id = :userId OR conversation.provider_id = :userId)', { userId })
+            .andWhere('message.content ILIKE :keyword', {
+            keyword: `%${keyword}%`,
+        })
+            .andWhere('message.type = :type', { type: message_entity_1.MessageType.TEXT })
+            .orderBy('message.created_at', 'DESC')
+            .limit(50);
+        if (conversationId) {
+            queryBuilder.andWhere('message.conversation_id = :conversationId', {
+                conversationId,
+            });
+        }
+        return await queryBuilder
+            .leftJoinAndSelect('message.sender', 'sender')
+            .leftJoinAndSelect('message.conversation', 'conv')
+            .getMany();
+    }
+    validateMessageContent(dto) {
+        if (dto.type === message_entity_1.MessageType.TEXT && !dto.content?.trim()) {
+            throw new common_1.BadRequestException('Text message cannot be empty');
+        }
+        if ((dto.type === message_entity_1.MessageType.IMAGE || dto.type === message_entity_1.MessageType.FILE) &&
+            (!dto.fileUrls || dto.fileUrls.length === 0)) {
+            throw new common_1.BadRequestException('File message must have at least one file');
+        }
+        if (dto.type === message_entity_1.MessageType.SYSTEM) {
+            throw new common_1.BadRequestException('Cannot send system message directly');
+        }
+    }
+    async updateConversationAfterMessage(conversation, message, senderId) {
+        const isCustomerSender = senderId === conversation.customerId;
+        await this.conversationRepo.update(conversation.id, {
+            lastMessageAt: new Date(),
+            lastMessagePreview: this.getMessagePreview(message),
+            ...(isCustomerSender
+                ? { providerUnreadCount: () => 'provider_unread_count + 1' }
+                : { customerUnreadCount: () => 'customer_unread_count + 1' }),
+        });
+    }
+    async sendMessageNotification(conversation, message, senderId) {
+        const receiverId = conversation.getOtherUserId(senderId);
+        const senderName = senderId === conversation.customerId
+            ? conversation.customer.profile?.displayName || conversation.customer.profile?.fullName
+            : conversation.provider.profile?.displayName || conversation.provider.profile?.fullName;
+        await this.notificationService.notifyNewMessage(receiverId, senderId, senderName || 'User', this.getMessagePreview(message), conversation.id);
+    }
+    getMessagePreview(message) {
+        switch (message.type) {
+            case message_entity_1.MessageType.TEXT:
+                return message.content?.substring(0, 100) || '';
+            case message_entity_1.MessageType.IMAGE:
+                return 'Hình ảnh';
+            case message_entity_1.MessageType.FILE:
+                return 'File đính kèm';
+            case message_entity_1.MessageType.SYSTEM:
+                return message.content || '';
+            default:
+                return 'Tin nhắn';
+        }
+    }
+};
+exports.ChatService = ChatService;
+exports.ChatService = ChatService = ChatService_1 = __decorate([
+    (0, common_1.Injectable)(),
+    __param(0, (0, typeorm_1.InjectRepository)(conversation_entity_1.Conversation)),
+    __param(1, (0, typeorm_1.InjectRepository)(message_entity_1.Message)),
+    __param(2, (0, typeorm_1.InjectRepository)(quote_entity_1.Quote)),
+    __metadata("design:paramtypes", [typeof (_a = typeof typeorm_2.Repository !== "undefined" && typeorm_2.Repository) === "function" ? _a : Object, typeof (_b = typeof typeorm_2.Repository !== "undefined" && typeorm_2.Repository) === "function" ? _b : Object, typeof (_c = typeof typeorm_2.Repository !== "undefined" && typeorm_2.Repository) === "function" ? _c : Object, typeof (_d = typeof notification_service_1.NotificationService !== "undefined" && notification_service_1.NotificationService) === "function" ? _d : Object, typeof (_e = typeof event_emitter_1.EventEmitter2 !== "undefined" && event_emitter_1.EventEmitter2) === "function" ? _e : Object])
+], ChatService);
+
+
+/***/ }),
+
+/***/ "./src/modules/chat/dto/chat.dto.ts":
+/*!******************************************!*\
+  !*** ./src/modules/chat/dto/chat.dto.ts ***!
+  \******************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var _a, _b, _c, _d, _e, _f;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.MessageResponseDto = exports.ConversationResponseDto = exports.GetMessagesQueryDto = exports.CreateDirectConversationDto = exports.SendMessageDto = void 0;
+const swagger_1 = __webpack_require__(/*! @nestjs/swagger */ "@nestjs/swagger");
+const class_transformer_1 = __webpack_require__(/*! class-transformer */ "class-transformer");
+const class_validator_1 = __webpack_require__(/*! class-validator */ "class-validator");
+const message_entity_1 = __webpack_require__(/*! ../entities/message.entity */ "./src/modules/chat/entities/message.entity.ts");
+class SendMessageDto {
+}
+exports.SendMessageDto = SendMessageDto;
+__decorate([
+    (0, swagger_1.ApiProperty)({ enum: message_entity_1.MessageType, description: 'Loại tin nhắn' }),
+    (0, class_validator_1.IsEnum)(message_entity_1.MessageType),
+    __metadata("design:type", typeof (_a = typeof message_entity_1.MessageType !== "undefined" && message_entity_1.MessageType) === "function" ? _a : Object)
+], SendMessageDto.prototype, "type", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ description: 'Nội dung tin nhắn (nếu là text)' }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MaxLength)(5000),
+    __metadata("design:type", String)
+], SendMessageDto.prototype, "content", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ description: 'Danh sách URL files', type: [String] }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsArray)(),
+    (0, class_validator_1.IsUrl)({}, { each: true }),
+    __metadata("design:type", Array)
+], SendMessageDto.prototype, "fileUrls", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ description: 'Tên files', type: [String] }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsArray)(),
+    (0, class_validator_1.IsString)({ each: true }),
+    __metadata("design:type", Array)
+], SendMessageDto.prototype, "fileNames", void 0);
+class CreateDirectConversationDto {
+}
+exports.CreateDirectConversationDto = CreateDirectConversationDto;
+__decorate([
+    (0, swagger_1.ApiProperty)({ description: 'Provider ID' }),
+    (0, class_validator_1.IsUUID)(),
+    __metadata("design:type", String)
+], CreateDirectConversationDto.prototype, "providerId", void 0);
+class GetMessagesQueryDto {
+    constructor() {
+        this.limit = 50;
+    }
+}
+exports.GetMessagesQueryDto = GetMessagesQueryDto;
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ description: 'Số lượng messages', default: 50 }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsInt)(),
+    (0, class_validator_1.Min)(1),
+    (0, class_validator_1.Max)(100),
+    (0, class_transformer_1.Type)(() => Number),
+    __metadata("design:type", Number)
+], GetMessagesQueryDto.prototype, "limit", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({
+        description: 'Lấy messages trước thời điểm này (ISO 8601)',
+        example: '2025-01-15T10:00:00Z'
+    }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsISO8601)(),
+    __metadata("design:type", String)
+], GetMessagesQueryDto.prototype, "before", void 0);
+class ConversationResponseDto {
+}
+exports.ConversationResponseDto = ConversationResponseDto;
+__decorate([
+    (0, swagger_1.ApiProperty)(),
+    __metadata("design:type", String)
+], ConversationResponseDto.prototype, "id", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)(),
+    __metadata("design:type", String)
+], ConversationResponseDto.prototype, "customerId", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)(),
+    __metadata("design:type", String)
+], ConversationResponseDto.prototype, "providerId", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ required: false }),
+    __metadata("design:type", String)
+], ConversationResponseDto.prototype, "quoteId", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)(),
+    __metadata("design:type", String)
+], ConversationResponseDto.prototype, "type", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)(),
+    __metadata("design:type", Boolean)
+], ConversationResponseDto.prototype, "isActive", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ required: false }),
+    __metadata("design:type", typeof (_b = typeof Date !== "undefined" && Date) === "function" ? _b : Object)
+], ConversationResponseDto.prototype, "lastMessageAt", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ required: false }),
+    __metadata("design:type", String)
+], ConversationResponseDto.prototype, "lastMessagePreview", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)(),
+    __metadata("design:type", Number)
+], ConversationResponseDto.prototype, "customerUnreadCount", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)(),
+    __metadata("design:type", Number)
+], ConversationResponseDto.prototype, "providerUnreadCount", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)(),
+    __metadata("design:type", typeof (_c = typeof Date !== "undefined" && Date) === "function" ? _c : Object)
+], ConversationResponseDto.prototype, "createdAt", void 0);
+class MessageResponseDto {
+}
+exports.MessageResponseDto = MessageResponseDto;
+__decorate([
+    (0, swagger_1.ApiProperty)(),
+    __metadata("design:type", String)
+], MessageResponseDto.prototype, "id", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)(),
+    __metadata("design:type", String)
+], MessageResponseDto.prototype, "conversationId", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)(),
+    __metadata("design:type", String)
+], MessageResponseDto.prototype, "senderId", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ enum: message_entity_1.MessageType }),
+    __metadata("design:type", typeof (_d = typeof message_entity_1.MessageType !== "undefined" && message_entity_1.MessageType) === "function" ? _d : Object)
+], MessageResponseDto.prototype, "type", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ required: false }),
+    __metadata("design:type", String)
+], MessageResponseDto.prototype, "content", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ type: [String] }),
+    __metadata("design:type", Array)
+], MessageResponseDto.prototype, "fileUrls", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)(),
+    __metadata("design:type", Boolean)
+], MessageResponseDto.prototype, "isRead", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ required: false }),
+    __metadata("design:type", typeof (_e = typeof Date !== "undefined" && Date) === "function" ? _e : Object)
+], MessageResponseDto.prototype, "readAt", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)(),
+    __metadata("design:type", typeof (_f = typeof Date !== "undefined" && Date) === "function" ? _f : Object)
+], MessageResponseDto.prototype, "createdAt", void 0);
+
+
+/***/ }),
+
+/***/ "./src/modules/chat/entities/conversation.entity.ts":
+/*!**********************************************************!*\
+  !*** ./src/modules/chat/entities/conversation.entity.ts ***!
+  \**********************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var _a, _b, _c, _d, _e, _f;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.Conversation = exports.ConversationType = void 0;
+const quote_entity_1 = __webpack_require__(/*! @/modules/quotes/entities/quote.entity */ "./src/modules/quotes/entities/quote.entity.ts");
+const user_entity_1 = __webpack_require__(/*! @/modules/users/entities/user.entity */ "./src/modules/users/entities/user.entity.ts");
+const typeorm_1 = __webpack_require__(/*! typeorm */ "typeorm");
+const message_entity_1 = __webpack_require__(/*! ./message.entity */ "./src/modules/chat/entities/message.entity.ts");
+var ConversationType;
+(function (ConversationType) {
+    ConversationType["QUOTE_BASED"] = "quote_based";
+    ConversationType["DIRECT_REQUEST"] = "direct_request";
+})(ConversationType || (exports.ConversationType = ConversationType = {}));
+let Conversation = class Conversation {
+    constructor() {
+        this.isActive = true;
+        this.customerUnreadCount = 0;
+        this.providerUnreadCount = 0;
+    }
+    isParticipant(userId) {
+        return this.customerId === userId || this.providerId === userId;
+    }
+    getOtherUserId(userId) {
+        return this.customerId === userId ? this.providerId : this.customerId;
+    }
+    getUnreadCount(userId) {
+        return this.customerId === userId
+            ? this.customerUnreadCount
+            : this.providerUnreadCount;
+    }
+};
+exports.Conversation = Conversation;
+__decorate([
+    (0, typeorm_1.PrimaryGeneratedColumn)('uuid'),
+    __metadata("design:type", String)
+], Conversation.prototype, "id", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'customer_id' }),
+    (0, typeorm_1.Index)(),
+    __metadata("design:type", String)
+], Conversation.prototype, "customerId", void 0);
+__decorate([
+    (0, typeorm_1.ManyToOne)(() => user_entity_1.User, { onDelete: 'CASCADE' }),
+    (0, typeorm_1.JoinColumn)({ name: 'customer_id' }),
+    __metadata("design:type", typeof (_a = typeof user_entity_1.User !== "undefined" && user_entity_1.User) === "function" ? _a : Object)
+], Conversation.prototype, "customer", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'provider_id' }),
+    (0, typeorm_1.Index)(),
+    __metadata("design:type", String)
+], Conversation.prototype, "providerId", void 0);
+__decorate([
+    (0, typeorm_1.ManyToOne)(() => user_entity_1.User, { onDelete: 'CASCADE' }),
+    (0, typeorm_1.JoinColumn)({ name: 'provider_id' }),
+    __metadata("design:type", typeof (_b = typeof user_entity_1.User !== "undefined" && user_entity_1.User) === "function" ? _b : Object)
+], Conversation.prototype, "provider", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'quote_id', nullable: true }),
+    __metadata("design:type", String)
+], Conversation.prototype, "quoteId", void 0);
+__decorate([
+    (0, typeorm_1.ManyToOne)(() => quote_entity_1.Quote, { nullable: true }),
+    (0, typeorm_1.JoinColumn)({ name: 'quote_id' }),
+    __metadata("design:type", typeof (_c = typeof quote_entity_1.Quote !== "undefined" && quote_entity_1.Quote) === "function" ? _c : Object)
+], Conversation.prototype, "quote", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        type: 'enum',
+        enum: ConversationType,
+    }),
+    __metadata("design:type", String)
+], Conversation.prototype, "type", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'is_active', default: true }),
+    __metadata("design:type", Boolean)
+], Conversation.prototype, "isActive", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        name: 'last_message_at',
+        type: 'timestamp with time zone',
+        nullable: true,
+    }),
+    __metadata("design:type", typeof (_d = typeof Date !== "undefined" && Date) === "function" ? _d : Object)
+], Conversation.prototype, "lastMessageAt", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'last_message_preview', type: 'text', nullable: true }),
+    __metadata("design:type", String)
+], Conversation.prototype, "lastMessagePreview", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'customer_unread_count', default: 0 }),
+    __metadata("design:type", Number)
+], Conversation.prototype, "customerUnreadCount", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'provider_unread_count', default: 0 }),
+    __metadata("design:type", Number)
+], Conversation.prototype, "providerUnreadCount", void 0);
+__decorate([
+    (0, typeorm_1.CreateDateColumn)({ name: 'created_at' }),
+    __metadata("design:type", typeof (_e = typeof Date !== "undefined" && Date) === "function" ? _e : Object)
+], Conversation.prototype, "createdAt", void 0);
+__decorate([
+    (0, typeorm_1.UpdateDateColumn)({ name: 'updated_at' }),
+    __metadata("design:type", typeof (_f = typeof Date !== "undefined" && Date) === "function" ? _f : Object)
+], Conversation.prototype, "updatedAt", void 0);
+__decorate([
+    (0, typeorm_1.OneToMany)(() => message_entity_1.Message, (m) => m.conversation),
+    __metadata("design:type", Array)
+], Conversation.prototype, "messages", void 0);
+exports.Conversation = Conversation = __decorate([
+    (0, typeorm_1.Entity)('conversations'),
+    (0, typeorm_1.Index)(['customerId', 'providerId']),
+    (0, typeorm_1.Index)(['quoteId'], { unique: true, where: 'quote_id IS NOT NULL' }),
+    (0, typeorm_1.Index)(['lastMessageAt'])
+], Conversation);
+
+
+/***/ }),
+
+/***/ "./src/modules/chat/entities/message.entity.ts":
+/*!*****************************************************!*\
+  !*** ./src/modules/chat/entities/message.entity.ts ***!
+  \*****************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var _a, _b, _c, _d, _e;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.Message = exports.MessageType = void 0;
+const user_entity_1 = __webpack_require__(/*! @/modules/users/entities/user.entity */ "./src/modules/users/entities/user.entity.ts");
+const typeorm_1 = __webpack_require__(/*! typeorm */ "typeorm");
+const conversation_entity_1 = __webpack_require__(/*! ./conversation.entity */ "./src/modules/chat/entities/conversation.entity.ts");
+var MessageType;
+(function (MessageType) {
+    MessageType["TEXT"] = "text";
+    MessageType["IMAGE"] = "image";
+    MessageType["FILE"] = "file";
+    MessageType["SYSTEM"] = "system";
+})(MessageType || (exports.MessageType = MessageType = {}));
+let Message = class Message {
+    constructor() {
+        this.type = MessageType.TEXT;
+        this.fileUrls = [];
+        this.isRead = false;
+    }
+    markAsRead() {
+        if (!this.isRead) {
+            this.isRead = true;
+            this.readAt = new Date();
+        }
+    }
+    isOwnedBy(userId) {
+        return this.senderId === userId;
+    }
+};
+exports.Message = Message;
+__decorate([
+    (0, typeorm_1.PrimaryGeneratedColumn)('uuid'),
+    __metadata("design:type", String)
+], Message.prototype, "id", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'conversation_id' }),
+    (0, typeorm_1.Index)(),
+    __metadata("design:type", String)
+], Message.prototype, "conversationId", void 0);
+__decorate([
+    (0, typeorm_1.ManyToOne)(() => conversation_entity_1.Conversation, (c) => c.messages, { onDelete: 'CASCADE' }),
+    (0, typeorm_1.JoinColumn)({ name: 'conversation_id' }),
+    __metadata("design:type", typeof (_a = typeof conversation_entity_1.Conversation !== "undefined" && conversation_entity_1.Conversation) === "function" ? _a : Object)
+], Message.prototype, "conversation", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'sender_id' }),
+    __metadata("design:type", String)
+], Message.prototype, "senderId", void 0);
+__decorate([
+    (0, typeorm_1.ManyToOne)(() => user_entity_1.User, { eager: true }),
+    (0, typeorm_1.JoinColumn)({ name: 'sender_id' }),
+    __metadata("design:type", typeof (_b = typeof user_entity_1.User !== "undefined" && user_entity_1.User) === "function" ? _b : Object)
+], Message.prototype, "sender", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        type: 'enum',
+        enum: MessageType,
+        default: MessageType.TEXT,
+    }),
+    __metadata("design:type", String)
+], Message.prototype, "type", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'text', nullable: true }),
+    __metadata("design:type", String)
+], Message.prototype, "content", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        name: 'file_urls',
+        type: 'text',
+        array: true,
+        nullable: true,
+        default: '{}',
+    }),
+    __metadata("design:type", Array)
+], Message.prototype, "fileUrls", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'file_names', type: 'text', array: true, nullable: true }),
+    __metadata("design:type", Array)
+], Message.prototype, "fileNames", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'is_read', default: false }),
+    __metadata("design:type", Boolean)
+], Message.prototype, "isRead", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        name: 'read_at',
+        type: 'timestamp with time zone',
+        nullable: true,
+    }),
+    __metadata("design:type", typeof (_c = typeof Date !== "undefined" && Date) === "function" ? _c : Object)
+], Message.prototype, "readAt", void 0);
+__decorate([
+    (0, typeorm_1.CreateDateColumn)({ name: 'created_at' }),
+    __metadata("design:type", typeof (_d = typeof Date !== "undefined" && Date) === "function" ? _d : Object)
+], Message.prototype, "createdAt", void 0);
+__decorate([
+    (0, typeorm_1.UpdateDateColumn)({ name: 'updated_at' }),
+    __metadata("design:type", typeof (_e = typeof Date !== "undefined" && Date) === "function" ? _e : Object)
+], Message.prototype, "updatedAt", void 0);
+exports.Message = Message = __decorate([
+    (0, typeorm_1.Entity)('messages'),
+    (0, typeorm_1.Index)(['conversationId', 'createdAt']),
+    (0, typeorm_1.Index)(['senderId'])
+], Message);
+
+
+/***/ }),
+
 /***/ "./src/modules/moderation/config/moderation-patterns.config.ts":
 /*!*********************************************************************!*\
   !*** ./src/modules/moderation/config/moderation-patterns.config.ts ***!
@@ -3816,12 +5135,12 @@ exports.SYSTEM_PROMPT = `Bạn là AI kiểm duyệt nội dung TIẾNG VIỆT c
 
 ### LOGIC PHÂN TÍCH:
 
-✅ **CHO PHÉP:**
+**CHO PHÉP:**
 - Dịch vụ hợp pháp: "sửa điện", "sửa ống nước", "trang trí", "vận chuyển"
 - Làm đẹp chuyên nghiệp: "spa chăm sóc da", "nail", "cắt tóc", "massage trị liệu"
 - Từ trung tính: "dịch vụ tốt", "tận tâm", "uy tín"
 
-❌ **REJECT KHI:**
+**REJECT KHI:**
 1. Có từ lóng tình dục/mại dâm rõ ràng
 2. Massage/spa + ("kín đáo"|"riêng tư"|"tận nơi đêm"|"happy ending")
 3. "Dịch vụ" + ("đêm"|"khuya"|"24/7") + ("kín đáo"|"riêng tư")
@@ -4693,7 +6012,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 };
 var _a, _b, _c, _d;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.SuccessResponseDto = exports.UnreadCountResponseDto = exports.NotificationListResponseDto = exports.NotificationResponseDto = exports.GetNotificationsQueryDto = void 0;
+exports.CreateNotification = exports.SuccessResponseDto = exports.UnreadCountResponseDto = exports.NotificationListResponseDto = exports.NotificationResponseDto = exports.GetNotificationsQueryDto = void 0;
 const notification_enum_1 = __webpack_require__(/*! @/modules/notifications/enums/notification.enum */ "./src/modules/notifications/enums/notification.enum.ts");
 const swagger_1 = __webpack_require__(/*! @nestjs/swagger */ "@nestjs/swagger");
 const class_transformer_1 = __webpack_require__(/*! class-transformer */ "class-transformer");
@@ -4824,6 +6143,9 @@ __decorate([
     (0, swagger_1.ApiProperty)({ description: 'Success status' }),
     __metadata("design:type", Boolean)
 ], SuccessResponseDto.prototype, "success", void 0);
+class CreateNotification {
+}
+exports.CreateNotification = CreateNotification;
 
 
 /***/ }),
@@ -4969,6 +6291,9 @@ var NotificationType;
     NotificationType["ACCOUNT_SUSPENDED"] = "account_suspended";
     NotificationType["ACCOUNT_WARNING"] = "account_warning";
     NotificationType["SYSTEM_ANNOUNCEMENT"] = "system_announcement";
+    NotificationType["QUOTE_ACCEPTED_FOR_CHAT"] = "quote_accepted_for_chat";
+    NotificationType["QUOTE_REVISED"] = "quote_revised";
+    NotificationType["ORDER_REQUESTED"] = "order_requested";
 })(NotificationType || (exports.NotificationType = NotificationType = {}));
 
 
@@ -5138,7 +6463,7 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 var _a, _b, _c, _d, _e, _f, _g, _h;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.NotificationController = void 0;
-const _CurrentUser_1 = __webpack_require__(/*! @/common/decorators/@CurrentUser */ "./src/common/decorators/@CurrentUser.ts");
+const _CurrentUserId_1 = __webpack_require__(/*! @/common/decorators/@CurrentUserId */ "./src/common/decorators/@CurrentUserId.ts");
 const jwt_auth_guard_1 = __webpack_require__(/*! @/common/guards/jwt-auth.guard */ "./src/common/guards/jwt-auth.guard.ts");
 const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
 const swagger_1 = __webpack_require__(/*! @nestjs/swagger */ "@nestjs/swagger");
@@ -5180,8 +6505,11 @@ __decorate([
         summary: 'get successful list',
         description: 'get list of successful notifications',
     }),
-    (0, swagger_1.ApiOkResponse)({ description: 'success' }),
-    __param(0, (0, _CurrentUser_1.CurrentUser)('id')),
+    (0, swagger_1.ApiOkResponse)({
+        description: 'success',
+        type: notification_dto_1.NotificationListResponseDto
+    }),
+    __param(0, (0, _CurrentUserId_1.CurrentUserId)('id')),
     __param(1, (0, common_1.Query)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String, typeof (_b = typeof notification_dto_1.GetNotificationsQueryDto !== "undefined" && notification_dto_1.GetNotificationsQueryDto) === "function" ? _b : Object]),
@@ -5191,8 +6519,11 @@ __decorate([
     (0, common_1.Get)('unread-count'),
     (0, common_1.HttpCode)(common_1.HttpStatus.OK),
     (0, swagger_1.ApiOperation)({ summary: 'count unread notifications' }),
-    (0, swagger_1.ApiOkResponse)({ status: 200, description: 'success' }),
-    __param(0, (0, _CurrentUser_1.CurrentUser)('id')),
+    (0, swagger_1.ApiOkResponse)({
+        status: 200, description: 'success',
+        type: notification_dto_1.UnreadCountResponseDto,
+    }),
+    __param(0, (0, _CurrentUserId_1.CurrentUserId)('id')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", typeof (_d = typeof Promise !== "undefined" && Promise) === "function" ? _d : Object)
@@ -5203,7 +6534,7 @@ __decorate([
     (0, swagger_1.ApiOperation)({ summary: 'mark as read' }),
     (0, swagger_1.ApiOkResponse)({ description: 'success' }),
     __param(0, (0, common_1.Param)('id')),
-    __param(1, (0, _CurrentUser_1.CurrentUser)('id')),
+    __param(1, (0, _CurrentUserId_1.CurrentUserId)('id')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String, String]),
     __metadata("design:returntype", typeof (_e = typeof Promise !== "undefined" && Promise) === "function" ? _e : Object)
@@ -5213,7 +6544,7 @@ __decorate([
     (0, common_1.HttpCode)(common_1.HttpStatus.OK),
     (0, swagger_1.ApiOperation)({ summary: 'mark all read' }),
     (0, swagger_1.ApiOkResponse)({ description: 'success' }),
-    __param(0, (0, _CurrentUser_1.CurrentUser)('id')),
+    __param(0, (0, _CurrentUserId_1.CurrentUserId)('id')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", typeof (_f = typeof Promise !== "undefined" && Promise) === "function" ? _f : Object)
@@ -5224,7 +6555,7 @@ __decorate([
     (0, swagger_1.ApiOperation)({ summary: 'delete notification' }),
     (0, swagger_1.ApiOkResponse)({ description: 'Deleted successfully' }),
     __param(0, (0, common_1.Param)('id')),
-    __param(1, (0, _CurrentUser_1.CurrentUser)('id')),
+    __param(1, (0, _CurrentUserId_1.CurrentUserId)('id')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String, String]),
     __metadata("design:returntype", typeof (_g = typeof Promise !== "undefined" && Promise) === "function" ? _g : Object)
@@ -5234,7 +6565,7 @@ __decorate([
     (0, common_1.HttpCode)(common_1.HttpStatus.OK),
     (0, swagger_1.ApiOperation)({ summary: 'delete all read receipts' }),
     (0, swagger_1.ApiOkResponse)({ description: 'Deleted successfully' }),
-    __param(0, (0, _CurrentUser_1.CurrentUser)('id')),
+    __param(0, (0, _CurrentUserId_1.CurrentUserId)('id')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", typeof (_h = typeof Promise !== "undefined" && Promise) === "function" ? _h : Object)
@@ -5266,47 +6597,227 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
-var _a, _b, _c, _d;
+var _a, _b, _c;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.NotificationService = void 0;
 const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const notification_enum_1 = __webpack_require__(/*! ./enums/notification.enum */ "./src/modules/notifications/enums/notification.enum.ts");
 const notification_action_service_1 = __webpack_require__(/*! ./services/notification-action.service */ "./src/modules/notifications/services/notification-action.service.ts");
 const notification_creation_service_1 = __webpack_require__(/*! ./services/notification-creation.service */ "./src/modules/notifications/services/notification-creation.service.ts");
-const notification_event_service_1 = __webpack_require__(/*! ./services/notification-event.service */ "./src/modules/notifications/services/notification-event.service.ts");
 const notification_query_service_1 = __webpack_require__(/*! ./services/notification-query.service */ "./src/modules/notifications/services/notification-query.service.ts");
 let NotificationService = class NotificationService {
-    constructor(queryService, creationService, actionService, eventService) {
+    constructor(queryService, creationService, actionService) {
         this.queryService = queryService;
         this.creationService = creationService;
         this.actionService = actionService;
-        this.eventService = eventService;
     }
     async notifyNewQuote(customerId, data) {
-        await this.eventService.notifyNewQuote(customerId, data);
+        await this.creationService.createNotification({
+            userId: customerId,
+            type: notification_enum_1.NotificationType.NEW_QUOTE_RECEIVED,
+            title: '💼 Có báo giá mới',
+            message: `${data.providerName} đã gửi báo giá ${data.price?.toLocaleString('vi-VN')}đ cho "${data.postTitle}"`,
+            metadata: {
+                postId: data.postId,
+                quoteId: data.quoteId,
+                providerId: data.providerName,
+                price: data.price,
+            },
+            actionUrl: `/posts/${data.postId}/quotes`,
+        });
     }
-    async notifyQuoteAccepted(providerId, data) {
-        await this.eventService.notifyQuoteAccepted(providerId, data);
+    async notifyQuoteAcceptedForChat(providerId, payload) {
+        await this.creationService.createNotification({
+            userId: providerId,
+            type: notification_enum_1.NotificationType.QUOTE_ACCEPTED_FOR_CHAT,
+            title: 'Báo giá được chấp nhận',
+            message: `${payload.customerName} đã chấp nhận báo giá của bạn cho "${payload.postTitle}". Hãy vào chat để thảo luận thêm!`,
+            metadata: {
+                quoteId: payload.quoteId,
+                postId: payload.postId,
+            },
+            actionUrl: `/chat/quote/${payload.quoteId}`,
+        });
+    }
+    async notifyQuoteRevised(customerId, payload) {
+        const oldPriceNumber = payload.oldPrice ?? payload.newPrice;
+        const priceChange = payload.newPrice - oldPriceNumber;
+        const changeText = priceChange > 0 ? 'tăng' : 'giảm';
+        const changeAmount = Math.abs(priceChange).toLocaleString('vi-VN');
+        const emoji = priceChange > 0 ? '📈' : '📉';
+        await this.creationService.createNotification({
+            userId: customerId,
+            type: notification_enum_1.NotificationType.QUOTE_REVISED,
+            title: `${emoji} Thợ đã cập nhật giá`,
+            message: `${payload.providerName} đã ${changeText} giá ${changeAmount}đ cho "${payload.postTitle}". Giá mới: ${payload.newPrice.toLocaleString('vi-VN')}đ`,
+            metadata: {
+                quoteId: payload.quoteId,
+                postId: payload.postId,
+                newPrice: payload.newPrice,
+                oldPrice: payload.oldPrice,
+                priceChange,
+            },
+            actionUrl: `/chat/quote/${payload.quoteId}`,
+        });
+    }
+    async notifyOrderRequested(providerId, payload) {
+        const revisionText = payload.revisionNumber
+            ? ` (Revision ${payload.revisionNumber})`
+            : '';
+        const notesText = payload.notes
+            ? `\nGhi chú: ${payload.notes.substring(0, 100)}`
+            : '';
+        await this.creationService.createNotification({
+            userId: providerId,
+            type: notification_enum_1.NotificationType.ORDER_REQUESTED,
+            title: '🛎️ Khách hàng muốn đặt đơn',
+            message: `${payload.customerName} đã nhấn đặt đơn với giá ${payload.price.toLocaleString('vi-VN')}đ${revisionText} cho "${payload.postTitle}". Hãy xác nhận để bắt đầu làm!${notesText}`,
+            metadata: {
+                quoteId: payload.quoteId,
+                postId: payload.postId,
+                price: payload.price,
+                revisionNumber: payload.revisionNumber,
+                notes: payload.notes,
+            },
+            actionUrl: `/quotes/${payload.quoteId}`,
+        });
     }
     async notifyQuoteRejected(providerId, data) {
-        await this.eventService.notifyQuoteRejected(providerId, data);
+        const reasonText = data.reason ? `\nLý do: ${data.reason}` : '';
+        await this.creationService.createNotification({
+            userId: providerId,
+            type: notification_enum_1.NotificationType.QUOTE_REJECTED,
+            title: '❌ Báo giá bị từ chối',
+            message: `Báo giá của bạn cho "${data.postTitle}" đã bị từ chối.${reasonText}`,
+            metadata: {
+                postId: data.postId,
+                quoteId: data.quoteId,
+                reason: data.reason,
+            },
+            actionUrl: `/quotes/${data.quoteId}`,
+        });
+    }
+    async notifyQuoteCancelled(customerId, payload) {
+        const reasonText = payload.reason ? `\nLý do: ${payload.reason}` : '';
+        await this.creationService.createNotification({
+            userId: customerId,
+            type: notification_enum_1.NotificationType.QUOTE_REJECTED,
+            title: '🚫 Thợ đã hủy báo giá',
+            message: `${payload.providerName} đã hủy báo giá cho "${payload.postTitle}".${reasonText}`,
+            metadata: {
+                quoteId: payload.quoteId,
+                postId: payload.postId,
+                reason: payload.reason,
+            },
+            actionUrl: `/posts/${payload.postId}`,
+        });
+    }
+    async notifyOrderCreated(customerId, providerId, orderId, orderTitle) {
+        await this.creationService.createNotification({
+            userId: customerId,
+            type: notification_enum_1.NotificationType.ORDER_CREATED,
+            title: '✅ Đơn hàng đã được tạo',
+            message: `Thợ đã xác nhận và đơn hàng "${orderTitle}" đã được tạo. Công việc đang được thực hiện!`,
+            metadata: { orderId },
+            actionUrl: `/orders/${orderId}`,
+        });
+    }
+    async notifyOrderInProgress(customerId, orderId, orderTitle) {
+        await this.creationService.createNotification({
+            userId: customerId,
+            type: notification_enum_1.NotificationType.ORDER_IN_PROGRESS,
+            title: '🔨 Thợ đã bắt đầu làm',
+            message: `Thợ đã bắt đầu thực hiện đơn hàng "${orderTitle}"`,
+            metadata: { orderId },
+            actionUrl: `/orders/${orderId}`,
+        });
+    }
+    async notifyProviderCompleted(customerId, orderId, orderTitle) {
+        await this.creationService.createNotification({
+            userId: customerId,
+            type: notification_enum_1.NotificationType.ORDER_IN_PROGRESS,
+            title: '✅ Thợ đã hoàn thành',
+            message: `Thợ đã hoàn thành đơn hàng "${orderTitle}". Vui lòng xác nhận!`,
+            metadata: { orderId },
+            actionUrl: `/orders/${orderId}`,
+        });
+    }
+    async notifyOrderCompleted(userId, orderId, orderTitle, isProvider) {
+        const message = isProvider
+            ? `Đơn hàng "${orderTitle}" đã hoàn thành. Vui lòng chờ thanh toán.`
+            : `Đơn hàng "${orderTitle}" đã hoàn thành. Cảm ơn bạn đã sử dụng dịch vụ!`;
+        await this.creationService.createNotification({
+            userId,
+            type: notification_enum_1.NotificationType.ORDER_COMPLETED,
+            title: '🎉 Đơn hàng hoàn thành',
+            message,
+            metadata: { orderId, isProvider },
+            actionUrl: `/orders/${orderId}`,
+        });
+    }
+    async notifyOrderCancelled(userId, orderId, orderTitle, reason) {
+        await this.creationService.createNotification({
+            userId,
+            type: notification_enum_1.NotificationType.ORDER_CANCELLED,
+            title: '🚫 Đơn hàng đã bị hủy',
+            message: `Đơn hàng "${orderTitle}" đã bị hủy. Lý do: ${reason}`,
+            metadata: { orderId, reason },
+            actionUrl: `/orders/${orderId}`,
+        });
+    }
+    async notifyPaymentReceived(providerId, amount, orderId) {
+        await this.creationService.createNotification({
+            userId: providerId,
+            type: notification_enum_1.NotificationType.PAYMENT_RECEIVED,
+            title: '💰 Đã nhận thanh toán',
+            message: `Bạn đã nhận thanh toán ${amount.toLocaleString('vi-VN')}đ`,
+            metadata: { orderId, amount },
+            actionUrl: `/orders/${orderId}`,
+        });
     }
     async notifyPostClosed(providerIds, postTitle, postId) {
-        await this.eventService.notifyPostClosed(providerIds, postTitle, postId);
-    }
-    async notifyOrderCreated(providerId, customerId, orderId, orderTitle) {
-        await this.eventService.notifyOrderCreated(providerId, customerId, orderId, orderTitle);
-    }
-    async notifyOrderCompleted(userId, orderId, orderTitle) {
-        await this.eventService.notifyOrderCompleted(userId, orderId, orderTitle);
+        for (const providerId of providerIds) {
+            await this.creationService.createNotification({
+                userId: providerId,
+                type: notification_enum_1.NotificationType.POST_CLOSED,
+                title: '🔒 Post đã đóng',
+                message: `Post "${postTitle}" mà bạn đã chào giá đã được đóng.`,
+                metadata: { postId },
+                actionUrl: `/posts/${postId}`,
+            });
+        }
     }
     async notifyNewReview(providerId, reviewId, rating, customerName) {
-        await this.eventService.notifyNewReview(providerId, reviewId, rating, customerName);
+        const stars = '⭐'.repeat(rating);
+        await this.creationService.createNotification({
+            userId: providerId,
+            type: notification_enum_1.NotificationType.NEW_REVIEW_RECEIVED,
+            title: '⭐ Đánh giá mới',
+            message: `${customerName} đã đánh giá bạn ${stars} (${rating}/5)`,
+            metadata: { reviewId, rating },
+            actionUrl: `/reviews/${reviewId}`,
+        });
     }
     async notifyNewMessage(userId, senderId, senderName, messagePreview, chatId) {
-        await this.eventService.notifyNewMessage(userId, senderId, senderName, messagePreview, chatId);
+        await this.creationService.createNotification({
+            userId,
+            type: notification_enum_1.NotificationType.NEW_MESSAGE,
+            title: '💬 Tin nhắn mới',
+            message: `${senderName}: ${messagePreview.substring(0, 100)}`,
+            metadata: { senderId, chatId },
+            actionUrl: `/chats/${chatId}`,
+        });
     }
     async notifySystem(userIds, title, message, metadata) {
-        await this.eventService.notifySystem(userIds, title, message, metadata);
+        for (const userId of userIds) {
+            await this.creationService.createNotification({
+                userId,
+                type: notification_enum_1.NotificationType.SYSTEM_ANNOUNCEMENT,
+                title,
+                message,
+                metadata,
+            });
+        }
     }
     async getUserNotifications(userId, page = 1, limit = 20, unreadOnly = false) {
         return await this.queryService.getUserNotifications(userId, page, limit, unreadOnly);
@@ -5330,7 +6841,7 @@ let NotificationService = class NotificationService {
 exports.NotificationService = NotificationService;
 exports.NotificationService = NotificationService = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [typeof (_a = typeof notification_query_service_1.NotificationQueryService !== "undefined" && notification_query_service_1.NotificationQueryService) === "function" ? _a : Object, typeof (_b = typeof notification_creation_service_1.NotificationCreationService !== "undefined" && notification_creation_service_1.NotificationCreationService) === "function" ? _b : Object, typeof (_c = typeof notification_action_service_1.NotificationActionService !== "undefined" && notification_action_service_1.NotificationActionService) === "function" ? _c : Object, typeof (_d = typeof notification_event_service_1.NotificationEventService !== "undefined" && notification_event_service_1.NotificationEventService) === "function" ? _d : Object])
+    __metadata("design:paramtypes", [typeof (_a = typeof notification_query_service_1.NotificationQueryService !== "undefined" && notification_query_service_1.NotificationQueryService) === "function" ? _a : Object, typeof (_b = typeof notification_creation_service_1.NotificationCreationService !== "undefined" && notification_creation_service_1.NotificationCreationService) === "function" ? _b : Object, typeof (_c = typeof notification_action_service_1.NotificationActionService !== "undefined" && notification_action_service_1.NotificationActionService) === "function" ? _c : Object])
 ], NotificationService);
 
 
@@ -5435,6 +6946,13 @@ let NotificationRepository = class NotificationRepository {
     }
     create(data, manager) {
         return this.getRepository(manager).create(data);
+    }
+    async insert(entities) {
+        await this.createQueryBuilder()
+            .insert()
+            .into(notification_entity_1.Notification)
+            .values(entities)
+            .execute();
     }
     async save(notification, manager) {
         return await this.getRepository(manager).save(notification);
@@ -5567,26 +7085,34 @@ let NotificationCreationService = class NotificationCreationService {
         this.notificationRepo = notificationRepo;
         this.eventEmitter = eventEmitter;
     }
-    async createNotification(userId, type, title, message, metadata, actionUrl) {
+    async createNotification(data) {
         const notification = this.notificationRepo.create({
-            userId,
-            type,
-            title,
-            message,
-            metadata,
-            actionUrl,
+            userId: data.userId,
+            type: data.type,
+            title: data.title,
+            message: data.message,
+            metadata: data.metadata,
+            actionUrl: data.actionUrl,
             isRead: false,
         });
         const saved = await this.notificationRepo.save(notification);
         this.eventEmitter.emit('notification.created', {
-            userId,
+            userId: data.userId,
             notification: saved,
         });
         return saved;
     }
-    async createBulkNotifications(userIds, type, title, message, metadata, actionUrl) {
-        const notifications = userIds.map((userId) => this.createNotification(userId, type, title, message, metadata, actionUrl));
-        await Promise.all(notifications);
+    async createBulkNotifications(notifications) {
+        const entities = notifications.map(notif => this.notificationRepo.create({
+            userId: notif.userId,
+            type: notif.type,
+            title: notif.title,
+            message: notif.message,
+            metadata: notif.metadata,
+            actionUrl: notif.actionUrl,
+            isRead: false,
+        }));
+        await this.notificationRepo.insert(entities);
     }
 };
 exports.NotificationCreationService = NotificationCreationService;
@@ -5625,45 +7151,157 @@ let NotificationEventService = class NotificationEventService {
         this.creationService = creationService;
     }
     async notifyNewQuote(customerId, data) {
-        await this.creationService.createNotification(customerId, notification_enum_1.NotificationType.NEW_QUOTE_RECEIVED, 'new quote', `${data.providerName} sent a quote ${data.price?.toLocaleString('vi-VN')}đ for post "${data.postTitle}"`, {
-            postId: data.postId,
-            quoteId: data.quoteId,
-            providerId: data.providerName,
-            price: data.price,
-        }, `/posts/${data.postId}/quotes`);
+        await this.creationService.createNotification({
+            userId: customerId,
+            type: notification_enum_1.NotificationType.NEW_QUOTE_RECEIVED,
+            title: 'new quote',
+            message: `${data.providerName} sent a quote ${data.price?.toLocaleString('vi-VN')}đ for post "${data.postTitle}"`,
+            metadata: {
+                postId: data.postId,
+                quoteId: data.quoteId,
+                providerId: data.providerName,
+                price: data.price,
+            },
+            actionUrl: `/posts/${data.postId}/quotes`,
+        });
     }
     async notifyQuoteAccepted(providerId, data) {
-        await this.creationService.createNotification(providerId, notification_enum_1.NotificationType.QUOTE_ACCEPTED, 'Quote accepted', `Happy! Your quote for "${data.postTitle}" has been accepted`, {
-            postId: data.postId,
-            quoteId: data.quoteId,
-        }, `/quotes/${data.quoteId}`);
+        await this.creationService.createNotification({
+            userId: providerId,
+            type: notification_enum_1.NotificationType.QUOTE_ACCEPTED,
+            title: 'Quote accepted',
+            message: `Happy! Your quote for "${data.postTitle}" has been accepted`,
+            metadata: {
+                postId: data.postId,
+                quoteId: data.quoteId,
+            },
+            actionUrl: `/quotes/${data.quoteId}`,
+        });
     }
     async notifyQuoteRejected(providerId, data) {
         const reasonText = data.reason ? `: ${data.reason}` : '';
-        await this.creationService.createNotification(providerId, notification_enum_1.NotificationType.QUOTE_REJECTED, 'Quote was rejected', `Your quote for "${data.postTitle}" has been rejected${reasonText}`, {
-            postId: data.postId,
-            quoteId: data.quoteId,
-            reason: data.reason,
-        }, `/quotes/${data.quoteId}`);
+        await this.creationService.createNotification({
+            userId: providerId,
+            type: notification_enum_1.NotificationType.QUOTE_REJECTED,
+            title: 'Quote was rejected',
+            message: `Your quote for "${data.postTitle}" has been rejected${reasonText}`,
+            metadata: {
+                postId: data.postId,
+                quoteId: data.quoteId,
+                reason: data.reason,
+            },
+            actionUrl: `/quotes/${data.quoteId}`,
+        });
     }
     async notifyPostClosed(providerIds, postTitle, postId) {
-        await this.creationService.createBulkNotifications(providerIds, notification_enum_1.NotificationType.POST_CLOSED, 'Post is closed', `Post "${postTitle}" you bid on has been closed.`, { postId }, `/posts/${postId}`);
+        await Promise.all(providerIds.map(providerId => this.creationService.createNotification({
+            userId: providerId,
+            type: notification_enum_1.NotificationType.POST_CLOSED,
+            title: 'Post is closed',
+            message: `Post "${postTitle}" you bid on has been closed.`,
+            metadata: { postId },
+            actionUrl: `/posts/${postId}`,
+        })));
     }
     async notifyOrderCreated(providerId, customerId, orderId, orderTitle) {
-        await this.creationService.createNotification(providerId, notification_enum_1.NotificationType.ORDER_CREATED, 'new order', `you have new order: "${orderTitle}"`, { orderId }, `/orders/${orderId}`);
-        await this.creationService.createNotification(customerId, notification_enum_1.NotificationType.ORDER_CREATED, 'Order has been created', `Order "${orderTitle}" was created successfully`, { orderId }, `/orders/${orderId}`);
+        await this.creationService.createNotification({
+            userId: providerId,
+            type: notification_enum_1.NotificationType.ORDER_CREATED,
+            title: 'new order',
+            message: `you have new order: "${orderTitle}"`,
+            metadata: { orderId },
+            actionUrl: `/orders/${orderId}`,
+        });
+        await this.creationService.createNotification({
+            userId: customerId,
+            type: notification_enum_1.NotificationType.ORDER_CREATED,
+            title: 'Order has been created',
+            message: `Order "${orderTitle}" was created successfully`,
+            metadata: { orderId },
+            actionUrl: `/orders/${orderId}`,
+        });
     }
-    async notifyOrderCompleted(userId, orderId, orderTitle) {
-        await this.creationService.createNotification(userId, notification_enum_1.NotificationType.ORDER_COMPLETED, 'Order completed', `Order "${orderTitle}" completed`, { orderId }, `/orders/${orderId}`);
+    async notifyOrderInProgress(customerId, orderId, orderTitle) {
+        await this.creationService.createNotification({
+            userId: customerId,
+            type: notification_enum_1.NotificationType.ORDER_IN_PROGRESS,
+            title: 'Order in progress',
+            message: `Provider has started working on order: "${orderTitle}"`,
+            metadata: { orderId },
+            actionUrl: `/orders/${orderId}`,
+        });
+    }
+    async notifyProviderCompleted(customerId, orderId, orderTitle) {
+        await this.creationService.createNotification({
+            userId: customerId,
+            type: notification_enum_1.NotificationType.ORDER_IN_PROGRESS,
+            title: 'Provider completed work',
+            message: `Provider has completed order: "${orderTitle}". Please confirm!`,
+            metadata: { orderId },
+            actionUrl: `/orders/${orderId}`,
+        });
+    }
+    async notifyOrderCompleted(userId, orderId, orderTitle, isProvider) {
+        const message = isProvider
+            ? `Order "${orderTitle}" has been completed. Please wait for payment.`
+            : `Order "${orderTitle}" has been completed. Thank you for using our service!`;
+        await this.creationService.createNotification({
+            userId,
+            type: notification_enum_1.NotificationType.ORDER_COMPLETED,
+            title: 'Order completed',
+            message,
+            metadata: { orderId, isProvider },
+            actionUrl: `/orders/${orderId}`,
+        });
+    }
+    async notifyOrderCancelled(userId, orderId, orderTitle, reason) {
+        await this.creationService.createNotification({
+            userId,
+            type: notification_enum_1.NotificationType.ORDER_CANCELLED,
+            title: 'Order cancelled',
+            message: `Order "${orderTitle}" has been cancelled. Reason: ${reason}`,
+            metadata: { orderId, reason },
+            actionUrl: `/orders/${orderId}`,
+        });
+    }
+    async notifyPaymentReceived(providerId, amount, orderId) {
+        await this.creationService.createNotification({
+            userId: providerId,
+            type: notification_enum_1.NotificationType.PAYMENT_RECEIVED,
+            title: 'Payment received',
+            message: `You have received payment of ${amount.toLocaleString('vi-VN')} VNĐ`,
+            metadata: { orderId, amount },
+            actionUrl: `/orders/${orderId}`,
+        });
     }
     async notifyNewReview(providerId, reviewId, rating, customerName) {
-        await this.creationService.createNotification(providerId, notification_enum_1.NotificationType.NEW_REVIEW_RECEIVED, 'New review', `${customerName} rated you ${rating} star`, { reviewId, rating }, `/reviews/${reviewId}`);
+        await this.creationService.createNotification({
+            userId: providerId,
+            type: notification_enum_1.NotificationType.NEW_REVIEW_RECEIVED,
+            title: 'New review',
+            message: `${customerName} rated you ${rating} star`,
+            metadata: { reviewId, rating },
+            actionUrl: `/reviews/${reviewId}`,
+        });
     }
     async notifyNewMessage(userId, senderId, senderName, messagePreview, chatId) {
-        await this.creationService.createNotification(userId, notification_enum_1.NotificationType.NEW_MESSAGE, 'New message', `${senderName}: ${messagePreview}`, { senderId, chatId }, `/chats/${chatId}`);
+        await this.creationService.createNotification({
+            userId,
+            type: notification_enum_1.NotificationType.NEW_MESSAGE,
+            title: 'New message',
+            message: `${senderName}: ${messagePreview}`,
+            metadata: { senderId, chatId },
+            actionUrl: `/chats/${chatId}`,
+        });
     }
     async notifySystem(userIds, title, message, metadata) {
-        await this.creationService.createBulkNotifications(userIds, notification_enum_1.NotificationType.SYSTEM_ANNOUNCEMENT, title, message, metadata);
+        await Promise.all(userIds.map(userId => this.creationService.createNotification({
+            userId,
+            type: notification_enum_1.NotificationType.SYSTEM_ANNOUNCEMENT,
+            title,
+            message,
+            metadata,
+        })));
     }
 };
 exports.NotificationEventService = NotificationEventService;
@@ -5730,6 +7368,1083 @@ exports.NotificationQueryService = NotificationQueryService = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [typeof (_a = typeof notification_repository_1.NotificationRepository !== "undefined" && notification_repository_1.NotificationRepository) === "function" ? _a : Object])
 ], NotificationQueryService);
+
+
+/***/ }),
+
+/***/ "./src/modules/orders/dto/order.dto.ts":
+/*!*********************************************!*\
+  !*** ./src/modules/orders/dto/order.dto.ts ***!
+  \*********************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.OrderResponseDto = exports.GetOrdersQueryDto = exports.UpdateNotesDto = exports.UpdatePaymentMethodDto = exports.CancelOrderDto = exports.CreateOrderDto = void 0;
+const swagger_1 = __webpack_require__(/*! @nestjs/swagger */ "@nestjs/swagger");
+const class_transformer_1 = __webpack_require__(/*! class-transformer */ "class-transformer");
+const class_validator_1 = __webpack_require__(/*! class-validator */ "class-validator");
+const order_entity_1 = __webpack_require__(/*! ../entities/order.entity */ "./src/modules/orders/entities/order.entity.ts");
+class CreateOrderDto {
+}
+exports.CreateOrderDto = CreateOrderDto;
+__decorate([
+    (0, swagger_1.ApiProperty)({ description: 'Provider ID' }),
+    (0, class_validator_1.IsUUID)(),
+    __metadata("design:type", String)
+], CreateOrderDto.prototype, "providerId", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ description: 'Tiêu đề dịch vụ' }),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MaxLength)(500),
+    __metadata("design:type", String)
+], CreateOrderDto.prototype, "title", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ description: 'Mô tả chi tiết' }),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MaxLength)(5000),
+    __metadata("design:type", String)
+], CreateOrderDto.prototype, "description", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ description: 'Giá dịch vụ', example: 500000 }),
+    (0, class_validator_1.IsNumber)(),
+    (0, class_validator_1.Min)(0),
+    (0, class_transformer_1.Type)(() => Number),
+    __metadata("design:type", Number)
+], CreateOrderDto.prototype, "price", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ description: 'Địa điểm thực hiện' }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MaxLength)(500),
+    __metadata("design:type", String)
+], CreateOrderDto.prototype, "location", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({
+        description: 'Thời gian mong muốn (ISO 8601)',
+        example: '2025-01-20T09:00:00Z'
+    }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsISO8601)(),
+    __metadata("design:type", typeof (_a = typeof Date !== "undefined" && Date) === "function" ? _a : Object)
+], CreateOrderDto.prototype, "scheduledAt", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ description: 'Thời gian ước tính (phút)', example: 120 }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsNumber)(),
+    (0, class_validator_1.Min)(0),
+    (0, class_transformer_1.Type)(() => Number),
+    __metadata("design:type", Number)
+], CreateOrderDto.prototype, "estimatedDuration", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ description: 'Ghi chú thêm' }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MaxLength)(2000),
+    __metadata("design:type", String)
+], CreateOrderDto.prototype, "notes", void 0);
+class CancelOrderDto {
+}
+exports.CancelOrderDto = CancelOrderDto;
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ description: 'Lý do hủy' }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MaxLength)(1000),
+    __metadata("design:type", String)
+], CancelOrderDto.prototype, "reason", void 0);
+class UpdatePaymentMethodDto {
+}
+exports.UpdatePaymentMethodDto = UpdatePaymentMethodDto;
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        enum: order_entity_1.PaymentMethod,
+        description: 'Phương thức thanh toán'
+    }),
+    (0, class_validator_1.IsEnum)(order_entity_1.PaymentMethod),
+    __metadata("design:type", typeof (_b = typeof order_entity_1.PaymentMethod !== "undefined" && order_entity_1.PaymentMethod) === "function" ? _b : Object)
+], UpdatePaymentMethodDto.prototype, "paymentMethod", void 0);
+class UpdateNotesDto {
+}
+exports.UpdateNotesDto = UpdateNotesDto;
+__decorate([
+    (0, swagger_1.ApiProperty)({ description: 'Ghi chú' }),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MaxLength)(2000),
+    __metadata("design:type", String)
+], UpdateNotesDto.prototype, "notes", void 0);
+class GetOrdersQueryDto {
+}
+exports.GetOrdersQueryDto = GetOrdersQueryDto;
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({
+        enum: order_entity_1.OrderStatus,
+        description: 'Lọc theo trạng thái'
+    }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsEnum)(order_entity_1.OrderStatus),
+    __metadata("design:type", typeof (_c = typeof order_entity_1.OrderStatus !== "undefined" && order_entity_1.OrderStatus) === "function" ? _c : Object)
+], GetOrdersQueryDto.prototype, "status", void 0);
+class OrderResponseDto {
+}
+exports.OrderResponseDto = OrderResponseDto;
+__decorate([
+    (0, swagger_1.ApiProperty)(),
+    __metadata("design:type", String)
+], OrderResponseDto.prototype, "id", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)(),
+    __metadata("design:type", String)
+], OrderResponseDto.prototype, "orderNumber", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)(),
+    __metadata("design:type", String)
+], OrderResponseDto.prototype, "customerId", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)(),
+    __metadata("design:type", String)
+], OrderResponseDto.prototype, "providerId", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)(),
+    __metadata("design:type", String)
+], OrderResponseDto.prototype, "title", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)(),
+    __metadata("design:type", String)
+], OrderResponseDto.prototype, "description", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)(),
+    __metadata("design:type", Number)
+], OrderResponseDto.prototype, "price", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)(),
+    __metadata("design:type", Number)
+], OrderResponseDto.prototype, "serviceFee", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)(),
+    __metadata("design:type", Number)
+], OrderResponseDto.prototype, "totalAmount", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ enum: order_entity_1.OrderStatus }),
+    __metadata("design:type", typeof (_d = typeof order_entity_1.OrderStatus !== "undefined" && order_entity_1.OrderStatus) === "function" ? _d : Object)
+], OrderResponseDto.prototype, "status", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)(),
+    __metadata("design:type", String)
+], OrderResponseDto.prototype, "paymentStatus", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ required: false }),
+    __metadata("design:type", String)
+], OrderResponseDto.prototype, "paymentMethod", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ required: false }),
+    __metadata("design:type", typeof (_e = typeof Date !== "undefined" && Date) === "function" ? _e : Object)
+], OrderResponseDto.prototype, "scheduledAt", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ required: false }),
+    __metadata("design:type", typeof (_f = typeof Date !== "undefined" && Date) === "function" ? _f : Object)
+], OrderResponseDto.prototype, "startedAt", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ required: false }),
+    __metadata("design:type", typeof (_g = typeof Date !== "undefined" && Date) === "function" ? _g : Object)
+], OrderResponseDto.prototype, "providerCompletedAt", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ required: false }),
+    __metadata("design:type", typeof (_h = typeof Date !== "undefined" && Date) === "function" ? _h : Object)
+], OrderResponseDto.prototype, "customerCompletedAt", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ required: false }),
+    __metadata("design:type", typeof (_j = typeof Date !== "undefined" && Date) === "function" ? _j : Object)
+], OrderResponseDto.prototype, "completedAt", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)(),
+    __metadata("design:type", typeof (_k = typeof Date !== "undefined" && Date) === "function" ? _k : Object)
+], OrderResponseDto.prototype, "createdAt", void 0);
+
+
+/***/ }),
+
+/***/ "./src/modules/orders/entities/order.entity.ts":
+/*!*****************************************************!*\
+  !*** ./src/modules/orders/entities/order.entity.ts ***!
+  \*****************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.Order = exports.PaymentMethod = exports.PaymentStatus = exports.OrderStatus = void 0;
+const quote_entity_1 = __webpack_require__(/*! @/modules/quotes/entities/quote.entity */ "./src/modules/quotes/entities/quote.entity.ts");
+const user_entity_1 = __webpack_require__(/*! @/modules/users/entities/user.entity */ "./src/modules/users/entities/user.entity.ts");
+const typeorm_1 = __webpack_require__(/*! typeorm */ "typeorm");
+var OrderStatus;
+(function (OrderStatus) {
+    OrderStatus["PENDING"] = "pending";
+    OrderStatus["IN_PROGRESS"] = "in_progress";
+    OrderStatus["COMPLETED"] = "completed";
+    OrderStatus["CANCELLED"] = "cancelled";
+    OrderStatus["DISPUTED"] = "disputed";
+})(OrderStatus || (exports.OrderStatus = OrderStatus = {}));
+var PaymentStatus;
+(function (PaymentStatus) {
+    PaymentStatus["PENDING"] = "pending";
+    PaymentStatus["PAID"] = "paid";
+    PaymentStatus["REFUNDED"] = "refunded";
+})(PaymentStatus || (exports.PaymentStatus = PaymentStatus = {}));
+var PaymentMethod;
+(function (PaymentMethod) {
+    PaymentMethod["CASH"] = "cash";
+    PaymentMethod["CARD"] = "card";
+    PaymentMethod["BANK_TRANSFER"] = "bank_transfer";
+    PaymentMethod["WALLET"] = "wallet";
+})(PaymentMethod || (exports.PaymentMethod = PaymentMethod = {}));
+let Order = class Order {
+    constructor() {
+        this.serviceFee = 0;
+        this.status = OrderStatus.PENDING;
+        this.paymentStatus = PaymentStatus.PENDING;
+    }
+    isPending() {
+        return this.status === OrderStatus.PENDING;
+    }
+    isInProgress() {
+        return this.status === OrderStatus.IN_PROGRESS;
+    }
+    isCompleted() {
+        return this.status === OrderStatus.COMPLETED;
+    }
+    isCancelled() {
+        return this.status === OrderStatus.CANCELLED;
+    }
+    canCancel() {
+        if (this.status === OrderStatus.PENDING) {
+            return true;
+        }
+        if (this.status === OrderStatus.IN_PROGRESS && this.startedAt) {
+            const now = new Date();
+            const minutesElapsed = (now.getTime() - this.startedAt.getTime()) / (1000 * 60);
+            return minutesElapsed < 10;
+        }
+        return false;
+    }
+    belongsToCustomer(userId) {
+        return this.customerId === userId;
+    }
+    belongsToProvider(userId) {
+        return this.providerId === userId;
+    }
+    isParticipant(userId) {
+        return this.customerId === userId || this.providerId === userId;
+    }
+    canProviderComplete() {
+        return this.status === OrderStatus.IN_PROGRESS &&
+            !this.providerCompletedAt;
+    }
+    canCustomerComplete() {
+        return this.status === OrderStatus.IN_PROGRESS &&
+            this.providerCompletedAt !== null &&
+            !this.customerCompletedAt;
+    }
+};
+exports.Order = Order;
+__decorate([
+    (0, typeorm_1.PrimaryGeneratedColumn)('uuid'),
+    __metadata("design:type", String)
+], Order.prototype, "id", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'order_number', unique: true }),
+    (0, typeorm_1.Index)(),
+    __metadata("design:type", String)
+], Order.prototype, "orderNumber", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'customer_id' }),
+    (0, typeorm_1.Index)(),
+    __metadata("design:type", String)
+], Order.prototype, "customerId", void 0);
+__decorate([
+    (0, typeorm_1.ManyToOne)(() => user_entity_1.User, { eager: true, onDelete: 'RESTRICT' }),
+    (0, typeorm_1.JoinColumn)({ name: 'customer_id' }),
+    __metadata("design:type", typeof (_a = typeof user_entity_1.User !== "undefined" && user_entity_1.User) === "function" ? _a : Object)
+], Order.prototype, "customer", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'provider_id' }),
+    (0, typeorm_1.Index)(),
+    __metadata("design:type", String)
+], Order.prototype, "providerId", void 0);
+__decorate([
+    (0, typeorm_1.ManyToOne)(() => user_entity_1.User, { eager: true, onDelete: 'RESTRICT' }),
+    (0, typeorm_1.JoinColumn)({ name: 'provider_id' }),
+    __metadata("design:type", typeof (_b = typeof user_entity_1.User !== "undefined" && user_entity_1.User) === "function" ? _b : Object)
+], Order.prototype, "provider", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'quote_id', nullable: true }),
+    __metadata("design:type", String)
+], Order.prototype, "quoteId", void 0);
+__decorate([
+    (0, typeorm_1.ManyToOne)(() => quote_entity_1.Quote, { nullable: true }),
+    (0, typeorm_1.JoinColumn)({ name: 'quote_id' }),
+    __metadata("design:type", typeof (_c = typeof quote_entity_1.Quote !== "undefined" && quote_entity_1.Quote) === "function" ? _c : Object)
+], Order.prototype, "quote", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ length: 500 }),
+    __metadata("design:type", String)
+], Order.prototype, "title", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'text' }),
+    __metadata("design:type", String)
+], Order.prototype, "description", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        type: 'decimal',
+        precision: 12,
+        scale: 2,
+    }),
+    __metadata("design:type", Number)
+], Order.prototype, "price", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        name: 'service_fee',
+        type: 'decimal',
+        precision: 12,
+        scale: 2,
+        default: 0,
+        comment: 'Phí nền tảng',
+    }),
+    __metadata("design:type", Number)
+], Order.prototype, "serviceFee", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        name: 'total_amount',
+        type: 'decimal',
+        precision: 12,
+        scale: 2,
+        comment: 'Tổng tiền = price + serviceFee',
+    }),
+    __metadata("design:type", Number)
+], Order.prototype, "totalAmount", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        type: 'enum',
+        enum: OrderStatus,
+        default: OrderStatus.PENDING,
+    }),
+    __metadata("design:type", String)
+], Order.prototype, "status", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        name: 'payment_status',
+        type: 'enum',
+        enum: PaymentStatus,
+        default: PaymentStatus.PENDING,
+    }),
+    __metadata("design:type", String)
+], Order.prototype, "paymentStatus", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        name: 'payment_method',
+        type: 'enum',
+        enum: PaymentMethod,
+        nullable: true,
+    }),
+    __metadata("design:type", String)
+], Order.prototype, "paymentMethod", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ length: 500, nullable: true }),
+    __metadata("design:type", String)
+], Order.prototype, "location", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        name: 'scheduled_at',
+        type: 'timestamp with time zone',
+        nullable: true,
+    }),
+    __metadata("design:type", typeof (_d = typeof Date !== "undefined" && Date) === "function" ? _d : Object)
+], Order.prototype, "scheduledAt", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        name: 'estimated_duration',
+        type: 'int',
+        nullable: true,
+        comment: 'Thời gian ước tính (phút)',
+    }),
+    __metadata("design:type", Number)
+], Order.prototype, "estimatedDuration", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        name: 'started_at',
+        type: 'timestamp with time zone',
+        nullable: true,
+    }),
+    __metadata("design:type", typeof (_e = typeof Date !== "undefined" && Date) === "function" ? _e : Object)
+], Order.prototype, "startedAt", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        name: 'provider_completed_at',
+        type: 'timestamp with time zone',
+        nullable: true,
+        comment: 'Thợ xác nhận hoàn thành',
+    }),
+    __metadata("design:type", typeof (_f = typeof Date !== "undefined" && Date) === "function" ? _f : Object)
+], Order.prototype, "providerCompletedAt", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        name: 'customer_completed_at',
+        type: 'timestamp with time zone',
+        nullable: true,
+        comment: 'Khách xác nhận hoàn thành',
+    }),
+    __metadata("design:type", typeof (_g = typeof Date !== "undefined" && Date) === "function" ? _g : Object)
+], Order.prototype, "customerCompletedAt", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        name: 'completed_at',
+        type: 'timestamp with time zone',
+        nullable: true,
+        comment: 'Hoàn thành (cả 2 bên đồng ý)',
+    }),
+    __metadata("design:type", typeof (_h = typeof Date !== "undefined" && Date) === "function" ? _h : Object)
+], Order.prototype, "completedAt", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        name: 'cancelled_at',
+        type: 'timestamp with time zone',
+        nullable: true,
+    }),
+    __metadata("design:type", typeof (_j = typeof Date !== "undefined" && Date) === "function" ? _j : Object)
+], Order.prototype, "cancelledAt", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'cancellation_reason', type: 'text', nullable: true }),
+    __metadata("design:type", String)
+], Order.prototype, "cancellationReason", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'cancelled_by', nullable: true }),
+    __metadata("design:type", String)
+], Order.prototype, "cancelledBy", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'text', nullable: true }),
+    __metadata("design:type", String)
+], Order.prototype, "notes", void 0);
+__decorate([
+    (0, typeorm_1.CreateDateColumn)({ name: 'created_at' }),
+    __metadata("design:type", typeof (_k = typeof Date !== "undefined" && Date) === "function" ? _k : Object)
+], Order.prototype, "createdAt", void 0);
+__decorate([
+    (0, typeorm_1.UpdateDateColumn)({ name: 'updated_at' }),
+    __metadata("design:type", typeof (_l = typeof Date !== "undefined" && Date) === "function" ? _l : Object)
+], Order.prototype, "updatedAt", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'paid_at', type: 'timestamp', nullable: true }),
+    __metadata("design:type", typeof (_m = typeof Date !== "undefined" && Date) === "function" ? _m : Object)
+], Order.prototype, "paidAt", void 0);
+exports.Order = Order = __decorate([
+    (0, typeorm_1.Entity)('orders'),
+    (0, typeorm_1.Index)(['customerId', 'status']),
+    (0, typeorm_1.Index)(['providerId', 'status']),
+    (0, typeorm_1.Index)(['status', 'createdAt'])
+], Order);
+
+
+/***/ }),
+
+/***/ "./src/modules/orders/order.controller.ts":
+/*!************************************************!*\
+  !*** ./src/modules/orders/order.controller.ts ***!
+  \************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var __param = (this && this.__param) || function (paramIndex, decorator) {
+    return function (target, key) { decorator(target, key, paramIndex); }
+};
+var _a, _b, _c;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.OrderController = void 0;
+const _CurrentUser_1 = __webpack_require__(/*! @/common/decorators/@CurrentUser */ "./src/common/decorators/@CurrentUser.ts");
+const _Roles_1 = __webpack_require__(/*! @/common/decorators/@Roles */ "./src/common/decorators/@Roles.ts");
+const user_role_enum_1 = __webpack_require__(/*! @/common/enums/user-role.enum */ "./src/common/enums/user-role.enum.ts");
+const jwt_auth_guard_1 = __webpack_require__(/*! @/common/guards/jwt-auth.guard */ "./src/common/guards/jwt-auth.guard.ts");
+const roles_guard_1 = __webpack_require__(/*! @/common/guards/roles.guard */ "./src/common/guards/roles.guard.ts");
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const swagger_1 = __webpack_require__(/*! @nestjs/swagger */ "@nestjs/swagger");
+const order_dto_1 = __webpack_require__(/*! ./dto/order.dto */ "./src/modules/orders/dto/order.dto.ts");
+const order_service_1 = __webpack_require__(/*! ./order.service */ "./src/modules/orders/order.service.ts");
+let OrderController = class OrderController {
+    constructor(orderService) {
+        this.orderService = orderService;
+    }
+    async confirmOrderFromQuote(quoteId, providerId) {
+        return await this.orderService.createOrderFromQuoteConfirmation(quoteId, providerId);
+    }
+    async providerComplete(orderId, providerId) {
+        return await this.orderService.providerCompleteOrder(orderId, providerId);
+    }
+    async customerComplete(orderId, customerId) {
+        return await this.orderService.customerCompleteOrder(orderId, customerId);
+    }
+    async getMyOrders(userId, query) {
+        return await this.orderService.getUserOrders(userId, query.status);
+    }
+    async getOrderStats(userId) {
+        return await this.orderService.getOrderStats(userId);
+    }
+    async getOrder(orderId, userId) {
+        return await this.orderService.getOrderById(orderId, userId);
+    }
+    async getOrderByNumber(orderNumber, userId) {
+        return await this.orderService.getOrderByNumber(orderNumber, userId);
+    }
+    async cancelOrder(orderId, userId, dto) {
+        return await this.orderService.cancelOrder(orderId, userId, dto);
+    }
+};
+exports.OrderController = OrderController;
+__decorate([
+    (0, common_1.Post)('confirm-from-quote/:quoteId'),
+    (0, _Roles_1.Roles)(user_role_enum_1.UserRole.PROVIDER),
+    (0, common_1.HttpCode)(common_1.HttpStatus.CREATED),
+    (0, swagger_1.ApiOperation)({
+        summary: '[Provider] Xác nhận làm → Tạo order',
+        description: 'Provider xác nhận sau khi customer nhấn đặt đơn. Order được tạo với trạng thái IN_PROGRESS'
+    }),
+    (0, swagger_1.ApiResponse)({ status: 201, description: 'Order created' }),
+    __param(0, (0, common_1.Param)('quoteId')),
+    __param(1, (0, _CurrentUser_1.CurrentUser)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:returntype", Promise)
+], OrderController.prototype, "confirmOrderFromQuote", null);
+__decorate([
+    (0, common_1.Post)(':id/provider-complete'),
+    (0, _Roles_1.Roles)(user_role_enum_1.UserRole.PROVIDER),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    (0, swagger_1.ApiOperation)({ summary: '[Provider] Thợ xác nhận hoàn thành' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Success' }),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, _CurrentUser_1.CurrentUser)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:returntype", Promise)
+], OrderController.prototype, "providerComplete", null);
+__decorate([
+    (0, common_1.Post)(':id/customer-complete'),
+    (0, _Roles_1.Roles)(user_role_enum_1.UserRole.CUSTOMER),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    (0, swagger_1.ApiOperation)({
+        summary: '[Customer] Khách hàng xác nhận hoàn thành (finalize)',
+        description: 'Khách xác nhận sau khi thợ đã hoàn thành → Order COMPLETED'
+    }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Success' }),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, _CurrentUser_1.CurrentUser)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:returntype", Promise)
+], OrderController.prototype, "customerComplete", null);
+__decorate([
+    (0, common_1.Get)(),
+    (0, swagger_1.ApiOperation)({ summary: 'Lấy danh sách đơn hàng của tôi' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Success' }),
+    __param(0, (0, _CurrentUser_1.CurrentUser)('id')),
+    __param(1, (0, common_1.Query)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, typeof (_b = typeof order_dto_1.GetOrdersQueryDto !== "undefined" && order_dto_1.GetOrdersQueryDto) === "function" ? _b : Object]),
+    __metadata("design:returntype", Promise)
+], OrderController.prototype, "getMyOrders", null);
+__decorate([
+    (0, common_1.Get)('stats'),
+    (0, swagger_1.ApiOperation)({ summary: 'Thống kê đơn hàng' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Success' }),
+    __param(0, (0, _CurrentUser_1.CurrentUser)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], OrderController.prototype, "getOrderStats", null);
+__decorate([
+    (0, common_1.Get)(':id'),
+    (0, swagger_1.ApiOperation)({ summary: 'Xem chi tiết đơn hàng' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Success' }),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, _CurrentUser_1.CurrentUser)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:returntype", Promise)
+], OrderController.prototype, "getOrder", null);
+__decorate([
+    (0, common_1.Get)('number/:orderNumber'),
+    (0, swagger_1.ApiOperation)({ summary: 'Xem đơn hàng theo mã số' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Success' }),
+    __param(0, (0, common_1.Param)('orderNumber')),
+    __param(1, (0, _CurrentUser_1.CurrentUser)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:returntype", Promise)
+], OrderController.prototype, "getOrderByNumber", null);
+__decorate([
+    (0, common_1.Post)(':id/cancel'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    (0, swagger_1.ApiOperation)({
+        summary: 'Hủy đơn hàng',
+        description: 'Cả customer và provider đều có thể hủy. KHÔNG thể hủy sau 10 phút IN_PROGRESS'
+    }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Cancelled' }),
+    (0, swagger_1.ApiResponse)({ status: 400, description: 'Cannot cancel after 10 minutes' }),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, _CurrentUser_1.CurrentUser)('id')),
+    __param(2, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String, typeof (_c = typeof order_dto_1.CancelOrderDto !== "undefined" && order_dto_1.CancelOrderDto) === "function" ? _c : Object]),
+    __metadata("design:returntype", Promise)
+], OrderController.prototype, "cancelOrder", null);
+exports.OrderController = OrderController = __decorate([
+    (0, swagger_1.ApiTags)('Orders'),
+    (0, common_1.Controller)('orders'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
+    (0, swagger_1.ApiBearerAuth)(),
+    __metadata("design:paramtypes", [typeof (_a = typeof order_service_1.OrderService !== "undefined" && order_service_1.OrderService) === "function" ? _a : Object])
+], OrderController);
+
+
+/***/ }),
+
+/***/ "./src/modules/orders/order.service.ts":
+/*!*********************************************!*\
+  !*** ./src/modules/orders/order.service.ts ***!
+  \*********************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var __param = (this && this.__param) || function (paramIndex, decorator) {
+    return function (target, key) { decorator(target, key, paramIndex); }
+};
+var OrderService_1;
+var _a, _b, _c, _d, _e, _f, _g, _h;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.OrderService = void 0;
+const chat_service_1 = __webpack_require__(/*! @/modules/chat/chat.service */ "./src/modules/chat/chat.service.ts");
+const notification_event_service_1 = __webpack_require__(/*! @/modules/notifications/services/notification-event.service */ "./src/modules/notifications/services/notification-event.service.ts");
+const post_entity_1 = __webpack_require__(/*! @/modules/posts/entities/post.entity */ "./src/modules/posts/entities/post.entity.ts");
+const quote_entity_1 = __webpack_require__(/*! @/modules/quotes/entities/quote.entity */ "./src/modules/quotes/entities/quote.entity.ts");
+const quote_status_enum_1 = __webpack_require__(/*! @/modules/quotes/enums/quote-status.enum */ "./src/modules/quotes/enums/quote-status.enum.ts");
+const quote_revision_service_1 = __webpack_require__(/*! @/modules/quotes/services/quote-revision.service */ "./src/modules/quotes/services/quote-revision.service.ts");
+const quote_status_service_1 = __webpack_require__(/*! @/modules/quotes/services/quote-status.service */ "./src/modules/quotes/services/quote-status.service.ts");
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const typeorm_1 = __webpack_require__(/*! @nestjs/typeorm */ "@nestjs/typeorm");
+const typeorm_2 = __webpack_require__(/*! typeorm */ "typeorm");
+const order_entity_1 = __webpack_require__(/*! ./entities/order.entity */ "./src/modules/orders/entities/order.entity.ts");
+let OrderService = OrderService_1 = class OrderService {
+    constructor(orderRepo, quoteRepo, postRepo, notificationService, chatService, quoteStatusService, quoteRevisionService, dataSource) {
+        this.orderRepo = orderRepo;
+        this.quoteRepo = quoteRepo;
+        this.postRepo = postRepo;
+        this.notificationService = notificationService;
+        this.chatService = chatService;
+        this.quoteStatusService = quoteStatusService;
+        this.quoteRevisionService = quoteRevisionService;
+        this.dataSource = dataSource;
+        this.logger = new common_1.Logger(OrderService_1.name);
+    }
+    async createOrderFromQuoteConfirmation(quoteId, providerId) {
+        return await this.dataSource.transaction(async (manager) => {
+            const quote = await manager.findOne(quote_entity_1.Quote, {
+                where: { id: quoteId },
+                relations: ['post', 'post.customer', 'provider', 'revisions'],
+                lock: { mode: 'pessimistic_write' },
+            });
+            if (!quote) {
+                throw new common_1.NotFoundException('Quote not found');
+            }
+            if (quote.status !== quote_status_enum_1.QuoteStatus.ORDER_REQUESTED) {
+                throw new common_1.BadRequestException('Quote must be in ORDER_REQUESTED status. Customer needs to request order first.');
+            }
+            if (!quote.belongsTo(providerId)) {
+                throw new common_1.ForbiddenException('You are not the provider of this quote');
+            }
+            const existing = await manager.findOne(order_entity_1.Order, {
+                where: { quoteId },
+            });
+            if (existing) {
+                this.logger.warn(`Order already exists for quote ${quoteId}`);
+                return existing;
+            }
+            const currentRevision = await this.quoteRevisionService.getLatestRevision(quoteId);
+            if (currentRevision.usedForOrderId) {
+                throw new common_1.BadRequestException(`This quote revision has already been used for order ${currentRevision.usedForOrderId}`);
+            }
+            await this.quoteStatusService.confirmOrder(quote);
+            const orderNumber = await this.generateOrderNumber(manager);
+            const price = parseFloat(quote.price.toString());
+            const serviceFee = this.calculateServiceFee(price);
+            const totalAmount = price + serviceFee;
+            const order = manager.create(order_entity_1.Order, {
+                orderNumber,
+                customerId: quote.post.customerId,
+                providerId: quote.providerId,
+                quoteId,
+                title: quote.post.title,
+                description: quote.description,
+                price,
+                serviceFee,
+                totalAmount,
+                status: order_entity_1.OrderStatus.IN_PROGRESS,
+                paymentStatus: order_entity_1.PaymentStatus.PENDING,
+                location: quote.post.location,
+                scheduledAt: quote.post.desiredTime,
+                estimatedDuration: quote.estimatedDuration,
+                startedAt: new Date(),
+            });
+            const saved = await manager.save(order_entity_1.Order, order);
+            await this.quoteRevisionService.markRevisionAsUsedForOrder(currentRevision.id, saved.id);
+            await this.notificationService.notifyOrderCreated(saved.customerId, saved.providerId, saved.id, saved.title);
+            await this.notificationService.notifyOrderInProgress(saved.customerId, saved.id, saved.title);
+            this.logger.log(`Order created from quote confirmation: ${saved.id} ` +
+                `(Quote: ${quoteId}, Revision: ${currentRevision.revisionNumber})`);
+            return saved;
+        });
+    }
+    async createDirectOrder(customerId, dto) {
+        if (customerId === dto.providerId) {
+            throw new common_1.BadRequestException('Cannot create order with yourself');
+        }
+        const orderNumber = await this.generateOrderNumber();
+        const price = dto.price;
+        const serviceFee = this.calculateServiceFee(price);
+        const totalAmount = price + serviceFee;
+        const order = this.orderRepo.create({
+            orderNumber,
+            customerId,
+            providerId: dto.providerId,
+            title: dto.title,
+            description: dto.description,
+            price,
+            serviceFee,
+            totalAmount,
+            status: order_entity_1.OrderStatus.PENDING,
+            paymentStatus: order_entity_1.PaymentStatus.PENDING,
+            location: dto.location,
+            scheduledAt: dto.scheduledAt,
+            estimatedDuration: dto.estimatedDuration,
+            notes: dto.notes,
+        });
+        const saved = await this.orderRepo.save(order);
+        try {
+            await this.chatService.createDirectConversation(customerId, dto.providerId);
+        }
+        catch {
+            this.logger.warn(`Failed to create conversation for order ${saved.id}:`);
+        }
+        await this.notificationService.notifyOrderCreated(saved.providerId, saved.customerId, saved.id, saved.title);
+        this.logger.log(`Direct order created: ${saved.id}`);
+        return saved;
+    }
+    async startOrder(orderId, providerId) {
+        const order = await this.orderRepo.findOne({
+            where: { id: orderId },
+            relations: ['quote'],
+        });
+        if (!order) {
+            throw new common_1.NotFoundException('Order not found');
+        }
+        if (!order.belongsToProvider(providerId)) {
+            throw new common_1.ForbiddenException('You are not the provider of this order');
+        }
+        if (order.quoteId) {
+            throw new common_1.BadRequestException('Cannot manually start order created from quote. It starts automatically.');
+        }
+        if (!order.isPending()) {
+            throw new common_1.BadRequestException('Order must be in pending status to start');
+        }
+        order.status = order_entity_1.OrderStatus.IN_PROGRESS;
+        order.startedAt = new Date();
+        const saved = await this.orderRepo.save(order);
+        await this.notificationService.notifyOrderInProgress(order.customerId, order.id, order.title);
+        this.logger.log(`Order started: ${orderId}`);
+        return saved;
+    }
+    async providerCompleteOrder(orderId, providerId) {
+        const order = await this.orderRepo.findOne({
+            where: { id: orderId },
+        });
+        if (!order) {
+            throw new common_1.NotFoundException('Order not found');
+        }
+        if (!order.belongsToProvider(providerId)) {
+            throw new common_1.ForbiddenException('You are not the provider of this order');
+        }
+        if (!order.canProviderComplete()) {
+            throw new common_1.BadRequestException('Cannot complete order. Order must be in progress and not already completed.');
+        }
+        order.providerCompletedAt = new Date();
+        const saved = await this.orderRepo.save(order);
+        await this.notificationService.notifyProviderCompleted(order.customerId, order.id, order.title);
+        this.logger.log(`Provider completed order: ${orderId}`);
+        return saved;
+    }
+    async customerCompleteOrder(orderId, customerId) {
+        const order = await this.orderRepo.findOne({
+            where: { id: orderId },
+        });
+        if (!order) {
+            throw new common_1.NotFoundException('Order not found');
+        }
+        if (!order.belongsToCustomer(customerId)) {
+            throw new common_1.ForbiddenException('You are not the customer of this order');
+        }
+        if (!order.canCustomerComplete()) {
+            throw new common_1.BadRequestException('Provider must complete the order first, and order must be in progress');
+        }
+        order.customerCompletedAt = new Date();
+        order.completedAt = new Date();
+        order.status = order_entity_1.OrderStatus.COMPLETED;
+        const saved = await this.orderRepo.save(order);
+        await this.notificationService.notifyOrderCompleted(order.customerId, order.id, order.title, false);
+        await this.notificationService.notifyOrderCompleted(order.providerId, order.id, order.title, true);
+        this.logger.log(`Order completed: ${orderId}`);
+        return saved;
+    }
+    async cancelOrder(orderId, userId, dto) {
+        const order = await this.orderRepo.findOne({
+            where: { id: orderId },
+        });
+        if (!order) {
+            throw new common_1.NotFoundException('Order not found');
+        }
+        if (!order.isParticipant(userId)) {
+            throw new common_1.ForbiddenException('You are not a participant in this order');
+        }
+        if (!order.canCancel()) {
+            throw new common_1.BadRequestException('Cannot cancel order after 10 minutes from start time');
+        }
+        if (order.status === order_entity_1.OrderStatus.COMPLETED) {
+            throw new common_1.BadRequestException('Cannot cancel completed order');
+        }
+        order.status = order_entity_1.OrderStatus.CANCELLED;
+        order.cancelledAt = new Date();
+        order.cancelledBy = userId;
+        order.cancellationReason = dto.reason;
+        const saved = await this.orderRepo.save(order);
+        const otherUserId = userId === order.customerId ? order.providerId : order.customerId;
+        await this.notificationService.notifyOrderCancelled(otherUserId, order.id, order.title, dto.reason || 'No reason provided');
+        this.logger.log(`Order cancelled: ${orderId} by ${userId}`);
+        return saved;
+    }
+    async getUserOrders(userId, status) {
+        const queryBuilder = this.orderRepo
+            .createQueryBuilder('order')
+            .leftJoinAndSelect('order.customer', 'customer')
+            .leftJoinAndSelect('order.provider', 'provider')
+            .leftJoinAndSelect('order.quote', 'quote')
+            .where('order.customerId = :userId OR order.providerId = :userId', { userId });
+        if (status) {
+            queryBuilder.andWhere('order.status = :status', { status });
+        }
+        return await queryBuilder
+            .orderBy('order.createdAt', 'DESC')
+            .getMany();
+    }
+    async getOrderById(orderId, userId) {
+        const order = await this.orderRepo.findOne({
+            where: { id: orderId },
+            relations: ['customer', 'provider', 'quote', 'quote.revisions'],
+        });
+        if (!order) {
+            throw new common_1.NotFoundException('Order not found');
+        }
+        if (!order.isParticipant(userId)) {
+            throw new common_1.ForbiddenException('You are not a participant in this order');
+        }
+        return order;
+    }
+    async getOrderByNumber(orderNumber, userId) {
+        const order = await this.orderRepo.findOne({
+            where: { orderNumber },
+            relations: ['customer', 'provider', 'quote'],
+        });
+        if (!order) {
+            throw new common_1.NotFoundException('Order not found');
+        }
+        if (!order.isParticipant(userId)) {
+            throw new common_1.ForbiddenException('You are not a participant in this order');
+        }
+        return order;
+    }
+    async getOrderStats(userId) {
+        const orders = await this.getUserOrders(userId);
+        return {
+            total: orders.length,
+            pending: orders.filter((o) => o.status === order_entity_1.OrderStatus.PENDING).length,
+            inProgress: orders.filter((o) => o.status === order_entity_1.OrderStatus.IN_PROGRESS).length,
+            completed: orders.filter((o) => o.status === order_entity_1.OrderStatus.COMPLETED).length,
+            cancelled: orders.filter((o) => o.status === order_entity_1.OrderStatus.CANCELLED).length,
+        };
+    }
+    async updatePaymentMethod(orderId, customerId, paymentMethod) {
+        const order = await this.orderRepo.findOne({
+            where: { id: orderId },
+        });
+        if (!order) {
+            throw new common_1.NotFoundException('Order not found');
+        }
+        if (!order.belongsToCustomer(customerId)) {
+            throw new common_1.ForbiddenException('You are not the customer of this order');
+        }
+        if (order.paymentStatus === order_entity_1.PaymentStatus.PAID) {
+            throw new common_1.BadRequestException('Order is already paid');
+        }
+        if (order.status === order_entity_1.OrderStatus.CANCELLED) {
+            throw new common_1.BadRequestException('Cannot update payment method of cancelled order');
+        }
+        order.paymentMethod = paymentMethod;
+        const saved = await this.orderRepo.save(order);
+        this.logger.log(`Payment method updated for order ${orderId}: ${paymentMethod}`);
+        return saved;
+    }
+    async confirmPayment(orderId, customerId) {
+        const order = await this.orderRepo.findOne({
+            where: { id: orderId },
+        });
+        if (!order) {
+            throw new common_1.NotFoundException('Order not found');
+        }
+        if (!order.belongsToCustomer(customerId)) {
+            throw new common_1.ForbiddenException('You are not the customer of this order');
+        }
+        if (order.paymentStatus === order_entity_1.PaymentStatus.PAID) {
+            throw new common_1.BadRequestException('Order is already paid');
+        }
+        if (order.status !== order_entity_1.OrderStatus.COMPLETED) {
+            throw new common_1.BadRequestException('Can only pay for completed orders');
+        }
+        order.paymentStatus = order_entity_1.PaymentStatus.PAID;
+        order.paidAt = new Date();
+        const saved = await this.orderRepo.save(order);
+        await this.notificationService.notifyPaymentReceived(order.providerId, order.totalAmount, order.id);
+        this.logger.log(`Payment confirmed for order: ${orderId}`);
+        return saved;
+    }
+    async updateNotes(orderId, userId, notes) {
+        const order = await this.orderRepo.findOne({
+            where: { id: orderId },
+        });
+        if (!order) {
+            throw new common_1.NotFoundException('Order not found');
+        }
+        if (!order.isParticipant(userId)) {
+            throw new common_1.ForbiddenException('You are not a participant in this order');
+        }
+        order.notes = notes;
+        order.updatedAt = new Date();
+        const saved = await this.orderRepo.save(order);
+        this.logger.log(`Notes updated for order ${orderId}`);
+        return saved;
+    }
+    async generateOrderNumber(manager) {
+        const repo = manager ? manager.getRepository(order_entity_1.Order) : this.orderRepo;
+        const date = new Date();
+        const dateStr = date.toISOString().slice(0, 10).replace(/-/g, '');
+        const count = await repo
+            .createQueryBuilder('order')
+            .where('order.order_number LIKE :prefix', {
+            prefix: `ORD-${dateStr}-%`,
+        })
+            .getCount();
+        const sequence = (count + 1).toString().padStart(4, '0');
+        return `ORD-${dateStr}-${sequence}`;
+    }
+    calculateServiceFee(price) {
+        const feeRate = 0.1;
+        return Math.round(price * feeRate);
+    }
+};
+exports.OrderService = OrderService;
+exports.OrderService = OrderService = OrderService_1 = __decorate([
+    (0, common_1.Injectable)(),
+    __param(0, (0, typeorm_1.InjectRepository)(order_entity_1.Order)),
+    __param(1, (0, typeorm_1.InjectRepository)(quote_entity_1.Quote)),
+    __param(2, (0, typeorm_1.InjectRepository)(post_entity_1.PostCustomer)),
+    __metadata("design:paramtypes", [typeof (_a = typeof typeorm_2.Repository !== "undefined" && typeorm_2.Repository) === "function" ? _a : Object, typeof (_b = typeof typeorm_2.Repository !== "undefined" && typeorm_2.Repository) === "function" ? _b : Object, typeof (_c = typeof typeorm_2.Repository !== "undefined" && typeorm_2.Repository) === "function" ? _c : Object, typeof (_d = typeof notification_event_service_1.NotificationEventService !== "undefined" && notification_event_service_1.NotificationEventService) === "function" ? _d : Object, typeof (_e = typeof chat_service_1.ChatService !== "undefined" && chat_service_1.ChatService) === "function" ? _e : Object, typeof (_f = typeof quote_status_service_1.QuoteStatusService !== "undefined" && quote_status_service_1.QuoteStatusService) === "function" ? _f : Object, typeof (_g = typeof quote_revision_service_1.QuoteRevisionService !== "undefined" && quote_revision_service_1.QuoteRevisionService) === "function" ? _g : Object, typeof (_h = typeof typeorm_2.DataSource !== "undefined" && typeorm_2.DataSource) === "function" ? _h : Object])
+], OrderService);
+
+
+/***/ }),
+
+/***/ "./src/modules/orders/orders.module.ts":
+/*!*********************************************!*\
+  !*** ./src/modules/orders/orders.module.ts ***!
+  \*********************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.OrdersModule = void 0;
+const chat_module_1 = __webpack_require__(/*! @/modules/chat/chat.module */ "./src/modules/chat/chat.module.ts");
+const notifications_module_1 = __webpack_require__(/*! @/modules/notifications/notifications.module */ "./src/modules/notifications/notifications.module.ts");
+const post_entity_1 = __webpack_require__(/*! @/modules/posts/entities/post.entity */ "./src/modules/posts/entities/post.entity.ts");
+const quote_entity_1 = __webpack_require__(/*! @/modules/quotes/entities/quote.entity */ "./src/modules/quotes/entities/quote.entity.ts");
+const quotes_module_1 = __webpack_require__(/*! @/modules/quotes/quotes.module */ "./src/modules/quotes/quotes.module.ts");
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const typeorm_1 = __webpack_require__(/*! @nestjs/typeorm */ "@nestjs/typeorm");
+const order_entity_1 = __webpack_require__(/*! ./entities/order.entity */ "./src/modules/orders/entities/order.entity.ts");
+const order_controller_1 = __webpack_require__(/*! ./order.controller */ "./src/modules/orders/order.controller.ts");
+const order_service_1 = __webpack_require__(/*! ./order.service */ "./src/modules/orders/order.service.ts");
+let OrdersModule = class OrdersModule {
+};
+exports.OrdersModule = OrdersModule;
+exports.OrdersModule = OrdersModule = __decorate([
+    (0, common_1.Module)({
+        imports: [
+            typeorm_1.TypeOrmModule.forFeature([order_entity_1.Order, quote_entity_1.Quote, post_entity_1.PostCustomer]),
+            notifications_module_1.NotificationsModule,
+            chat_module_1.ChatModule,
+            quotes_module_1.QuoteModule
+        ],
+        controllers: [order_controller_1.OrderController],
+        providers: [order_service_1.OrderService],
+        exports: [order_service_1.OrderService],
+    })
+], OrdersModule);
 
 
 /***/ }),
@@ -5901,11 +8616,12 @@ __decorate([
         description: 'Customer information',
         type: 'object',
         properties: {
-            id: { type: 'string' },
+            customerId: { type: 'string' },
             fullName: { type: 'string' },
             avatarUrl: { type: 'string' },
         }
     }),
+    (0, class_transformer_1.Expose)(),
     __metadata("design:type", Object)
 ], PostResponseDto.prototype, "customer", void 0);
 __decorate([
@@ -6193,6 +8909,14 @@ let PostService = PostService_1 = class PostService {
             hasMore,
         };
     }
+    async createPost(providerId, jwtUser, dto, context) {
+        this.logger.log(`Creating post for user to provider: ${jwtUser.id}`);
+        await this.validationService.validateUserExists(jwtUser.id);
+        await this.validationService.validateAndModeratePostContent(dto, jwtUser.id, context);
+        const post = await this.businessService.createPost(dto, jwtUser.id);
+        this.logger.log(`Post created successfully: ${post.id}`);
+        return this.mapperService.toResponseDto(post);
+    }
 };
 exports.PostService = PostService;
 exports.PostService = PostService = PostService_1 = __decorate([
@@ -6282,6 +9006,7 @@ __decorate([
         description: 'Feed retrieved successfully',
         type: post_dto_1.FeedResponseDto,
     }),
+    (0, swagger_1.ApiQuery)({ type: post_dto_1.GetFeedQueryDto }),
     (0, swagger_1.ApiResponse)({
         status: common_1.HttpStatus.BAD_REQUEST,
         description: 'Invalid cursor format',
@@ -6452,6 +9177,7 @@ __decorate([
         description: 'Posts retrieved successfully',
         type: post_dto_1.FeedResponseDto,
     }),
+    (0, swagger_1.ApiQuery)({ type: post_dto_1.GetFeedQueryDto }),
     __param(0, (0, common_1.Query)()),
     __param(1, (0, _CurrentUser_1.CurrentUser)()),
     __metadata("design:type", Function),
@@ -6784,8 +9510,8 @@ let PostMapperService = class PostMapperService {
             status: post.status,
             customer: {
                 customerId: post.customer.id,
-                fullName: post.customer.profile?.fullName,
-                avatarUrl: post.customer.profile?.avatarUrl,
+                fullName: post.customer.profile?.fullName ?? null,
+                avatarUrl: post.customer.profile?.avatarUrl ?? null,
             },
             createdAt: post.createdAt,
             updatedAt: post.updatedAt,
@@ -9042,7 +11768,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 };
 var _a, _b, _c, _d, _e, _f, _g;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.QuoteResponseDto = exports.StatusQuoteDto = exports.RejectQuoteDto = exports.AcceptQuoteDto = exports.UpdateQuoteDto = exports.CreateQuoteDto = void 0;
+exports.CancelQuoteDto = exports.ReviseQuoteDto = exports.CreateQuoteToCustomerDto = exports.QuoteResponseDto = exports.StatusQuoteDto = exports.RejectQuoteDto = exports.AcceptQuoteDto = exports.UpdateQuoteDto = exports.CreateQuoteDto = void 0;
 const swagger_1 = __webpack_require__(/*! @nestjs/swagger */ "@nestjs/swagger");
 const class_transformer_1 = __webpack_require__(/*! class-transformer */ "class-transformer");
 const class_validator_1 = __webpack_require__(/*! class-validator */ "class-validator");
@@ -9143,7 +11869,7 @@ __decorate([
     (0, class_validator_1.MaxLength)(500),
     __metadata("design:type", String)
 ], RejectQuoteDto.prototype, "reason", void 0);
-class StatusQuoteDto extends (0, swagger_1.PartialType)(CreateQuoteDto) {
+class StatusQuoteDto {
 }
 exports.StatusQuoteDto = StatusQuoteDto;
 __decorate([
@@ -9251,6 +11977,210 @@ __decorate([
     (0, class_transformer_1.Type)(() => Date),
     __metadata("design:type", typeof (_g = typeof Date !== "undefined" && Date) === "function" ? _g : Object)
 ], QuoteResponseDto.prototype, "updatedAt", void 0);
+class CreateQuoteToCustomerDto {
+}
+exports.CreateQuoteToCustomerDto = CreateQuoteToCustomerDto;
+__decorate([
+    (0, swagger_1.ApiProperty)({ description: 'ID post' }),
+    (0, class_validator_1.IsUUID)(),
+    __metadata("design:type", String)
+], CreateQuoteToCustomerDto.prototype, "providerId", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ description: 'the price of a quote ', example: 500000 }),
+    (0, class_validator_1.IsNumber)(),
+    (0, class_validator_1.Min)(0),
+    (0, class_transformer_1.Type)(() => Number),
+    __metadata("design:type", Number)
+], CreateQuoteToCustomerDto.prototype, "price", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ description: 'Detailed description quote' }),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MaxLength)(2000),
+    __metadata("design:type", String)
+], CreateQuoteToCustomerDto.prototype, "description", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ description: 'Terms and conditions' }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MaxLength)(1000),
+    __metadata("design:type", String)
+], CreateQuoteToCustomerDto.prototype, "terms", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ description: 'Estimated time (minutes)', example: 120 }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsNumber)(),
+    (0, class_validator_1.Min)(0),
+    (0, class_transformer_1.Type)(() => Number),
+    __metadata("design:type", Number)
+], CreateQuoteToCustomerDto.prototype, "estimatedDuration", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ description: 'List of image URLs' }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsArray)(),
+    (0, class_validator_1.IsUrl)({}, { each: true }),
+    __metadata("design:type", Array)
+], CreateQuoteToCustomerDto.prototype, "imageUrls", void 0);
+class ReviseQuoteDto {
+}
+exports.ReviseQuoteDto = ReviseQuoteDto;
+__decorate([
+    (0, swagger_1.ApiProperty)({ description: 'Giá mới' }),
+    (0, class_validator_1.IsNumber)(),
+    (0, class_validator_1.IsPositive)(),
+    __metadata("design:type", Number)
+], ReviseQuoteDto.prototype, "price", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ description: 'Mô tả cập nhật (nếu có)' }),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.MaxLength)(2000),
+    __metadata("design:type", String)
+], ReviseQuoteDto.prototype, "description", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)(),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.MaxLength)(1000),
+    __metadata("design:type", String)
+], ReviseQuoteDto.prototype, "terms", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)(),
+    (0, class_validator_1.IsNumber)(),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.Min)(1),
+    __metadata("design:type", Number)
+], ReviseQuoteDto.prototype, "estimatedDuration", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ description: 'Lý do thay đổi giá' }),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.MaxLength)(500),
+    __metadata("design:type", String)
+], ReviseQuoteDto.prototype, "changeReason", void 0);
+class CancelQuoteDto {
+}
+exports.CancelQuoteDto = CancelQuoteDto;
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ description: 'Lý do hủy' }),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.MaxLength)(500),
+    __metadata("design:type", String)
+], CancelQuoteDto.prototype, "reason", void 0);
+
+
+/***/ }),
+
+/***/ "./src/modules/quotes/entities/quote-revision.entity.ts":
+/*!**************************************************************!*\
+  !*** ./src/modules/quotes/entities/quote-revision.entity.ts ***!
+  \**************************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var _a, _b, _c;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.QuoteRevision = void 0;
+const typeorm_1 = __webpack_require__(/*! typeorm */ "typeorm");
+const quote_entity_1 = __webpack_require__(/*! ./quote.entity */ "./src/modules/quotes/entities/quote.entity.ts");
+let QuoteRevision = class QuoteRevision {
+    constructor() {
+        this.imageUrls = [];
+    }
+};
+exports.QuoteRevision = QuoteRevision;
+__decorate([
+    (0, typeorm_1.PrimaryGeneratedColumn)('uuid'),
+    __metadata("design:type", String)
+], QuoteRevision.prototype, "id", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'quote_id' }),
+    (0, typeorm_1.Index)(),
+    __metadata("design:type", String)
+], QuoteRevision.prototype, "quoteId", void 0);
+__decorate([
+    (0, typeorm_1.ManyToOne)(() => quote_entity_1.Quote, { onDelete: 'CASCADE' }),
+    (0, typeorm_1.JoinColumn)({ name: 'quote_id' }),
+    __metadata("design:type", typeof (_a = typeof quote_entity_1.Quote !== "undefined" && quote_entity_1.Quote) === "function" ? _a : Object)
+], QuoteRevision.prototype, "quote", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        type: 'decimal',
+        precision: 12,
+        scale: 2,
+    }),
+    __metadata("design:type", Number)
+], QuoteRevision.prototype, "price", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'text' }),
+    __metadata("design:type", String)
+], QuoteRevision.prototype, "description", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'text', nullable: true }),
+    __metadata("design:type", String)
+], QuoteRevision.prototype, "terms", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        name: 'estimated_duration',
+        type: 'int',
+        nullable: true,
+    }),
+    __metadata("design:type", Number)
+], QuoteRevision.prototype, "estimatedDuration", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        name: 'image_urls',
+        type: 'text',
+        array: true,
+        nullable: true,
+        default: '{}',
+    }),
+    __metadata("design:type", Array)
+], QuoteRevision.prototype, "imageUrls", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        name: 'revision_number',
+        type: 'int',
+        comment: 'Số lần chào giá (1, 2, 3...)',
+    }),
+    __metadata("design:type", Number)
+], QuoteRevision.prototype, "revisionNumber", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        name: 'changed_by',
+        comment: 'Provider ID who made this revision',
+    }),
+    __metadata("design:type", String)
+], QuoteRevision.prototype, "changedBy", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'text', nullable: true }),
+    __metadata("design:type", String)
+], QuoteRevision.prototype, "changeReason", void 0);
+__decorate([
+    (0, typeorm_1.CreateDateColumn)({ name: 'created_at' }),
+    __metadata("design:type", typeof (_b = typeof Date !== "undefined" && Date) === "function" ? _b : Object)
+], QuoteRevision.prototype, "createdAt", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'used_for_order_id', nullable: true }),
+    __metadata("design:type", String)
+], QuoteRevision.prototype, "usedForOrderId", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'used_at', type: 'timestamp', nullable: true }),
+    __metadata("design:type", typeof (_c = typeof Date !== "undefined" && Date) === "function" ? _c : Object)
+], QuoteRevision.prototype, "usedAt", void 0);
+exports.QuoteRevision = QuoteRevision = __decorate([
+    (0, typeorm_1.Entity)('quote_revisions'),
+    (0, typeorm_1.Index)(['quoteId', 'createdAt'])
+], QuoteRevision);
 
 
 /***/ }),
@@ -9271,23 +12201,34 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
-var _a, _b, _c, _d, _e, _f, _g, _h, _j;
+var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.Quote = void 0;
 const post_entity_1 = __webpack_require__(/*! @/modules/posts/entities/post.entity */ "./src/modules/posts/entities/post.entity.ts");
 const user_entity_1 = __webpack_require__(/*! @/modules/users/entities/user.entity */ "./src/modules/users/entities/user.entity.ts");
 const typeorm_1 = __webpack_require__(/*! typeorm */ "typeorm");
 const quote_status_enum_1 = __webpack_require__(/*! ../enums/quote-status.enum */ "./src/modules/quotes/enums/quote-status.enum.ts");
+const quote_revision_entity_1 = __webpack_require__(/*! ./quote-revision.entity */ "./src/modules/quotes/entities/quote-revision.entity.ts");
 let Quote = class Quote {
     constructor() {
         this.imageUrls = [];
         this.status = quote_status_enum_1.QuoteStatus.PENDING;
+        this.revisionCount = 1;
     }
     isPending() {
         return this.status === quote_status_enum_1.QuoteStatus.PENDING && !this.deletedAt;
     }
-    isAccepted() {
-        return this.status === quote_status_enum_1.QuoteStatus.ACCEPTED;
+    isAcceptedForChat() {
+        return this.status === quote_status_enum_1.QuoteStatus.ACCEPTED_FOR_CHAT;
+    }
+    isRevising() {
+        return this.status === quote_status_enum_1.QuoteStatus.REVISING;
+    }
+    isOrderRequested() {
+        return this.status === quote_status_enum_1.QuoteStatus.ORDER_REQUESTED;
+    }
+    isConfirmed() {
+        return this.status === quote_status_enum_1.QuoteStatus.CONFIRMED;
     }
     isRejected() {
         return this.status === quote_status_enum_1.QuoteStatus.REJECTED;
@@ -9298,11 +12239,31 @@ let Quote = class Quote {
     canEdit() {
         return this.status === quote_status_enum_1.QuoteStatus.PENDING && !this.deletedAt;
     }
+    canRevise() {
+        return (this.status === quote_status_enum_1.QuoteStatus.ACCEPTED_FOR_CHAT ||
+            this.status === quote_status_enum_1.QuoteStatus.REVISING) && !this.deletedAt;
+    }
     canCancel() {
-        return this.status === quote_status_enum_1.QuoteStatus.PENDING && !this.deletedAt;
+        return (this.status === quote_status_enum_1.QuoteStatus.PENDING ||
+            this.status === quote_status_enum_1.QuoteStatus.ACCEPTED_FOR_CHAT ||
+            this.status === quote_status_enum_1.QuoteStatus.REVISING ||
+            this.status === quote_status_enum_1.QuoteStatus.ORDER_REQUESTED) && !this.deletedAt;
+    }
+    canRequestOrder() {
+        return (this.status === quote_status_enum_1.QuoteStatus.ACCEPTED_FOR_CHAT ||
+            this.status === quote_status_enum_1.QuoteStatus.REVISING) && !this.deletedAt;
+    }
+    canConfirmOrder() {
+        return this.status === quote_status_enum_1.QuoteStatus.ORDER_REQUESTED && !this.deletedAt;
     }
     belongsTo(providerId) {
         return this.providerId === providerId;
+    }
+    isActive() {
+        return !this.deletedAt &&
+            this.status !== quote_status_enum_1.QuoteStatus.REJECTED &&
+            this.status !== quote_status_enum_1.QuoteStatus.CANCELLED &&
+            this.status !== quote_status_enum_1.QuoteStatus.CONFIRMED;
     }
 };
 exports.Quote = Quote;
@@ -9371,15 +12332,47 @@ __decorate([
         enum: quote_status_enum_1.QuoteStatus,
         default: quote_status_enum_1.QuoteStatus.PENDING,
     }),
+    (0, typeorm_1.Index)(),
     __metadata("design:type", typeof (_c = typeof quote_status_enum_1.QuoteStatus !== "undefined" && quote_status_enum_1.QuoteStatus) === "function" ? _c : Object)
 ], Quote.prototype, "status", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        name: 'revision_count',
+        type: 'int',
+        default: 1,
+        comment: 'Số lần đã chào giá (bắt đầu từ 1)',
+    }),
+    __metadata("design:type", Number)
+], Quote.prototype, "revisionCount", void 0);
+__decorate([
+    (0, typeorm_1.OneToMany)(() => quote_revision_entity_1.QuoteRevision, (revision) => revision.quote, { cascade: true }),
+    __metadata("design:type", Array)
+], Quote.prototype, "revisions", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        name: 'chat_opened_at',
+        type: 'timestamp with time zone',
+        nullable: true,
+        comment: 'Thời điểm khách chấp nhận và mở chat',
+    }),
+    __metadata("design:type", typeof (_d = typeof Date !== "undefined" && Date) === "function" ? _d : Object)
+], Quote.prototype, "chatOpenedAt", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        name: 'order_requested_at',
+        type: 'timestamp with time zone',
+        nullable: true,
+        comment: 'Thời điểm khách nhấn đặt đơn với revision hiện tại',
+    }),
+    __metadata("design:type", typeof (_e = typeof Date !== "undefined" && Date) === "function" ? _e : Object)
+], Quote.prototype, "orderRequestedAt", void 0);
 __decorate([
     (0, typeorm_1.Column)({
         name: 'accepted_at',
         type: 'timestamp with time zone',
         nullable: true
     }),
-    __metadata("design:type", typeof (_d = typeof Date !== "undefined" && Date) === "function" ? _d : Object)
+    __metadata("design:type", typeof (_f = typeof Date !== "undefined" && Date) === "function" ? _f : Object)
 ], Quote.prototype, "acceptedAt", void 0);
 __decorate([
     (0, typeorm_1.Column)({
@@ -9387,7 +12380,7 @@ __decorate([
         type: 'timestamp with time zone',
         nullable: true
     }),
-    __metadata("design:type", typeof (_e = typeof Date !== "undefined" && Date) === "function" ? _e : Object)
+    __metadata("design:type", typeof (_g = typeof Date !== "undefined" && Date) === "function" ? _g : Object)
 ], Quote.prototype, "rejectedAt", void 0);
 __decorate([
     (0, typeorm_1.Column)({
@@ -9395,8 +12388,17 @@ __decorate([
         type: 'timestamp with time zone',
         nullable: true
     }),
-    __metadata("design:type", typeof (_f = typeof Date !== "undefined" && Date) === "function" ? _f : Object)
+    __metadata("design:type", typeof (_h = typeof Date !== "undefined" && Date) === "function" ? _h : Object)
 ], Quote.prototype, "cancelledAt", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        name: 'confirmed_at',
+        type: 'timestamp with time zone',
+        nullable: true,
+        comment: 'Thời điểm thợ xác nhận làm (tạo order)',
+    }),
+    __metadata("design:type", typeof (_j = typeof Date !== "undefined" && Date) === "function" ? _j : Object)
+], Quote.prototype, "confirmedAt", void 0);
 __decorate([
     (0, typeorm_1.Column)({
         name: 'rejection_reason',
@@ -9415,15 +12417,15 @@ __decorate([
 ], Quote.prototype, "cancellationReason", void 0);
 __decorate([
     (0, typeorm_1.CreateDateColumn)({ name: 'created_at' }),
-    __metadata("design:type", typeof (_g = typeof Date !== "undefined" && Date) === "function" ? _g : Object)
+    __metadata("design:type", typeof (_k = typeof Date !== "undefined" && Date) === "function" ? _k : Object)
 ], Quote.prototype, "createdAt", void 0);
 __decorate([
     (0, typeorm_1.UpdateDateColumn)({ name: 'updated_at' }),
-    __metadata("design:type", typeof (_h = typeof Date !== "undefined" && Date) === "function" ? _h : Object)
+    __metadata("design:type", typeof (_l = typeof Date !== "undefined" && Date) === "function" ? _l : Object)
 ], Quote.prototype, "updatedAt", void 0);
 __decorate([
     (0, typeorm_1.DeleteDateColumn)({ name: 'deleted_at' }),
-    __metadata("design:type", typeof (_j = typeof Date !== "undefined" && Date) === "function" ? _j : Object)
+    __metadata("design:type", typeof (_m = typeof Date !== "undefined" && Date) === "function" ? _m : Object)
 ], Quote.prototype, "deletedAt", void 0);
 exports.Quote = Quote = __decorate([
     (0, typeorm_1.Entity)('quotes'),
@@ -9450,6 +12452,11 @@ var QuoteStatus;
     QuoteStatus["ACCEPTED"] = "accepted";
     QuoteStatus["REJECTED"] = "rejected";
     QuoteStatus["CANCELLED"] = "cancelled";
+    QuoteStatus["ACCEPTED_FOR_CHAT"] = "accepted_for_chat";
+    QuoteStatus["REVISING"] = "revising";
+    QuoteStatus["ORDER_REQUESTED"] = "order_requested";
+    QuoteStatus["CONFIRMED"] = "confirmed";
+    QuoteStatus["EXPIRED"] = "expired";
 })(QuoteStatus || (exports.QuoteStatus = QuoteStatus = {}));
 
 
@@ -9474,10 +12481,9 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
-var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p;
+var _a, _b, _c, _d, _e, _f, _g, _h;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.QuoteController = void 0;
-const _CurrentUser_1 = __webpack_require__(/*! @/common/decorators/@CurrentUser */ "./src/common/decorators/@CurrentUser.ts");
 const _Roles_1 = __webpack_require__(/*! @/common/decorators/@Roles */ "./src/common/decorators/@Roles.ts");
 const user_role_enum_1 = __webpack_require__(/*! @/common/enums/user-role.enum */ "./src/common/enums/user-role.enum.ts");
 const jwt_auth_guard_1 = __webpack_require__(/*! @/common/guards/jwt-auth.guard */ "./src/common/guards/jwt-auth.guard.ts");
@@ -9494,20 +12500,30 @@ let QuoteController = class QuoteController {
     async createQuote(providerId, dto) {
         return await this.quoteService.createQuote(providerId, dto);
     }
+    async reviseQuote(quoteId, providerId, dto) {
+        return await this.quoteService.reviseQuote(quoteId, providerId, dto);
+    }
     async updateQuote(quoteId, providerId, dto) {
         return await this.quoteService.updateQuote(quoteId, providerId, dto);
     }
-    async cancelQuote(quoteId, providerId, reason) {
-        return await this.quoteService.cancelQuote(quoteId, providerId, reason);
+    async cancelQuote(quoteId, providerId, dto) {
+        return await this.quoteService.cancelQuote(quoteId, providerId, dto.reason);
     }
-    async acceptQuote(quoteId, customerId) {
-        return await this.quoteService.acceptQuote(quoteId, customerId);
-    }
-    async rejectQuote(quoteId, customerId, dto) {
-        return await this.quoteService.rejectQuote(quoteId, customerId, dto.reason);
+    async deleteQuote(quoteId, providerId) {
+        await this.quoteService.deleteQuote(quoteId, providerId);
+        return { success: true, message: 'Quote deleted' };
     }
     async getMyQuotes(providerId, query) {
         return await this.quoteService.getProviderQuotes(providerId, query.status);
+    }
+    async acceptQuoteForChat(quoteId, customerId) {
+        return await this.quoteService.acceptQuoteForChat(quoteId, customerId);
+    }
+    async requestOrderFromRevision(quoteId, customerId, dto) {
+        return await this.quoteService.reviseQuote(quoteId, customerId, dto);
+    }
+    async rejectQuote(quoteId, customerId, dto) {
+        return await this.quoteService.rejectQuote(quoteId, customerId, dto.reason);
     }
     async getPostQuotes(postId, customerId) {
         return await this.quoteService.getPostQuotes(postId, customerId);
@@ -9515,126 +12531,203 @@ let QuoteController = class QuoteController {
     async getQuoteById(quoteId, userId) {
         return await this.quoteService.getQuoteById(quoteId, userId);
     }
-    async deleteQuote(quoteId, providerId) {
-        await this.quoteService.deleteQuote(quoteId, providerId);
-        return { success: true };
+    async getQuoteWithRevisions(quoteId, userId) {
+        return await this.quoteService.getQuoteRevisionHistory(quoteId, userId);
     }
 };
 exports.QuoteController = QuoteController;
 __decorate([
     (0, common_1.Post)(),
-    (0, common_1.HttpCode)(common_1.HttpStatus.CREATED),
     (0, _Roles_1.Roles)(user_role_enum_1.UserRole.PROVIDER),
-    (0, swagger_1.ApiOperation)({ summary: 'Create new quote (Worker)' }),
-    (0, swagger_1.ApiResponse)({ status: 201, description: 'Create success' }),
-    (0, swagger_1.ApiResponse)({ status: 400, description: 'Invalid data' }),
-    (0, swagger_1.ApiResponse)({ status: 403, description: 'No active' }),
-    (0, swagger_1.ApiResponse)({ status: 409, description: 'Already quote' }),
+    (0, common_1.HttpCode)(common_1.HttpStatus.CREATED),
+    (0, swagger_1.ApiOperation)({
+        summary: '[Provider] Tạo quote mới cho post',
+        description: 'Provider chào giá lần đầu cho một post của customer'
+    }),
+    (0, swagger_1.ApiResponse)({ status: 201, description: 'Quote created successfully' }),
+    (0, swagger_1.ApiResponse)({ status: 400, description: 'Validation failed' }),
+    (0, swagger_1.ApiResponse)({ status: 409, description: 'Already quoted this post' }),
     __param(0, (0, _CurrentUserId_1.CurrentUserId)('id')),
     __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String, typeof (_b = typeof quote_dto_1.CreateQuoteDto !== "undefined" && quote_dto_1.CreateQuoteDto) === "function" ? _b : Object]),
-    __metadata("design:returntype", typeof (_c = typeof Promise !== "undefined" && Promise) === "function" ? _c : Object)
+    __metadata("design:returntype", Promise)
 ], QuoteController.prototype, "createQuote", null);
 __decorate([
-    (0, common_1.Put)(':id'),
+    (0, common_1.Post)(':id/revise'),
     (0, _Roles_1.Roles)(user_role_enum_1.UserRole.PROVIDER),
-    (0, swagger_1.ApiOperation)({ summary: 'Update price quote (Worker)' }),
-    (0, swagger_1.ApiResponse)({ status: 200, description: 'Update successful' }),
-    (0, swagger_1.ApiResponse)({ status: 400, description: 'Unable to update' }),
-    (0, swagger_1.ApiResponse)({ status: 404, description: 'Not found' }),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    (0, swagger_1.ApiOperation)({
+        summary: '[Provider] Chào giá lại trong chat',
+        description: 'Provider thay đổi giá sau khi chat đã mở. Tạo revision mới.'
+    }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Quote revised successfully' }),
+    (0, swagger_1.ApiResponse)({ status: 400, description: 'Cannot revise at current status' }),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, _CurrentUserId_1.CurrentUserId)('id')),
+    __param(2, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String, typeof (_c = typeof quote_dto_1.ReviseQuoteDto !== "undefined" && quote_dto_1.ReviseQuoteDto) === "function" ? _c : Object]),
+    __metadata("design:returntype", Promise)
+], QuoteController.prototype, "reviseQuote", null);
+__decorate([
+    (0, common_1.Patch)(':id'),
+    (0, _Roles_1.Roles)(user_role_enum_1.UserRole.PROVIDER),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    (0, swagger_1.ApiOperation)({
+        summary: '[Provider] Sửa quote (chỉ khi PENDING)',
+        description: 'Chỉ có thể sửa khi quote chưa được accept. Không tạo revision mới.'
+    }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Quote updated successfully' }),
+    (0, swagger_1.ApiResponse)({ status: 400, description: 'Cannot edit accepted quote' }),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, _CurrentUserId_1.CurrentUserId)('id')),
     __param(2, (0, common_1.Body)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String, String, typeof (_d = typeof quote_dto_1.UpdateQuoteDto !== "undefined" && quote_dto_1.UpdateQuoteDto) === "function" ? _d : Object]),
-    __metadata("design:returntype", typeof (_e = typeof Promise !== "undefined" && Promise) === "function" ? _e : Object)
+    __metadata("design:returntype", Promise)
 ], QuoteController.prototype, "updateQuote", null);
 __decorate([
     (0, common_1.Post)(':id/cancel'),
     (0, _Roles_1.Roles)(user_role_enum_1.UserRole.PROVIDER),
     (0, common_1.HttpCode)(common_1.HttpStatus.OK),
-    (0, swagger_1.ApiOperation)({ summary: 'Cancel quote (Worker)' }),
-    (0, swagger_1.ApiResponse)({ status: 200, description: 'Cancellation successful' }),
+    (0, swagger_1.ApiOperation)({
+        summary: '[Provider] Hủy quote',
+        description: 'Provider hủy quote. Có thể hủy trước khi order được tạo.'
+    }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Quote cancelled successfully' }),
+    (0, swagger_1.ApiResponse)({ status: 400, description: 'Cannot cancel' }),
     __param(0, (0, common_1.Param)('id')),
-    __param(1, (0, _CurrentUser_1.CurrentUser)('id')),
-    __param(2, (0, common_1.Body)('reason')),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String, String]),
-    __metadata("design:returntype", typeof (_f = typeof Promise !== "undefined" && Promise) === "function" ? _f : Object)
-], QuoteController.prototype, "cancelQuote", null);
-__decorate([
-    (0, common_1.Post)(':id/accept'),
-    (0, _Roles_1.Roles)(user_role_enum_1.UserRole.CUSTOMER),
-    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
-    (0, swagger_1.ApiOperation)({ summary: 'Accepted quote (Customer)' }),
-    (0, swagger_1.ApiResponse)({ status: 200, description: 'Accept success' }),
-    (0, swagger_1.ApiResponse)({ status: 400, description: 'Unacceptable' }),
-    __param(0, (0, common_1.Param)('id')),
-    __param(1, (0, _CurrentUser_1.CurrentUser)('id')),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String]),
-    __metadata("design:returntype", typeof (_g = typeof Promise !== "undefined" && Promise) === "function" ? _g : Object)
-], QuoteController.prototype, "acceptQuote", null);
-__decorate([
-    (0, common_1.Post)(':id/reject'),
-    (0, _Roles_1.Roles)(user_role_enum_1.UserRole.CUSTOMER),
-    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
-    (0, swagger_1.ApiOperation)({ summary: 'Refused to bid (Customer)' }),
-    (0, swagger_1.ApiResponse)({ status: 200, description: 'Rejection successful' }),
-    __param(0, (0, common_1.Param)('id')),
-    __param(1, (0, _CurrentUser_1.CurrentUser)('id')),
+    __param(1, (0, _CurrentUserId_1.CurrentUserId)('id')),
     __param(2, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String, typeof (_h = typeof quote_dto_1.RejectQuoteDto !== "undefined" && quote_dto_1.RejectQuoteDto) === "function" ? _h : Object]),
-    __metadata("design:returntype", typeof (_j = typeof Promise !== "undefined" && Promise) === "function" ? _j : Object)
-], QuoteController.prototype, "rejectQuote", null);
-__decorate([
-    (0, common_1.Get)('my-quotes'),
-    (0, _Roles_1.Roles)(user_role_enum_1.UserRole.PROVIDER),
-    (0, swagger_1.ApiOperation)({ summary: 'Get my quote list (Worker)' }),
-    (0, swagger_1.ApiResponse)({ status: 200, description: 'Success' }),
-    __param(0, (0, _CurrentUser_1.CurrentUser)('id')),
-    __param(1, (0, common_1.Query)()),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, typeof (_k = typeof quote_dto_1.StatusQuoteDto !== "undefined" && quote_dto_1.StatusQuoteDto) === "function" ? _k : Object]),
-    __metadata("design:returntype", typeof (_l = typeof Promise !== "undefined" && Promise) === "function" ? _l : Object)
-], QuoteController.prototype, "getMyQuotes", null);
-__decorate([
-    (0, common_1.Get)('post/:postId'),
-    (0, _Roles_1.Roles)(user_role_enum_1.UserRole.CUSTOMER),
-    (0, swagger_1.ApiOperation)({ summary: 'Get post bids (Customer)' }),
-    (0, swagger_1.ApiResponse)({ status: 200, description: 'Success' }),
-    __param(0, (0, common_1.Param)('postId')),
-    __param(1, (0, _CurrentUser_1.CurrentUser)('id')),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String]),
-    __metadata("design:returntype", typeof (_m = typeof Promise !== "undefined" && Promise) === "function" ? _m : Object)
-], QuoteController.prototype, "getPostQuotes", null);
-__decorate([
-    (0, common_1.Get)(':id'),
-    (0, swagger_1.ApiOperation)({ summary: 'See detailed quote' }),
-    (0, swagger_1.ApiResponse)({ status: 200, description: 'Success' }),
-    (0, swagger_1.ApiResponse)({ status: 403, description: 'No active' }),
-    (0, swagger_1.ApiResponse)({ status: 404, description: 'Not found' }),
-    __param(0, (0, common_1.Param)('id')),
-    __param(1, (0, _CurrentUser_1.CurrentUser)('id')),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String]),
-    __metadata("design:returntype", typeof (_o = typeof Promise !== "undefined" && Promise) === "function" ? _o : Object)
-], QuoteController.prototype, "getQuoteById", null);
+    __metadata("design:paramtypes", [String, String, typeof (_e = typeof quote_dto_1.CancelQuoteDto !== "undefined" && quote_dto_1.CancelQuoteDto) === "function" ? _e : Object]),
+    __metadata("design:returntype", Promise)
+], QuoteController.prototype, "cancelQuote", null);
 __decorate([
     (0, common_1.Delete)(':id'),
     (0, _Roles_1.Roles)(user_role_enum_1.UserRole.PROVIDER),
     (0, common_1.HttpCode)(common_1.HttpStatus.OK),
-    (0, swagger_1.ApiOperation)({ summary: 'Delete quote (Worker)' }),
-    (0, swagger_1.ApiResponse)({ status: 204, description: 'Delete successful' }),
+    (0, swagger_1.ApiOperation)({
+        summary: '[Provider] Xóa quote',
+        description: 'Soft delete quote. Chỉ có thể xóa khi chưa có order.'
+    }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Quote deleted successfully' }),
     __param(0, (0, common_1.Param)('id')),
-    __param(1, (0, _CurrentUser_1.CurrentUser)('id')),
+    __param(1, (0, _CurrentUserId_1.CurrentUserId)('id')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String, String]),
-    __metadata("design:returntype", typeof (_p = typeof Promise !== "undefined" && Promise) === "function" ? _p : Object)
+    __metadata("design:returntype", Promise)
 ], QuoteController.prototype, "deleteQuote", null);
+__decorate([
+    (0, common_1.Get)('my-quotes'),
+    (0, _Roles_1.Roles)(user_role_enum_1.UserRole.PROVIDER),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    (0, swagger_1.ApiOperation)({
+        summary: '[Provider] Lấy danh sách quote của tôi',
+        description: 'Xem tất cả quotes đã tạo, có thể filter theo status'
+    }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Success' }),
+    __param(0, (0, _CurrentUserId_1.CurrentUserId)('id')),
+    __param(1, (0, common_1.Query)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, typeof (_f = typeof quote_dto_1.QuoteResponseDto !== "undefined" && quote_dto_1.QuoteResponseDto) === "function" ? _f : Object]),
+    __metadata("design:returntype", Promise)
+], QuoteController.prototype, "getMyQuotes", null);
+__decorate([
+    (0, common_1.Post)(':id/accept-for-chat'),
+    (0, _Roles_1.Roles)(user_role_enum_1.UserRole.CUSTOMER),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    (0, swagger_1.ApiOperation)({
+        summary: '[Customer] Chấp nhận quote để mở chat',
+        description: 'Customer chấp nhận quote, mở conversation để thương lượng. KHÔNG tạo order ngay.'
+    }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Chat opened successfully' }),
+    (0, swagger_1.ApiResponse)({ status: 400, description: 'Cannot accept quote' }),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, _CurrentUserId_1.CurrentUserId)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:returntype", Promise)
+], QuoteController.prototype, "acceptQuoteForChat", null);
+__decorate([
+    (0, common_1.Post)(':id/request-order'),
+    (0, _Roles_1.Roles)(user_role_enum_1.UserRole.CUSTOMER),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    (0, swagger_1.ApiOperation)({
+        summary: '[Customer] Nhấn đặt đơn với revision cụ thể',
+        description: 'Customer chọn một revision (hoặc revision hiện tại) để tạo order. Provider cần confirm.'
+    }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Order requested successfully' }),
+    (0, swagger_1.ApiResponse)({ status: 400, description: 'Cannot request order' }),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, _CurrentUserId_1.CurrentUserId)('id')),
+    __param(2, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String, typeof (_g = typeof quote_dto_1.CreateQuoteDto !== "undefined" && quote_dto_1.CreateQuoteDto) === "function" ? _g : Object]),
+    __metadata("design:returntype", Promise)
+], QuoteController.prototype, "requestOrderFromRevision", null);
+__decorate([
+    (0, common_1.Post)(':id/reject'),
+    (0, _Roles_1.Roles)(user_role_enum_1.UserRole.CUSTOMER),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    (0, swagger_1.ApiOperation)({
+        summary: '[Customer] Từ chối quote',
+        description: 'Customer từ chối quote khi còn PENDING'
+    }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Quote rejected successfully' }),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, _CurrentUserId_1.CurrentUserId)('id')),
+    __param(2, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String, typeof (_h = typeof quote_dto_1.RejectQuoteDto !== "undefined" && quote_dto_1.RejectQuoteDto) === "function" ? _h : Object]),
+    __metadata("design:returntype", Promise)
+], QuoteController.prototype, "rejectQuote", null);
+__decorate([
+    (0, common_1.Get)('post/:postId'),
+    (0, _Roles_1.Roles)(user_role_enum_1.UserRole.CUSTOMER),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    (0, swagger_1.ApiOperation)({
+        summary: '[Customer] Lấy tất cả quote của một post',
+        description: 'Xem tất cả quotes cho post của mình'
+    }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Success' }),
+    __param(0, (0, common_1.Param)('postId')),
+    __param(1, (0, _CurrentUserId_1.CurrentUserId)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:returntype", Promise)
+], QuoteController.prototype, "getPostQuotes", null);
+__decorate([
+    (0, common_1.Get)(':id'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    (0, swagger_1.ApiOperation)({
+        summary: 'Xem chi tiết quote',
+        description: 'Lấy thông tin quote (không bao gồm revisions)'
+    }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Success' }),
+    (0, swagger_1.ApiResponse)({ status: 403, description: 'No access' }),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, _CurrentUserId_1.CurrentUserId)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:returntype", Promise)
+], QuoteController.prototype, "getQuoteById", null);
+__decorate([
+    (0, common_1.Get)(':id/with-revisions'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    (0, swagger_1.ApiOperation)({
+        summary: 'Xem quote với toàn bộ lịch sử revisions',
+        description: 'Dùng cho chat để hiển thị lịch sử chào giá. Customer có thể chọn revision để tạo order.'
+    }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Success' }),
+    (0, swagger_1.ApiResponse)({ status: 403, description: 'No access' }),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, _CurrentUserId_1.CurrentUserId)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:returntype", Promise)
+], QuoteController.prototype, "getQuoteWithRevisions", null);
 exports.QuoteController = QuoteController = __decorate([
     (0, swagger_1.ApiTags)('Quotes'),
     (0, common_1.Controller)('quotes'),
@@ -9662,27 +12755,30 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
-var _a, _b, _c, _d, _e, _f, _g;
+var QuoteService_1;
+var _a, _b, _c, _d, _e, _f, _g, _h;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.QuoteService = void 0;
 const post_repository_1 = __webpack_require__(/*! @/modules/posts/repositories/post.repository */ "./src/modules/posts/repositories/post.repository.ts");
 const user_repository_1 = __webpack_require__(/*! @/modules/users/repositorys/user.repository */ "./src/modules/users/repositorys/user.repository.ts");
 const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
-const quote_status_enum_1 = __webpack_require__(/*! ./enums/quote-status.enum */ "./src/modules/quotes/enums/quote-status.enum.ts");
 const quote_repository_1 = __webpack_require__(/*! ./repositories/quote.repository */ "./src/modules/quotes/repositories/quote.repository.ts");
 const quote_notification_service_1 = __webpack_require__(/*! ./services/quote-notification.service */ "./src/modules/quotes/services/quote-notification.service.ts");
 const quote_query_service_1 = __webpack_require__(/*! ./services/quote-query.service */ "./src/modules/quotes/services/quote-query.service.ts");
+const quote_revision_service_1 = __webpack_require__(/*! ./services/quote-revision.service */ "./src/modules/quotes/services/quote-revision.service.ts");
 const quote_status_service_1 = __webpack_require__(/*! ./services/quote-status.service */ "./src/modules/quotes/services/quote-status.service.ts");
 const quote_validation_service_1 = __webpack_require__(/*! ./services/quote-validation.service */ "./src/modules/quotes/services/quote-validation.service.ts");
-let QuoteService = class QuoteService {
-    constructor(postRepository, userRepository, quoteRepo, validationService, statusService, queryService, notificationService) {
+let QuoteService = QuoteService_1 = class QuoteService {
+    constructor(postRepository, userRepository, quoteRepo, validationService, statusService, queryService, revisionService, notificationService) {
         this.postRepository = postRepository;
         this.userRepository = userRepository;
         this.quoteRepo = quoteRepo;
         this.validationService = validationService;
         this.statusService = statusService;
         this.queryService = queryService;
+        this.revisionService = revisionService;
         this.notificationService = notificationService;
+        this.logger = new common_1.Logger(QuoteService_1.name);
     }
     async createQuote(providerId, dto) {
         const provider = await this.validationService.validateProvider(providerId);
@@ -9696,11 +12792,38 @@ let QuoteService = class QuoteService {
             terms: dto.terms,
             estimatedDuration: dto.estimatedDuration,
             imageUrls: dto.imageUrls || [],
-            status: quote_status_enum_1.QuoteStatus.PENDING,
         });
         const savedQuote = await this.quoteRepo.save(quote);
         await this.notificationService.notifyNewQuote(post.customerId, savedQuote, provider, post);
+        this.logger.log(`Quote created: ${savedQuote.id} for post ${post.id}`);
         return savedQuote;
+    }
+    async acceptQuoteForChat(quoteId, customerId) {
+        const quote = await this.queryService.findQuoteWithRelations(quoteId, [
+            'post',
+            'provider',
+        ]);
+        this.validationService.validatePostOwnership(quote.post, customerId);
+        this.validationService.validateQuoteIsPending(quote);
+        this.validationService.validatePostIsOpen(quote.post);
+        return await this.statusService.acceptForChat(quote, customerId);
+    }
+    async reviseQuote(quoteId, providerId, dto) {
+        const quote = await this.queryService.findQuoteWithRelations(quoteId, ['post']);
+        this.validationService.validateQuoteOwnership(quote, providerId);
+        if (!quote.canRevise()) {
+            throw new common_1.BadRequestException('Quote cannot be revised at this stage');
+        }
+        this.validationService.validatePrice(dto.price, quote.post.budget);
+        return await this.statusService.reviseQuote(quote, dto.price, dto.description, dto.terms, dto.estimatedDuration, dto.changeReason);
+    }
+    async requestOrder(quoteId, customerId) {
+        const quote = await this.queryService.findQuoteWithRelations(quoteId, ['post']);
+        this.validationService.validatePostOwnership(quote.post, customerId);
+        if (!quote.canRequestOrder()) {
+            throw new common_1.BadRequestException('Cannot request order for this quote');
+        }
+        return await this.statusService.requestOrder(quote, customerId);
     }
     async updateQuote(quoteId, providerId, dto) {
         const quote = await this.queryService.findQuoteWithRelations(quoteId, [
@@ -9722,16 +12845,6 @@ let QuoteService = class QuoteService {
         this.validationService.validateQuoteCanCancel(quote);
         return await this.statusService.cancelQuote(quote, reason);
     }
-    async acceptQuote(quoteId, customerId) {
-        const quote = await this.queryService.findQuoteWithRelations(quoteId, [
-            'post',
-            'provider',
-        ]);
-        this.validationService.validatePostOwnership(quote.post, customerId);
-        this.validationService.validateQuoteIsPending(quote);
-        this.validationService.validatePostIsOpen(quote.post);
-        return await this.statusService.acceptQuote(quote, customerId);
-    }
     async rejectQuote(quoteId, customerId, reason) {
         const quote = await this.queryService.findQuoteWithRelations(quoteId, ['post']);
         this.validationService.validatePostOwnership(quote.post, customerId);
@@ -9744,7 +12857,7 @@ let QuoteService = class QuoteService {
     async getPostQuotes(postId, customerId) {
         const post = await this.postRepository.findById(postId);
         if (!post) {
-            throw new common_1.NotFoundException('Not found post');
+            throw new common_1.NotFoundException('Post not found');
         }
         this.validationService.validatePostOwnership(post, customerId);
         return await this.queryService.findPostQuotes(postId);
@@ -9757,6 +12870,17 @@ let QuoteService = class QuoteService {
         ]);
         this.validationService.validateQuoteAccess(quote, userId);
         return quote;
+    }
+    async getQuoteRevisionHistory(quoteId, userId) {
+        const quote = await this.queryService.findQuoteWithRelations(quoteId, ['post']);
+        this.validationService.validateQuoteAccess(quote, userId);
+        const revisions = await this.revisionService.getRevisionHistory(quoteId);
+        const priceChanges = await this.revisionService.getPriceChanges(quoteId);
+        return {
+            quote,
+            revisions,
+            priceChanges,
+        };
     }
     async deleteQuote(quoteId, providerId) {
         const quote = await this.queryService.findQuoteById(quoteId);
@@ -9780,9 +12904,9 @@ let QuoteService = class QuoteService {
     }
 };
 exports.QuoteService = QuoteService;
-exports.QuoteService = QuoteService = __decorate([
+exports.QuoteService = QuoteService = QuoteService_1 = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [typeof (_a = typeof post_repository_1.PostRepository !== "undefined" && post_repository_1.PostRepository) === "function" ? _a : Object, typeof (_b = typeof user_repository_1.UserRepository !== "undefined" && user_repository_1.UserRepository) === "function" ? _b : Object, typeof (_c = typeof quote_repository_1.QuoteRepository !== "undefined" && quote_repository_1.QuoteRepository) === "function" ? _c : Object, typeof (_d = typeof quote_validation_service_1.QuoteValidationService !== "undefined" && quote_validation_service_1.QuoteValidationService) === "function" ? _d : Object, typeof (_e = typeof quote_status_service_1.QuoteStatusService !== "undefined" && quote_status_service_1.QuoteStatusService) === "function" ? _e : Object, typeof (_f = typeof quote_query_service_1.QuoteQueryService !== "undefined" && quote_query_service_1.QuoteQueryService) === "function" ? _f : Object, typeof (_g = typeof quote_notification_service_1.QuoteNotificationService !== "undefined" && quote_notification_service_1.QuoteNotificationService) === "function" ? _g : Object])
+    __metadata("design:paramtypes", [typeof (_a = typeof post_repository_1.PostRepository !== "undefined" && post_repository_1.PostRepository) === "function" ? _a : Object, typeof (_b = typeof user_repository_1.UserRepository !== "undefined" && user_repository_1.UserRepository) === "function" ? _b : Object, typeof (_c = typeof quote_repository_1.QuoteRepository !== "undefined" && quote_repository_1.QuoteRepository) === "function" ? _c : Object, typeof (_d = typeof quote_validation_service_1.QuoteValidationService !== "undefined" && quote_validation_service_1.QuoteValidationService) === "function" ? _d : Object, typeof (_e = typeof quote_status_service_1.QuoteStatusService !== "undefined" && quote_status_service_1.QuoteStatusService) === "function" ? _e : Object, typeof (_f = typeof quote_query_service_1.QuoteQueryService !== "undefined" && quote_query_service_1.QuoteQueryService) === "function" ? _f : Object, typeof (_g = typeof quote_revision_service_1.QuoteRevisionService !== "undefined" && quote_revision_service_1.QuoteRevisionService) === "function" ? _g : Object, typeof (_h = typeof quote_notification_service_1.QuoteNotificationService !== "undefined" && quote_notification_service_1.QuoteNotificationService) === "function" ? _h : Object])
 ], QuoteService);
 
 
@@ -9807,6 +12931,7 @@ const notifications_module_1 = __webpack_require__(/*! @/modules/notifications/n
 const post_entity_1 = __webpack_require__(/*! @/modules/posts/entities/post.entity */ "./src/modules/posts/entities/post.entity.ts");
 const posts_module_1 = __webpack_require__(/*! @/modules/posts/posts.module */ "./src/modules/posts/posts.module.ts");
 const user_entity_1 = __webpack_require__(/*! @/modules/users/entities/user.entity */ "./src/modules/users/entities/user.entity.ts");
+const users_module_1 = __webpack_require__(/*! @/modules/users/users.module */ "./src/modules/users/users.module.ts");
 const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
 const typeorm_1 = __webpack_require__(/*! @nestjs/typeorm */ "@nestjs/typeorm");
 const quote_entity_1 = __webpack_require__(/*! ./entities/quote.entity */ "./src/modules/quotes/entities/quote.entity.ts");
@@ -9816,18 +12941,21 @@ const quote_repository_1 = __webpack_require__(/*! ./repositories/quote.reposito
 const quote_notification_service_1 = __webpack_require__(/*! ./services/quote-notification.service */ "./src/modules/quotes/services/quote-notification.service.ts");
 const quote_query_service_1 = __webpack_require__(/*! ./services/quote-query.service */ "./src/modules/quotes/services/quote-query.service.ts");
 const quote_status_service_1 = __webpack_require__(/*! ./services/quote-status.service */ "./src/modules/quotes/services/quote-status.service.ts");
+const quote_revision_service_1 = __webpack_require__(/*! ./services/quote-revision.service */ "./src/modules/quotes/services/quote-revision.service.ts");
+const chat_module_1 = __webpack_require__(/*! @/modules/chat//chat.module */ "./src/modules/chat/chat.module.ts");
+const quote_revision_entity_1 = __webpack_require__(/*! @/modules/quotes/entities/quote-revision.entity */ "./src/modules/quotes/entities/quote-revision.entity.ts");
 const quote_validation_service_1 = __webpack_require__(/*! ./services/quote-validation.service */ "./src/modules/quotes/services/quote-validation.service.ts");
-const users_module_1 = __webpack_require__(/*! @/modules/users/users.module */ "./src/modules/users/users.module.ts");
 let QuoteModule = class QuoteModule {
 };
 exports.QuoteModule = QuoteModule;
 exports.QuoteModule = QuoteModule = __decorate([
     (0, common_1.Module)({
         imports: [
-            typeorm_1.TypeOrmModule.forFeature([quote_entity_1.Quote, post_entity_1.PostCustomer, user_entity_1.User]),
+            typeorm_1.TypeOrmModule.forFeature([quote_entity_1.Quote, post_entity_1.PostCustomer, user_entity_1.User, quote_revision_entity_1.QuoteRevision]),
             notifications_module_1.NotificationsModule,
             posts_module_1.PostsModule,
-            users_module_1.UsersModule
+            users_module_1.UsersModule,
+            chat_module_1.ChatModule
         ],
         controllers: [quote_controller_1.QuoteController],
         providers: [
@@ -9836,9 +12964,9 @@ exports.QuoteModule = QuoteModule = __decorate([
             quote_validation_service_1.QuoteValidationService,
             quote_status_service_1.QuoteStatusService,
             quote_query_service_1.QuoteQueryService,
-            quote_notification_service_1.QuoteNotificationService,
+            quote_notification_service_1.QuoteNotificationService, quote_query_service_1.QuoteQueryService, quote_revision_service_1.QuoteRevisionService
         ],
-        exports: [quote_service_1.QuoteService],
+        exports: [quote_service_1.QuoteService, quote_status_service_1.QuoteStatusService, quote_query_service_1.QuoteQueryService, quote_revision_service_1.QuoteRevisionService],
     })
 ], QuoteModule);
 
@@ -9926,43 +13054,110 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
+var QuoteNotificationService_1;
 var _a;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.QuoteNotificationService = void 0;
 const notification_service_1 = __webpack_require__(/*! @/modules/notifications/notification.service */ "./src/modules/notifications/notification.service.ts");
 const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
-let QuoteNotificationService = class QuoteNotificationService {
+let QuoteNotificationService = QuoteNotificationService_1 = class QuoteNotificationService {
     constructor(notificationService) {
         this.notificationService = notificationService;
+        this.logger = new common_1.Logger(QuoteNotificationService_1.name);
     }
     async notifyNewQuote(customerId, quote, provider, post) {
-        await this.notificationService.notifyNewQuote(customerId, {
-            postId: post.id,
-            quoteId: quote.id,
-            providerName: provider.profile?.fullName || 'Thợ',
-            price: quote.price,
-            postTitle: post.title,
-        });
+        try {
+            await this.notificationService.notifyNewQuote(customerId, {
+                postId: post.id,
+                quoteId: quote.id,
+                providerName: provider.profile?.fullName || 'Thợ',
+                price: parseFloat(quote.price.toString()),
+                postTitle: post.title,
+            });
+        }
+        catch {
+            this.logger.error(`Failed to notify new quote:`);
+        }
     }
-    async notifyQuoteAccepted(quote, customerId) {
-        await this.notificationService.notifyQuoteAccepted(quote.providerId, {
-            quoteId: quote.id,
-            postId: quote.postId,
-            postTitle: quote.post.title,
-            customerName: customerId,
-        });
+    async notifyQuoteAcceptedForChat(quote, customerId) {
+        try {
+            const customerName = quote.post.customer?.profile?.fullName || 'Khách hàng';
+            await this.notificationService.notifyQuoteAcceptedForChat(quote.providerId, {
+                quoteId: quote.id,
+                postId: quote.postId,
+                postTitle: quote.post.title,
+                customerName,
+            });
+        }
+        catch {
+            this.logger.error(`Failed to notify quote accepted for chat: `);
+        }
+    }
+    async notifyQuoteRevised(quote, customerId, oldPrice) {
+        try {
+            const providerName = quote.provider?.profile?.fullName || 'Thợ';
+            const newPrice = parseFloat(quote.price.toString());
+            await this.notificationService.notifyQuoteRevised(customerId, {
+                quoteId: quote.id,
+                postId: quote.postId,
+                postTitle: quote.post.title,
+                providerName,
+                newPrice,
+                oldPrice,
+            });
+        }
+        catch {
+            this.logger.error(`Failed to notify quote revised:`);
+        }
+    }
+    async notifyOrderRequested(quote, customerId, revisionNumber, notes) {
+        try {
+            const customerName = quote.post.customer?.profile?.fullName || 'Khách hàng';
+            await this.notificationService.notifyOrderRequested(quote.providerId, {
+                quoteId: quote.id,
+                postId: quote.postId,
+                postTitle: quote.post.title,
+                customerName,
+                price: parseFloat(quote.price.toString()),
+                revisionNumber,
+                notes,
+            });
+        }
+        catch {
+            this.logger.error(`Failed to notify order requested: `);
+        }
     }
     async notifyQuoteRejected(quote, reason) {
-        await this.notificationService.notifyQuoteRejected(quote.providerId, {
-            quoteId: quote.id,
-            postId: quote.postId,
-            postTitle: quote.post.title,
-            reason,
-        });
+        try {
+            await this.notificationService.notifyQuoteRejected(quote.providerId, {
+                quoteId: quote.id,
+                postId: quote.postId,
+                postTitle: quote.post.title,
+                reason,
+            });
+        }
+        catch {
+            this.logger.error(`Failed to notify quote rejected:`);
+        }
+    }
+    async notifyQuoteCancelled(quote, customerId, reason) {
+        try {
+            const providerName = quote.provider?.profile?.fullName || 'Thợ';
+            await this.notificationService.notifyQuoteCancelled(customerId, {
+                quoteId: quote.id,
+                postId: quote.postId,
+                postTitle: quote.post.title,
+                providerName,
+                reason,
+            });
+        }
+        catch {
+            this.logger.error(`Failed to notify quote cancelled:`);
+        }
     }
 };
 exports.QuoteNotificationService = QuoteNotificationService;
-exports.QuoteNotificationService = QuoteNotificationService = __decorate([
+exports.QuoteNotificationService = QuoteNotificationService = QuoteNotificationService_1 = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [typeof (_a = typeof notification_service_1.NotificationService !== "undefined" && notification_service_1.NotificationService) === "function" ? _a : Object])
 ], QuoteNotificationService);
@@ -10042,6 +13237,112 @@ exports.QuoteQueryService = QuoteQueryService = __decorate([
 
 /***/ }),
 
+/***/ "./src/modules/quotes/services/quote-revision.service.ts":
+/*!***************************************************************!*\
+  !*** ./src/modules/quotes/services/quote-revision.service.ts ***!
+  \***************************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var __param = (this && this.__param) || function (paramIndex, decorator) {
+    return function (target, key) { decorator(target, key, paramIndex); }
+};
+var _a;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.QuoteRevisionService = void 0;
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const typeorm_1 = __webpack_require__(/*! @nestjs/typeorm */ "@nestjs/typeorm");
+const typeorm_2 = __webpack_require__(/*! typeorm */ "typeorm");
+const quote_revision_entity_1 = __webpack_require__(/*! ../entities/quote-revision.entity */ "./src/modules/quotes/entities/quote-revision.entity.ts");
+let QuoteRevisionService = class QuoteRevisionService {
+    constructor(revisionRepo) {
+        this.revisionRepo = revisionRepo;
+    }
+    async createRevision(quote, changedBy, changeReason) {
+        const revision = this.revisionRepo.create({
+            quoteId: quote.id,
+            price: quote.price,
+            description: quote.description,
+            terms: quote.terms,
+            estimatedDuration: quote.estimatedDuration,
+            imageUrls: quote.imageUrls,
+            revisionNumber: quote.revisionCount,
+            changedBy,
+            changeReason,
+        });
+        return await this.revisionRepo.save(revision);
+    }
+    async getRevisionHistory(quoteId) {
+        return await this.revisionRepo.find({
+            where: { quoteId },
+            order: { revisionNumber: 'ASC' },
+        });
+    }
+    async getLatestRevision(quoteId) {
+        const revision = await this.revisionRepo.findOne({
+            where: { quoteId },
+            order: { revisionNumber: 'DESC' },
+        });
+        if (!revision) {
+            throw new common_1.NotFoundException(`No revision found for quote ${quoteId}`);
+        }
+        return revision;
+    }
+    async markRevisionAsUsedForOrder(revisionId, orderId) {
+        const revision = await this.revisionRepo.findOne({
+            where: { id: revisionId },
+        });
+        if (!revision) {
+            throw new common_1.NotFoundException(`Revision ${revisionId} not found`);
+        }
+        revision.usedForOrderId = orderId;
+        revision.usedAt = new Date();
+        return await this.revisionRepo.save(revision);
+    }
+    async isRevisionUsedForOrder(revisionId) {
+        const revision = await this.revisionRepo.findOne({
+            where: { id: revisionId },
+            select: ['id', 'usedForOrderId'],
+        });
+        return !!revision?.usedForOrderId;
+    }
+    async getPriceChanges(quoteId) {
+        const revisions = await this.getRevisionHistory(quoteId);
+        return revisions.map((revision, index) => {
+            const result = {
+                revisionNumber: revision.revisionNumber,
+                price: parseFloat(revision.price.toString()),
+                timestamp: revision.createdAt,
+            };
+            if (index > 0) {
+                const previousPrice = parseFloat(revisions[index - 1].price.toString());
+                const currentPrice = parseFloat(revision.price.toString());
+                result.priceChange = currentPrice - previousPrice;
+                result.percentChange = ((currentPrice - previousPrice) / previousPrice) * 100;
+            }
+            return result;
+        });
+    }
+};
+exports.QuoteRevisionService = QuoteRevisionService;
+exports.QuoteRevisionService = QuoteRevisionService = __decorate([
+    (0, common_1.Injectable)(),
+    __param(0, (0, typeorm_1.InjectRepository)(quote_revision_entity_1.QuoteRevision)),
+    __metadata("design:paramtypes", [typeof (_a = typeof typeorm_2.Repository !== "undefined" && typeorm_2.Repository) === "function" ? _a : Object])
+], QuoteRevisionService);
+
+
+/***/ }),
+
 /***/ "./src/modules/quotes/services/quote-status.service.ts":
 /*!*************************************************************!*\
   !*** ./src/modules/quotes/services/quote-status.service.ts ***!
@@ -10058,34 +13359,69 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
-var _a, _b, _c;
+var QuoteStatusService_1;
+var _a, _b, _c, _d, _e;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.QuoteStatusService = void 0;
+const chat_service_1 = __webpack_require__(/*! @/modules/chat/chat.service */ "./src/modules/chat/chat.service.ts");
 const post_repository_1 = __webpack_require__(/*! @/modules/posts/repositories/post.repository */ "./src/modules/posts/repositories/post.repository.ts");
 const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
 const typeorm_1 = __webpack_require__(/*! typeorm */ "typeorm");
 const quote_status_enum_1 = __webpack_require__(/*! ../enums/quote-status.enum */ "./src/modules/quotes/enums/quote-status.enum.ts");
 const quote_repository_1 = __webpack_require__(/*! ../repositories/quote.repository */ "./src/modules/quotes/repositories/quote.repository.ts");
 const quote_notification_service_1 = __webpack_require__(/*! ./quote-notification.service */ "./src/modules/quotes/services/quote-notification.service.ts");
-let QuoteStatusService = class QuoteStatusService {
-    constructor(quoteRepo, postRepo, notificationService) {
+const quote_revision_service_1 = __webpack_require__(/*! ./quote-revision.service */ "./src/modules/quotes/services/quote-revision.service.ts");
+let QuoteStatusService = QuoteStatusService_1 = class QuoteStatusService {
+    constructor(quoteRepo, postRepo, revisionService, notificationService, chatService) {
         this.quoteRepo = quoteRepo;
         this.postRepo = postRepo;
+        this.revisionService = revisionService;
         this.notificationService = notificationService;
+        this.chatService = chatService;
+        this.logger = new common_1.Logger(QuoteStatusService_1.name);
     }
-    async cancelQuote(quote, reason) {
-        quote.status = quote_status_enum_1.QuoteStatus.CANCELLED;
-        quote.cancelledAt = new Date();
-        quote.cancellationReason = reason;
-        return await this.quoteRepo.save(quote);
-    }
-    async acceptQuote(quote, customerId) {
-        quote.status = quote_status_enum_1.QuoteStatus.ACCEPTED;
+    async acceptForChat(quote, customerId) {
+        this.logger.log(`Customer ${customerId} accepting quote ${quote.id} for chat`);
+        await this.revisionService.createRevision(quote, quote.providerId, 'Initial quote');
+        quote.status = quote_status_enum_1.QuoteStatus.ACCEPTED_FOR_CHAT;
         quote.acceptedAt = new Date();
+        quote.chatOpenedAt = new Date();
+        const savedQuote = await this.quoteRepo.save(quote);
+        await this.chatService.createConversationFromQuote(quote.id);
+        await this.notificationService.notifyQuoteAcceptedForChat(savedQuote, customerId);
+        return savedQuote;
+    }
+    async reviseQuote(quote, newPrice, newDescription, newTerms, newEstimatedDuration, changeReason) {
+        this.logger.log(`Provider revising quote ${quote.id}, new price: ${newPrice}`);
+        await this.revisionService.createRevision(quote, quote.providerId, changeReason || 'Price revision');
+        quote.price = newPrice;
+        if (newDescription)
+            quote.description = newDescription;
+        if (newTerms !== undefined)
+            quote.terms = newTerms;
+        if (newEstimatedDuration !== undefined)
+            quote.estimatedDuration = newEstimatedDuration;
+        quote.status = quote_status_enum_1.QuoteStatus.REVISING;
+        quote.revisionCount += 1;
+        const savedQuote = await this.quoteRepo.save(quote);
+        await this.notificationService.notifyQuoteRevised(savedQuote, quote.post.customerId);
+        return savedQuote;
+    }
+    async requestOrder(quote, customerId) {
+        this.logger.log(`Customer ${customerId} requesting order for quote ${quote.id}`);
+        quote.status = quote_status_enum_1.QuoteStatus.ORDER_REQUESTED;
+        quote.orderRequestedAt = new Date();
+        const savedQuote = await this.quoteRepo.save(quote);
+        await this.notificationService.notifyOrderRequested(savedQuote, customerId);
+        return savedQuote;
+    }
+    async confirmOrder(quote) {
+        this.logger.log(`Provider confirming order for quote ${quote.id}`);
+        quote.status = quote_status_enum_1.QuoteStatus.CONFIRMED;
+        quote.confirmedAt = new Date();
         const savedQuote = await this.quoteRepo.save(quote);
         await this.postRepo.closePost(quote.post);
         await this.rejectOtherQuotes(quote.postId, quote.id);
-        await this.notificationService.notifyQuoteAccepted(savedQuote, customerId);
         return savedQuote;
     }
     async rejectQuote(quote, reason) {
@@ -10096,17 +13432,23 @@ let QuoteStatusService = class QuoteStatusService {
         await this.notificationService.notifyQuoteRejected(savedQuote, reason);
         return savedQuote;
     }
-    async rejectOtherQuotes(postId, acceptedQuoteId) {
+    async cancelQuote(quote, reason) {
+        quote.status = quote_status_enum_1.QuoteStatus.CANCELLED;
+        quote.cancelledAt = new Date();
+        quote.cancellationReason = reason;
+        return await this.quoteRepo.save(quote);
+    }
+    async rejectOtherQuotes(postId, confirmedQuoteId) {
         const otherQuotes = await this.quoteRepo.find({
             where: {
                 postId,
-                id: (0, typeorm_1.Not)(acceptedQuoteId),
-                status: quote_status_enum_1.QuoteStatus.PENDING,
+                id: (0, typeorm_1.Not)(confirmedQuoteId),
+                status: (0, typeorm_1.Not)(quote_status_enum_1.QuoteStatus.REJECTED),
                 deletedAt: (0, typeorm_1.IsNull)(),
             },
             relations: ['post'],
         });
-        const rejectionReason = 'The customer has selected a different offer';
+        const rejectionReason = 'Khách hàng đã chọn thợ khác';
         for (const quote of otherQuotes) {
             quote.status = quote_status_enum_1.QuoteStatus.REJECTED;
             quote.rejectedAt = new Date();
@@ -10114,12 +13456,13 @@ let QuoteStatusService = class QuoteStatusService {
             await this.quoteRepo.save(quote);
             await this.notificationService.notifyQuoteRejected(quote, rejectionReason);
         }
+        this.logger.log(`Rejected ${otherQuotes.length} other quotes for post ${postId}`);
     }
 };
 exports.QuoteStatusService = QuoteStatusService;
-exports.QuoteStatusService = QuoteStatusService = __decorate([
+exports.QuoteStatusService = QuoteStatusService = QuoteStatusService_1 = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [typeof (_a = typeof quote_repository_1.QuoteRepository !== "undefined" && quote_repository_1.QuoteRepository) === "function" ? _a : Object, typeof (_b = typeof post_repository_1.PostRepository !== "undefined" && post_repository_1.PostRepository) === "function" ? _b : Object, typeof (_c = typeof quote_notification_service_1.QuoteNotificationService !== "undefined" && quote_notification_service_1.QuoteNotificationService) === "function" ? _c : Object])
+    __metadata("design:paramtypes", [typeof (_a = typeof quote_repository_1.QuoteRepository !== "undefined" && quote_repository_1.QuoteRepository) === "function" ? _a : Object, typeof (_b = typeof post_repository_1.PostRepository !== "undefined" && post_repository_1.PostRepository) === "function" ? _b : Object, typeof (_c = typeof quote_revision_service_1.QuoteRevisionService !== "undefined" && quote_revision_service_1.QuoteRevisionService) === "function" ? _c : Object, typeof (_d = typeof quote_notification_service_1.QuoteNotificationService !== "undefined" && quote_notification_service_1.QuoteNotificationService) === "function" ? _d : Object, typeof (_e = typeof chat_service_1.ChatService !== "undefined" && chat_service_1.ChatService) === "function" ? _e : Object])
 ], QuoteStatusService);
 
 

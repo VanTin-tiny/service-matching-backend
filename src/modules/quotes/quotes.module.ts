@@ -2,6 +2,7 @@ import { NotificationsModule } from '@/modules/notifications/notifications.modul
 import { PostCustomer } from '@/modules/posts/entities/post.entity';
 import { PostsModule } from '@/modules/posts/posts.module';
 import { User } from '@/modules/users/entities/user.entity';
+import { UsersModule } from '@/modules/users/users.module';
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Quote } from './entities/quote.entity';
@@ -11,16 +12,21 @@ import { QuoteRepository } from './repositories/quote.repository';
 import { QuoteNotificationService } from './services/quote-notification.service';
 import { QuoteQueryService } from './services/quote-query.service';
 import { QuoteStatusService } from './services/quote-status.service';
+import { QuoteRevisionService } from './services/quote-revision.service';
+import { ChatModule } from '@/modules/chat//chat.module';
+import { QuoteRevision } from '@/modules/quotes/entities/quote-revision.entity';
+
+
 import { QuoteValidationService } from './services/quote-validation.service';
-import { UsersModule } from '@/modules/users/users.module';
 
 
 @Module({
     imports: [
-        TypeOrmModule.forFeature([Quote, PostCustomer, User]),
+        TypeOrmModule.forFeature([Quote, PostCustomer, User,QuoteRevision]),
         NotificationsModule,
         PostsModule,
-        UsersModule
+        UsersModule,
+        ChatModule
     ],
     controllers: [QuoteController],
     providers: [
@@ -29,8 +35,8 @@ import { UsersModule } from '@/modules/users/users.module';
         QuoteValidationService,
         QuoteStatusService,
         QuoteQueryService,
-        QuoteNotificationService,
+        QuoteNotificationService,QuoteQueryService,QuoteRevisionService
     ],
-    exports: [QuoteService],
+    exports: [QuoteService, QuoteStatusService,QuoteQueryService,QuoteRevisionService],
 })
 export class QuoteModule { }

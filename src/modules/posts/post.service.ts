@@ -165,4 +165,29 @@ export class PostService {
             hasMore,
         };
     }
+
+
+
+
+    async createPost(providerId: string,
+        jwtUser: JwtPayload,
+        dto: CreatePostDto,
+        context?: ModerationContext,
+    ): Promise<PostResponseDto> {
+        this.logger.log(`Creating post for user to provider: ${jwtUser.id}`);
+
+        await this.validationService.validateUserExists(jwtUser.id);
+
+
+        await this.validationService.validateAndModeratePostContent(
+            dto,
+            jwtUser.id,
+            context,
+        );
+
+        const post = await this.businessService.createPost(dto, jwtUser.id);
+
+        this.logger.log(`Post created successfully: ${post!.id}`);
+        return this.mapperService.toResponseDto(post!);
+    }
 }
