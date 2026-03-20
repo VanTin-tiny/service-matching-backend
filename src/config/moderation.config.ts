@@ -1,6 +1,6 @@
 import { registerAs } from '@nestjs/config';
 
-export type ModerationProvider = 'ollama';
+export type ModerationProvider = 'ollama' | 'qwen';
 
 export interface ModerationConfig {
     enabled: boolean;
@@ -34,7 +34,7 @@ export interface ModerationConfig {
 
 export default registerAs('moderation', (): ModerationConfig => ({
     enabled: process.env.MODERATION_ENABLED === 'true',
-    provider: (process.env.MODERATION_PROVIDER as ModerationProvider) || 'ollama',
+    provider: (process.env.MODERATION_PROVIDER as ModerationProvider) || 'qwen',
 
     ollama: {
         baseUrl: process.env.OLLAMA_BASE_URL || 'http://localhost:11434',

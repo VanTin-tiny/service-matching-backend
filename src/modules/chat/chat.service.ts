@@ -33,10 +33,7 @@ export class ChatService {
         private readonly eventEmitter: EventEmitter2,
     ) { }
 
-    /**
-     * Tạo conversation từ quote được chấp nhận
-     * 
-     */
+    
 
     private readonly SYSTEM_USER_ID = '00000000-0000-0000-0000-000000000001';
 
@@ -56,7 +53,6 @@ export class ChatService {
             );
         }
 
-        // Kiểm tra conversation đã tồn tại chưa
         const existing = await this.conversationRepo.findOne({
             where: { quoteId },
         });
@@ -66,7 +62,6 @@ export class ChatService {
             return existing;
         }
 
-        // Tạo conversation mới
         const conversation = this.conversationRepo.create({
             customerId: quote.post.customerId,
             providerId: quote.providerId,
@@ -77,7 +72,6 @@ export class ChatService {
 
         const saved = await this.conversationRepo.save(conversation);
 
-        // Gửi system message với thông tin revision đầu tiên
         await this.sendSystemMessage(
             saved.id,
             `Cuộc trò chuyện bắt đầu từ chào giá được chấp nhận.\n` +
@@ -89,9 +83,7 @@ export class ChatService {
         return saved;
     }
 
-    /**
-     * Tạo conversation từ yêu cầu trực tiếp
-     */
+    
     async createDirectConversation(
         customerId: string,
         providerId: string
@@ -100,7 +92,6 @@ export class ChatService {
             throw new BadRequestException('Cannot create conversation with yourself');
         }
 
-        // Kiểm tra conversation đã tồn tại chưa
         const existing = await this.conversationRepo.findOne({
             where: {
                 customerId,
@@ -114,7 +105,6 @@ export class ChatService {
             return existing;
         }
 
-        // Tạo conversation mới
         const conversation = this.conversationRepo.create({
             customerId,
             providerId,
@@ -140,7 +130,6 @@ export class ChatService {
         saved.lastMessageAt = savedMessage.createdAt;
         await this.conversationRepo.save(saved);
 
-        // Emit WebSocket event cho cả khách và thợ
         this.eventEmitter.emit('message.sent', {
             conversationId: saved.id,
             message: savedMessage,
@@ -153,7 +142,7 @@ export class ChatService {
             receiverId: providerId, // Gửi cho thợ
         });
 
-        // Gửi notification cho cả 2 (tùy chọn)
+        // Gửi notification cho cả 2
         await this.sendNotificationToBoth(saved, savedMessage, customerId, providerId);
 
         this.logger.log(`Direct conversation created: ${saved.id}`);
@@ -199,9 +188,6 @@ export class ChatService {
         }
     }
 
-    /**
-     * Gửi tin nhắn
-     */
 
 
 
@@ -271,9 +257,7 @@ export class ChatService {
         return saved;
     }
 
-    /**
-     * Gửi system message (cho quote revisions, order status changes, etc.)
-     */
+    
     async sendSystemMessage(
         conversationId: string,
         content: string
@@ -303,9 +287,6 @@ export class ChatService {
         return saved;
     }
 
-    /**
-     * Lấy danh sách conversations của user
-     */
     async getUserConversations(userId: string): Promise<Conversation[]> {
         return await this.conversationRepo.find({
             where: [{ customerId: userId }, { providerId: userId }],
@@ -314,9 +295,7 @@ export class ChatService {
         });
     }
 
-    /**
-     * Lấy chi tiết conversation
-     */
+    
     async getConversationById(
         conversationId: string,
         userId: string
@@ -337,9 +316,6 @@ export class ChatService {
         return conversation;
     }
 
-    /**
-     * Lấy messages với pagination
-     */
     async getMessages(
         conversationId: string,
         userId: string,
@@ -386,9 +362,7 @@ export class ChatService {
         };
     }
 
-    /**
-     * Đánh dấu messages đã đọc
-     */
+    
     async markMessagesAsRead(
         conversationId: string,
         userId: string
@@ -430,9 +404,7 @@ export class ChatService {
         });
     }
 
-    /**
-     * Đóng conversation
-     */
+    
     async closeConversation(
         conversationId: string,
         userId: string
@@ -461,9 +433,7 @@ export class ChatService {
         this.logger.log(`Conversation closed: ${conversationId}`);
     }
 
-    /**
-     * Xóa conversation
-     */
+    
     async deleteConversation(
         conversationId: string,
         userId: string
@@ -485,9 +455,7 @@ export class ChatService {
         this.logger.log(`Conversation deleted: ${conversationId}`);
     }
 
-    /**
-     * Đếm tổng tin nhắn chưa đọc
-     */
+    
     async getTotalUnreadCount(userId: string): Promise<number> {
         const result = await this.conversationRepo
             .createQueryBuilder('conversation')
@@ -507,9 +475,7 @@ export class ChatService {
         return parseInt(result?.total || '0', 10);
     }
 
-    /**
-     * Tìm kiếm messages
-     */
+    
     async searchMessages(
         userId: string,
         keyword: string,

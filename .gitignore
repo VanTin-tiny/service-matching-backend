@@ -21,5 +21,7 @@ logs/
 .vscode/
 .idea/
 
+models/
+
 
 src/modules/moderation/config/moderation-patterns.config.ts

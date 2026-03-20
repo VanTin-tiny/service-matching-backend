@@ -7,6 +7,7 @@ import { ModerationLogRepository } from './repositories/moderation-log.repositor
 import { AIModerationService } from './services/al-moderation.service';
 import { ModerationService } from './moderation.service';
 import { OllamaModerationService } from './services/ollama-moderation.service';
+import { QwenModerationService } from './services/qwen-moderation.service';
 
 @Module({
     imports: [
@@ -15,7 +16,7 @@ import { OllamaModerationService } from './services/ollama-moderation.service';
     ],
     providers: [
         OllamaModerationService,
-
+        QwenModerationService,
         AIModerationService,
         ModerationService,
         ModerationLogRepository,

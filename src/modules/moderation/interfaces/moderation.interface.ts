@@ -1,3 +1,4 @@
+
 export enum ModerationStatus {
     APPROVED = 'APPROVED',
     REJECTED = 'REJECTED',
@@ -27,6 +28,8 @@ export interface ModerationResult {
         model: string;
         processingTime: number;
         timestamp: Date;
+       
+        error?: string;
     };
 }
 

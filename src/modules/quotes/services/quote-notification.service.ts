@@ -12,7 +12,7 @@ export class QuoteNotificationService {
         private readonly notificationService: NotificationService,
     ) { }
 
-    
+
     async notifyNewQuote(
         customerId: string,
         quote: Quote,
@@ -32,10 +32,10 @@ export class QuoteNotificationService {
         }
     }
 
-    
+
     async notifyQuoteAcceptedForChat(
         quote: Quote,
-        customerId: string,
+        customerId: string
     ): Promise<void> {
         try {
             const customerName = quote.post.customer?.profile?.fullName || 'Khách hàng';
@@ -54,7 +54,7 @@ export class QuoteNotificationService {
         }
     }
 
-    
+
     async notifyQuoteRevised(
         quote: Quote,
         customerId: string,
@@ -72,7 +72,7 @@ export class QuoteNotificationService {
                     postTitle: quote.post.title,
                     providerName,
                     newPrice,
-                    oldPrice, 
+                    oldPrice,
                 }
             );
         } catch {
@@ -80,7 +80,7 @@ export class QuoteNotificationService {
         }
     }
 
-    
+
     async notifyOrderRequested(
         quote: Quote,
         customerId: string,
@@ -107,7 +107,7 @@ export class QuoteNotificationService {
         }
     }
 
-    
+
     async notifyQuoteRejected(quote: Quote, reason?: string): Promise<void> {
         try {
             await this.notificationService.notifyQuoteRejected(quote.providerId, {
@@ -116,7 +116,7 @@ export class QuoteNotificationService {
                 postTitle: quote.post.title,
                 reason,
             });
-        } catch{
+        } catch {
             this.logger.error(`Failed to notify quote rejected:`);
         }
     }
@@ -139,7 +139,7 @@ export class QuoteNotificationService {
                     reason,
                 }
             );
-        } catch{
+        } catch {
             this.logger.error(`Failed to notify quote cancelled:`);
         }
     }
