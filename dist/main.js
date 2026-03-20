@@ -1414,7 +1414,7 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 const config_1 = __webpack_require__(/*! @nestjs/config */ "@nestjs/config");
 exports["default"] = (0, config_1.registerAs)('moderation', () => ({
     enabled: process.env.MODERATION_ENABLED === 'true',
-    provider: process.env.MODERATION_PROVIDER || 'ollama',
+    provider: process.env.MODERATION_PROVIDER || 'qwen',
     ollama: {
         baseUrl: process.env.OLLAMA_BASE_URL || 'http://localhost:11434',
         model: process.env.OLLAMA_MODEL || 'qwen2.5:7b',
@@ -1651,7 +1651,8 @@ async function bootstrap() {
     app.enableCors({
         origin: [
             'https://postmaxillary-variably-justa.ngrok-free.dev',
-            'http://localhost:3001'
+            'http://localhost:3001',
+            'http://localhost:3000',
         ],
         credentials: true,
     });
@@ -5336,6 +5337,7 @@ const moderation_log_repository_1 = __webpack_require__(/*! ./repositories/moder
 const al_moderation_service_1 = __webpack_require__(/*! ./services/al-moderation.service */ "./src/modules/moderation/services/al-moderation.service.ts");
 const moderation_service_1 = __webpack_require__(/*! ./moderation.service */ "./src/modules/moderation/moderation.service.ts");
 const ollama_moderation_service_1 = __webpack_require__(/*! ./services/ollama-moderation.service */ "./src/modules/moderation/services/ollama-moderation.service.ts");
+const qwen_moderation_service_1 = __webpack_require__(/*! ./services/qwen-moderation.service */ "./src/modules/moderation/services/qwen-moderation.service.ts");
 let ModerationModule = class ModerationModule {
 };
 exports.ModerationModule = ModerationModule;
@@ -5347,6 +5349,7 @@ exports.ModerationModule = ModerationModule = __decorate([
         ],
         providers: [
             ollama_moderation_service_1.OllamaModerationService,
+            qwen_moderation_service_1.QwenModerationService,
             al_moderation_service_1.AIModerationService,
             moderation_service_1.ModerationService,
             moderation_log_repository_1.ModerationLogRepository,
@@ -5567,16 +5570,18 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 var AIModerationService_1;
-var _a, _b;
+var _a, _b, _c;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.AIModerationService = void 0;
 const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
 const config_1 = __webpack_require__(/*! @nestjs/config */ "@nestjs/config");
 const ollama_moderation_service_1 = __webpack_require__(/*! ./ollama-moderation.service */ "./src/modules/moderation/services/ollama-moderation.service.ts");
+const qwen_moderation_service_1 = __webpack_require__(/*! ./qwen-moderation.service */ "./src/modules/moderation/services/qwen-moderation.service.ts");
 let AIModerationService = AIModerationService_1 = class AIModerationService {
-    constructor(configService, ollamaService) {
+    constructor(configService, ollamaService, qwenService) {
         this.configService = configService;
         this.ollamaService = ollamaService;
+        this.qwenService = qwenService;
         this.logger = new common_1.Logger(AIModerationService_1.name);
         this.config = this.configService.get('moderation');
         this.logger.log(`AI Moderation Service initialized with provider: ${this.config.provider}`);
@@ -5587,17 +5592,28 @@ let AIModerationService = AIModerationService_1 = class AIModerationService {
             return this.createDisabledResult();
         }
         switch (this.config.provider) {
+            case 'qwen':
+                this.logger.debug('Using Qwen Vietnamese Content Classifier provider');
+                return this.qwenService.moderateContent(request);
             case 'ollama':
                 this.logger.debug('Using Ollama provider');
                 return this.ollamaService.moderateContent(request);
             default:
-                this.logger.error(`Unknown provider: ${this.config.provider}, using Ollama`);
-                return this.ollamaService.moderateContent(request);
+                this.logger.warn(`Unknown provider: ${this.config.provider}, using Qwen as default`);
+                return this.qwenService.moderateContent(request);
         }
     }
     async checkHealth() {
         try {
             const provider = this.config.provider;
+            if (provider === 'qwen') {
+                const isHealthy = await this.qwenService.checkHealth();
+                return {
+                    provider: 'qwen',
+                    isHealthy,
+                    message: isHealthy ? 'Qwen Vietnamese Content Classifier is operational' : 'Qwen service is down',
+                };
+            }
             if (provider === 'ollama') {
                 const isHealthy = await this.ollamaService.checkHealth();
                 return {
@@ -5638,7 +5654,7 @@ let AIModerationService = AIModerationService_1 = class AIModerationService {
 exports.AIModerationService = AIModerationService;
 exports.AIModerationService = AIModerationService = AIModerationService_1 = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [typeof (_a = typeof config_1.ConfigService !== "undefined" && config_1.ConfigService) === "function" ? _a : Object, typeof (_b = typeof ollama_moderation_service_1.OllamaModerationService !== "undefined" && ollama_moderation_service_1.OllamaModerationService) === "function" ? _b : Object])
+    __metadata("design:paramtypes", [typeof (_a = typeof config_1.ConfigService !== "undefined" && config_1.ConfigService) === "function" ? _a : Object, typeof (_b = typeof ollama_moderation_service_1.OllamaModerationService !== "undefined" && ollama_moderation_service_1.OllamaModerationService) === "function" ? _b : Object, typeof (_c = typeof qwen_moderation_service_1.QwenModerationService !== "undefined" && qwen_moderation_service_1.QwenModerationService) === "function" ? _c : Object])
 ], AIModerationService);
 
 
@@ -5990,6 +6006,224 @@ exports.OllamaModerationService = OllamaModerationService = OllamaModerationServ
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [typeof (_a = typeof config_1.ConfigService !== "undefined" && config_1.ConfigService) === "function" ? _a : Object])
 ], OllamaModerationService);
+
+
+/***/ }),
+
+/***/ "./src/modules/moderation/services/qwen-moderation.service.ts":
+/*!********************************************************************!*\
+  !*** ./src/modules/moderation/services/qwen-moderation.service.ts ***!
+  \********************************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var QwenModerationService_1;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.QwenModerationService = void 0;
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const child_process_1 = __webpack_require__(/*! child_process */ "child_process");
+const path_1 = __webpack_require__(/*! path */ "path");
+const util_1 = __webpack_require__(/*! util */ "util");
+const moderation_interface_1 = __webpack_require__(/*! ../interfaces/moderation.interface */ "./src/modules/moderation/interfaces/moderation.interface.ts");
+const execAsync = (0, util_1.promisify)(child_process_1.exec);
+let QwenModerationService = QwenModerationService_1 = class QwenModerationService {
+    constructor() {
+        this.logger = new common_1.Logger(QwenModerationService_1.name);
+        const mergedModelPath = (0, path_1.join)(process.cwd(), 'models', 'vietnamese-content-classifier-final-merged');
+        this.modelPath = mergedModelPath;
+        this.pythonScriptPath = (0, path_1.join)(process.cwd(), 'models', 'inference_api.py');
+        this.pythonBin = process.env.PYTHON_BIN || '/Users/tindethuong/miniconda3/bin/python3';
+        this.logger.log('Qwen Moderation Service initialized');
+        this.logger.log(`Python binary: ${this.pythonBin}`);
+        this.logger.log(`Model path: ${this.modelPath}`);
+        this.logger.log(`Python script: ${this.pythonScriptPath}`);
+    }
+    async moderateContent(request) {
+        const startTime = Date.now();
+        try {
+            const combinedText = `${request.title || ''} ${request.description || ''}`.trim();
+            if (!combinedText) {
+                return this.createEmptyResult();
+            }
+            const titleResult = request.title
+                ? await this.predictText(request.title)
+                : null;
+            const descriptionResult = request.description
+                ? await this.predictText(request.description)
+                : null;
+            const results = [titleResult, descriptionResult].filter(Boolean);
+            if (results.length === 0) {
+                return this.createEmptyResult();
+            }
+            const worstResult = this.selectWorstPrediction(results);
+            const processingTime = Date.now() - startTime;
+            return this.mapToModerationResult(worstResult, titleResult, descriptionResult, request, processingTime);
+        }
+        catch (error) {
+            this.logger.error(`Moderation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            return this.createErrorResult(error);
+        }
+    }
+    selectWorstPrediction(results) {
+        return results.reduce((worst, current) => {
+            if (!worst)
+                return current;
+            if (current.should_block && worst.should_block) {
+                return current.confidence > worst.confidence ? current : worst;
+            }
+            if (current.should_block && !worst.should_block) {
+                return current;
+            }
+            if (!current.should_block && worst.should_block) {
+                return worst;
+            }
+            if (!current.is_safe && worst.is_safe) {
+                return current;
+            }
+            return worst;
+        });
+    }
+    async predictText(text) {
+        try {
+            const escapedText = text
+                .replace(/\\/g, '\\\\')
+                .replace(/"/g, '\\"')
+                .replace(/`/g, '\\`')
+                .replace(/\$/g, '\\$')
+                .replace(/\n/g, ' ')
+                .trim();
+            const command = `${this.pythonBin} "${this.pythonScriptPath}" "${escapedText}"`;
+            this.logger.debug(`Running prediction for text: ${text.substring(0, 50)}...`);
+            const { stdout, stderr } = await execAsync(command, {
+                timeout: 30000,
+                maxBuffer: 1024 * 1024,
+            });
+            if (stderr && !stderr.includes('✓')) {
+                const isWarning = stderr.includes('Warning') ||
+                    stderr.includes('deprecated') ||
+                    stderr.includes('⚠');
+                if (!isWarning) {
+                    this.logger.warn(`Python stderr: ${stderr.substring(0, 200)}`);
+                }
+            }
+            const result = JSON.parse(stdout);
+            this.logger.debug(`Prediction: ${result.prediction} ` +
+                `(confidence: ${(result.confidence * 100).toFixed(1)}%, ` +
+                `should_block: ${result.should_block})`);
+            return result;
+        }
+        catch (error) {
+            this.logger.error(`Prediction failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            return {
+                prediction: 'safe',
+                confidence: 0,
+                is_safe: true,
+                should_block: false,
+                inference_time_ms: 0,
+            };
+        }
+    }
+    mapToModerationResult(worstResult, titleResult, descriptionResult, request, processingTime) {
+        const violations = [];
+        const violationTypeMap = {
+            prostitution: moderation_interface_1.ViolationType.ILLEGAL,
+            sexual: moderation_interface_1.ViolationType.SEXUAL,
+            violence: moderation_interface_1.ViolationType.VIOLENCE,
+            hate: moderation_interface_1.ViolationType.HATE,
+        };
+        const violationType = violationTypeMap[worstResult.prediction];
+        if (worstResult.should_block && violationType) {
+            let location = 'both';
+            if (titleResult?.should_block && !descriptionResult?.should_block) {
+                location = 'title';
+            }
+            else if (!titleResult?.should_block && descriptionResult?.should_block) {
+                location = 'description';
+            }
+            else if (titleResult?.should_block && descriptionResult?.should_block) {
+                location = 'both';
+            }
+            violations.push({
+                type: violationType,
+                severity: Math.round(worstResult.confidence * 10),
+                reason: `Detected ${worstResult.prediction} content with ${(worstResult.confidence * 100).toFixed(1)}% confidence`,
+                location,
+                evidence: worstResult.prediction,
+            });
+        }
+        return {
+            status: worstResult.should_block ? moderation_interface_1.ModerationStatus.REJECTED : moderation_interface_1.ModerationStatus.APPROVED,
+            isAllowed: !worstResult.should_block,
+            violations,
+            confidence: worstResult.confidence,
+            metadata: {
+                model: 'qwen-vietnamese-content-classifier',
+                processingTime,
+                timestamp: new Date(),
+            },
+        };
+    }
+    createEmptyResult() {
+        return {
+            status: moderation_interface_1.ModerationStatus.APPROVED,
+            isAllowed: true,
+            violations: [],
+            confidence: 1.0,
+            metadata: {
+                model: 'qwen-vietnamese-content-classifier',
+                processingTime: 0,
+                timestamp: new Date(),
+            },
+        };
+    }
+    createErrorResult(error) {
+        this.logger.error(`Moderation error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        return {
+            status: moderation_interface_1.ModerationStatus.ERROR,
+            isAllowed: true,
+            violations: [],
+            confidence: 0,
+            metadata: {
+                model: 'qwen-vietnamese-content-classifier',
+                processingTime: 0,
+                timestamp: new Date(),
+                error: error instanceof Error ? error.message : 'Unknown error',
+            },
+        };
+    }
+    async checkHealth() {
+        try {
+            this.logger.log('Running health check...');
+            const testResult = await this.predictText('test');
+            const isHealthy = testResult !== null && testResult.prediction !== undefined;
+            if (isHealthy) {
+                this.logger.log('✓ Health check passed');
+            }
+            else {
+                this.logger.error('✗ Health check failed: invalid response');
+            }
+            return isHealthy;
+        }
+        catch (error) {
+            this.logger.error(`✗ Health check failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            return false;
+        }
+    }
+};
+exports.QwenModerationService = QwenModerationService;
+exports.QwenModerationService = QwenModerationService = QwenModerationService_1 = __decorate([
+    (0, common_1.Injectable)(),
+    __metadata("design:paramtypes", [])
+], QwenModerationService);
 
 
 /***/ }),
@@ -6615,7 +6849,7 @@ let NotificationService = class NotificationService {
         await this.creationService.createNotification({
             userId: customerId,
             type: notification_enum_1.NotificationType.NEW_QUOTE_RECEIVED,
-            title: '💼 Có báo giá mới',
+            title: 'Có báo giá mới',
             message: `${data.providerName} đã gửi báo giá ${data.price?.toLocaleString('vi-VN')}đ cho "${data.postTitle}"`,
             metadata: {
                 postId: data.postId,
@@ -6670,7 +6904,7 @@ let NotificationService = class NotificationService {
         await this.creationService.createNotification({
             userId: providerId,
             type: notification_enum_1.NotificationType.ORDER_REQUESTED,
-            title: '🛎️ Khách hàng muốn đặt đơn',
+            title: 'Khách hàng muốn đặt đơn',
             message: `${payload.customerName} đã nhấn đặt đơn với giá ${payload.price.toLocaleString('vi-VN')}đ${revisionText} cho "${payload.postTitle}". Hãy xác nhận để bắt đầu làm!${notesText}`,
             metadata: {
                 quoteId: payload.quoteId,
@@ -6687,7 +6921,7 @@ let NotificationService = class NotificationService {
         await this.creationService.createNotification({
             userId: providerId,
             type: notification_enum_1.NotificationType.QUOTE_REJECTED,
-            title: '❌ Báo giá bị từ chối',
+            title: 'Báo giá bị từ chối',
             message: `Báo giá của bạn cho "${data.postTitle}" đã bị từ chối.${reasonText}`,
             metadata: {
                 postId: data.postId,
@@ -6702,7 +6936,7 @@ let NotificationService = class NotificationService {
         await this.creationService.createNotification({
             userId: customerId,
             type: notification_enum_1.NotificationType.QUOTE_REJECTED,
-            title: '🚫 Thợ đã hủy báo giá',
+            title: 'Thợ đã hủy báo giá',
             message: `${payload.providerName} đã hủy báo giá cho "${payload.postTitle}".${reasonText}`,
             metadata: {
                 quoteId: payload.quoteId,
@@ -6716,7 +6950,7 @@ let NotificationService = class NotificationService {
         await this.creationService.createNotification({
             userId: customerId,
             type: notification_enum_1.NotificationType.ORDER_CREATED,
-            title: '✅ Đơn hàng đã được tạo',
+            title: 'Đơn hàng đã được tạo',
             message: `Thợ đã xác nhận và đơn hàng "${orderTitle}" đã được tạo. Công việc đang được thực hiện!`,
             metadata: { orderId },
             actionUrl: `/orders/${orderId}`,
@@ -6736,7 +6970,7 @@ let NotificationService = class NotificationService {
         await this.creationService.createNotification({
             userId: customerId,
             type: notification_enum_1.NotificationType.ORDER_IN_PROGRESS,
-            title: '✅ Thợ đã hoàn thành',
+            title: 'Thợ đã hoàn thành',
             message: `Thợ đã hoàn thành đơn hàng "${orderTitle}". Vui lòng xác nhận!`,
             metadata: { orderId },
             actionUrl: `/orders/${orderId}`,
@@ -6749,7 +6983,7 @@ let NotificationService = class NotificationService {
         await this.creationService.createNotification({
             userId,
             type: notification_enum_1.NotificationType.ORDER_COMPLETED,
-            title: '🎉 Đơn hàng hoàn thành',
+            title: 'Đơn hàng hoàn thành',
             message,
             metadata: { orderId, isProvider },
             actionUrl: `/orders/${orderId}`,
@@ -6759,7 +6993,7 @@ let NotificationService = class NotificationService {
         await this.creationService.createNotification({
             userId,
             type: notification_enum_1.NotificationType.ORDER_CANCELLED,
-            title: '🚫 Đơn hàng đã bị hủy',
+            title: 'Đơn hàng đã bị hủy',
             message: `Đơn hàng "${orderTitle}" đã bị hủy. Lý do: ${reason}`,
             metadata: { orderId, reason },
             actionUrl: `/orders/${orderId}`,
@@ -6769,7 +7003,7 @@ let NotificationService = class NotificationService {
         await this.creationService.createNotification({
             userId: providerId,
             type: notification_enum_1.NotificationType.PAYMENT_RECEIVED,
-            title: '💰 Đã nhận thanh toán',
+            title: 'Đã nhận thanh toán',
             message: `Bạn đã nhận thanh toán ${amount.toLocaleString('vi-VN')}đ`,
             metadata: { orderId, amount },
             actionUrl: `/orders/${orderId}`,
@@ -6780,7 +7014,7 @@ let NotificationService = class NotificationService {
             await this.creationService.createNotification({
                 userId: providerId,
                 type: notification_enum_1.NotificationType.POST_CLOSED,
-                title: '🔒 Post đã đóng',
+                title: 'Post đã đóng',
                 message: `Post "${postTitle}" mà bạn đã chào giá đã được đóng.`,
                 metadata: { postId },
                 actionUrl: `/posts/${postId}`,
@@ -6788,11 +7022,11 @@ let NotificationService = class NotificationService {
         }
     }
     async notifyNewReview(providerId, reviewId, rating, customerName) {
-        const stars = '⭐'.repeat(rating);
+        const stars = 'sao'.repeat(rating);
         await this.creationService.createNotification({
             userId: providerId,
             type: notification_enum_1.NotificationType.NEW_REVIEW_RECEIVED,
-            title: '⭐ Đánh giá mới',
+            title: 'Đánh giá mới',
             message: `${customerName} đã đánh giá bạn ${stars} (${rating}/5)`,
             metadata: { reviewId, rating },
             actionUrl: `/reviews/${reviewId}`,
@@ -6802,7 +7036,7 @@ let NotificationService = class NotificationService {
         await this.creationService.createNotification({
             userId,
             type: notification_enum_1.NotificationType.NEW_MESSAGE,
-            title: '💬 Tin nhắn mới',
+            title: 'Tin nhắn mới',
             message: `${senderName}: ${messagePreview.substring(0, 100)}`,
             metadata: { senderId, chatId },
             actionUrl: `/chats/${chatId}`,
@@ -14132,6 +14366,36 @@ module.exports = require("typeorm");
 /***/ ((module) => {
 
 module.exports = require("uuid");
+
+/***/ }),
+
+/***/ "child_process":
+/*!********************************!*\
+  !*** external "child_process" ***!
+  \********************************/
+/***/ ((module) => {
+
+module.exports = require("child_process");
+
+/***/ }),
+
+/***/ "path":
+/*!***********************!*\
+  !*** external "path" ***!
+  \***********************/
+/***/ ((module) => {
+
+module.exports = require("path");
+
+/***/ }),
+
+/***/ "util":
+/*!***********************!*\
+  !*** external "util" ***!
+  \***********************/
+/***/ ((module) => {
+
+module.exports = require("util");
 
 /***/ })
 

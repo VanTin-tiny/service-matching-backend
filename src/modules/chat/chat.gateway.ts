@@ -65,7 +65,6 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
             await client.join(`user:${userId}`);
 
-            // Lấy danh sách conversations và join rooms
             const conversations = await this.chatService.getUserConversations(userId);
             for (const conv of conversations) {
                 await client.join(`conversation:${conv.id}`);
@@ -73,7 +72,6 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
             this.logger.log(`Chat client connected: ${client.id} (User: ${userId})`);
 
-            // Emit connection success với unread count
             const unreadCount = await this.chatService.getTotalUnreadCount(userId);
             client.emit('connected', { userId, unreadCount });
         } catch (error) {
@@ -99,9 +97,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         this.logger.log(`Chat client disconnected: ${client.id} (User: ${userId})`);
     }
 
-    /**
-     * Client gửi tin nhắn qua WebSocket
-     */
+   
     @SubscribeMessage('send_message')
     async handleSendMessage(
         @ConnectedSocket() client: Socket,
@@ -122,9 +118,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         }
     }
 
-    /**
-     * Client đánh dấu đã đọc
-     */
+    
     @SubscribeMessage('mark_read')
     async handleMarkRead(
         @ConnectedSocket() client: Socket,
@@ -141,9 +135,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         }
     }
 
-    /**
-     * Client đang typing
-     */
+    
     @SubscribeMessage('typing')
     handleTyping(
         @ConnectedSocket() client: Socket,
@@ -159,9 +151,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         });
     }
 
-    /**
-     * Join conversation room
-     */
+    
     @SubscribeMessage('join_conversation')
     async handleJoinConversation(
         @ConnectedSocket() client: Socket,
@@ -186,9 +176,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         }
     }
 
-    /**
-     * Leave conversation room
-     */
+    
     @SubscribeMessage('leave_conversation')
     async handleLeaveConversation(
         @ConnectedSocket() client: Socket,
@@ -198,9 +186,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         return { success: true };
     }
 
-    /**
-     * Event handler: Khi có message mới
-     */
+    
     @OnEvent('message.sent')
     handleMessageSent(payload: {
         conversationId: string;
@@ -226,9 +212,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         );
     }
 
-    /**
-     * Event handler: Khi messages được đọc
-     */
+    
     @OnEvent('messages.read')
     handleMessagesRead(payload: { conversationId: string; userId: string }) {
         // Notify sender that their messages were read
@@ -238,38 +222,28 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         });
     }
 
-    /**
-     * Kiểm tra user có online không
-     */
+    
     isUserOnline(userId: string): boolean {
         const sockets = this.userSockets.get(userId);
         return !!sockets && sockets.size > 0;
     }
 
-    /**
-     * Gửi event đến user cụ thể
-     */
+    
     sendToUser(userId: string, event: string, data: any) {
         this.server.to(`user:${userId}`).emit(event, data);
     }
 
-    /**
-     * Gửi event đến conversation
-     */
+    
     sendToConversation(conversationId: string, event: string, data: any) {
         this.server.to(`conversation:${conversationId}`).emit(event, data);
     }
 
-    /**
-     * Get số lượng users online
-     */
+    
     getOnlineUsersCount(): number {
         return this.userSockets.size;
     }
 
-    /**
-     * Get danh sách users online
-     */
+    
     getOnlineUsers(): string[] {
         return Array.from(this.userSockets.keys());
     }

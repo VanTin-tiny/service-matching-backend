@@ -255,7 +255,6 @@ export class OllamaModerationService {
         }
     }
 
-    // ✅ Sử dụng SYSTEM_PROMPT từ file import
     private buildOptimizedSystemPrompt(): string {
         return SYSTEM_PROMPT;
     }
