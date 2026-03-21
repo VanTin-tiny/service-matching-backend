@@ -14,9 +14,10 @@ import {
     Patch,
     Put,
     Query,
-    UseGuards,
-    UseInterceptors,
+    UploadedFile,
+    UseGuards, UseInterceptors
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import {
     ApiBearerAuth,
     ApiOperation,
@@ -33,17 +34,16 @@ import {
     ProfileResponseDto,
     PublicProfileResponseDto,
     SearchProfilesQueryDto,
-    UpdateAvatarDto,
     UpdateContactDto,
-    UpdateProfileDto,
+    UpdateProfileDto
 } from '../dtos/profile.dto';
 import { ProfileService } from '../services/profile.service';
-
 @ApiTags('Profile')
 @Controller('profile')
 @UseInterceptors(ClassSerializerInterceptor)
 export class ProfileController {
-    constructor(private readonly profileService: ProfileService) { }
+    constructor(private readonly profileService: ProfileService,
+    ) { }
 
 
     @Get('me')
@@ -176,6 +176,9 @@ export class ProfileController {
 
     @Patch('avatar')
     @UseGuards(JwtAuthGuard)
+    @UseInterceptors(FileInterceptor('file', {
+        limits: { fileSize: 2 * 1024 * 1024 },
+    }))
     @HttpCode(HttpStatus.OK)
     @ApiBearerAuth()
     @ApiOperation({
@@ -196,10 +199,10 @@ export class ProfileController {
         description: 'Unauthorized - Invalid or missing token',
     })
     async updateAvatar(
-        @Body() dto: UpdateAvatarDto,
+        @UploadedFile() file: Express.Multer.File,
         @CurrentUser() user: JwtPayload,
     ): Promise<ProfileResponseDto> {
-        return this.profileService.updateAvatar(user, dto.avatarUrl);
+        return this.profileService.updateAvatarFile(user, file);
     }
 
     @Delete('me')
