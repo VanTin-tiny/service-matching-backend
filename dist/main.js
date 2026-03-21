@@ -1682,6 +1682,7 @@ const orders_module_1 = __webpack_require__(/*! @/modules/orders/orders.module *
 const posts_module_1 = __webpack_require__(/*! @/modules/posts/posts.module */ "./src/modules/posts/posts.module.ts");
 const profile_module_1 = __webpack_require__(/*! @/modules/profile/profile.module */ "./src/modules/profile/profile.module.ts");
 const quotes_module_1 = __webpack_require__(/*! @/modules/quotes/quotes.module */ "./src/modules/quotes/quotes.module.ts");
+const search_module_1 = __webpack_require__(/*! @/modules/search/search.module */ "./src/modules/search/search.module.ts");
 const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
 const event_emitter_1 = __webpack_require__(/*! @nestjs/event-emitter */ "@nestjs/event-emitter");
 const throttler_1 = __webpack_require__(/*! @nestjs/throttler */ "@nestjs/throttler");
@@ -1701,6 +1702,7 @@ exports.AppModule = AppModule = __decorate([
             quotes_module_1.QuoteModule,
             chat_module_1.ChatModule,
             orders_module_1.OrdersModule,
+            search_module_1.SearchModule,
             event_emitter_1.EventEmitterModule.forRoot(),
             throttler_1.ThrottlerModule.forRoot([{
                     ttl: 60000,
@@ -11191,6 +11193,151 @@ exports.Profile = Profile = __decorate([
 
 /***/ }),
 
+/***/ "./src/modules/profile/entities/providertrade.entity.ts":
+/*!**************************************************************!*\
+  !*** ./src/modules/profile/entities/providertrade.entity.ts ***!
+  \**************************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var _a, _b, _c;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.ProviderTrade = void 0;
+const user_entity_1 = __webpack_require__(/*! @/modules/users/entities/user.entity */ "./src/modules/users/entities/user.entity.ts");
+const typeorm_1 = __webpack_require__(/*! typeorm */ "typeorm");
+const trade_entity_1 = __webpack_require__(/*! ./trade.entity */ "./src/modules/profile/entities/trade.entity.ts");
+let ProviderTrade = class ProviderTrade {
+};
+exports.ProviderTrade = ProviderTrade;
+__decorate([
+    (0, typeorm_1.PrimaryGeneratedColumn)('uuid'),
+    __metadata("design:type", String)
+], ProviderTrade.prototype, "id", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'provider_id', type: 'uuid' }),
+    __metadata("design:type", String)
+], ProviderTrade.prototype, "providerId", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'trade_id', type: 'uuid' }),
+    __metadata("design:type", String)
+], ProviderTrade.prototype, "tradeId", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        name: 'years_experience',
+        type: 'smallint',
+        nullable: true,
+    }),
+    __metadata("design:type", Number)
+], ProviderTrade.prototype, "yearsExperience", void 0);
+__decorate([
+    (0, typeorm_1.CreateDateColumn)({ name: 'created_at', type: 'timestamp with time zone' }),
+    __metadata("design:type", typeof (_a = typeof Date !== "undefined" && Date) === "function" ? _a : Object)
+], ProviderTrade.prototype, "createdAt", void 0);
+__decorate([
+    (0, typeorm_1.ManyToOne)(() => user_entity_1.User, { eager: false, onDelete: 'CASCADE' }),
+    (0, typeorm_1.JoinColumn)({ name: 'provider_id' }),
+    __metadata("design:type", typeof (_b = typeof user_entity_1.User !== "undefined" && user_entity_1.User) === "function" ? _b : Object)
+], ProviderTrade.prototype, "provider", void 0);
+__decorate([
+    (0, typeorm_1.ManyToOne)(() => trade_entity_1.Trade, trade => trade.providerTrades, {
+        eager: false,
+        onDelete: 'CASCADE',
+    }),
+    (0, typeorm_1.JoinColumn)({ name: 'trade_id' }),
+    __metadata("design:type", typeof (_c = typeof trade_entity_1.Trade !== "undefined" && trade_entity_1.Trade) === "function" ? _c : Object)
+], ProviderTrade.prototype, "trade", void 0);
+exports.ProviderTrade = ProviderTrade = __decorate([
+    (0, typeorm_1.Entity)('provider_trades'),
+    (0, typeorm_1.Unique)(['providerId', 'tradeId']),
+    (0, typeorm_1.Index)(['providerId']),
+    (0, typeorm_1.Index)(['tradeId'])
+], ProviderTrade);
+
+
+/***/ }),
+
+/***/ "./src/modules/profile/entities/trade.entity.ts":
+/*!******************************************************!*\
+  !*** ./src/modules/profile/entities/trade.entity.ts ***!
+  \******************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var _a;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.Trade = void 0;
+const typeorm_1 = __webpack_require__(/*! typeorm */ "typeorm");
+const providertrade_entity_1 = __webpack_require__(/*! ./providertrade.entity */ "./src/modules/profile/entities/providertrade.entity.ts");
+let Trade = class Trade {
+    constructor() {
+        this.isActive = true;
+        this.sortOrder = 0;
+    }
+};
+exports.Trade = Trade;
+__decorate([
+    (0, typeorm_1.PrimaryGeneratedColumn)('uuid'),
+    __metadata("design:type", String)
+], Trade.prototype, "id", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ length: 100, unique: true }),
+    __metadata("design:type", String)
+], Trade.prototype, "name", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ length: 100, unique: true }),
+    __metadata("design:type", String)
+], Trade.prototype, "slug", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ length: 100, nullable: true }),
+    __metadata("design:type", String)
+], Trade.prototype, "category", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ length: 10, nullable: true }),
+    __metadata("design:type", String)
+], Trade.prototype, "icon", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'is_active', default: true }),
+    __metadata("design:type", Boolean)
+], Trade.prototype, "isActive", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'sort_order', type: 'int', default: 0 }),
+    __metadata("design:type", Number)
+], Trade.prototype, "sortOrder", void 0);
+__decorate([
+    (0, typeorm_1.CreateDateColumn)({ name: 'created_at', type: 'timestamp with time zone' }),
+    __metadata("design:type", typeof (_a = typeof Date !== "undefined" && Date) === "function" ? _a : Object)
+], Trade.prototype, "createdAt", void 0);
+__decorate([
+    (0, typeorm_1.OneToMany)(() => providertrade_entity_1.ProviderTrade, pt => pt.trade),
+    __metadata("design:type", Array)
+], Trade.prototype, "providerTrades", void 0);
+exports.Trade = Trade = __decorate([
+    (0, typeorm_1.Entity)('trades'),
+    (0, typeorm_1.Index)(['slug'], { unique: true }),
+    (0, typeorm_1.Index)(['isActive'])
+], Trade);
+
+
+/***/ }),
+
 /***/ "./src/modules/profile/mapper/profile-mapper.ts":
 /*!******************************************************!*\
   !*** ./src/modules/profile/mapper/profile-mapper.ts ***!
@@ -14000,6 +14147,1274 @@ exports.QuoteValidationService = QuoteValidationService = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [typeof (_a = typeof user_repository_1.UserRepository !== "undefined" && user_repository_1.UserRepository) === "function" ? _a : Object, typeof (_b = typeof post_repository_1.PostRepository !== "undefined" && post_repository_1.PostRepository) === "function" ? _b : Object, typeof (_c = typeof quote_repository_1.QuoteRepository !== "undefined" && quote_repository_1.QuoteRepository) === "function" ? _c : Object])
 ], QuoteValidationService);
+
+
+/***/ }),
+
+/***/ "./src/modules/search/dtos/search.dto.ts":
+/*!***********************************************!*\
+  !*** ./src/modules/search/dtos/search.dto.ts ***!
+  \***********************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.TradeSuggestResponseDto = exports.TradeSuggestQueryDto = exports.ProvinceSuggestResponseDto = exports.ByProvinceResponseDto = exports.ByProvinceQueryDto = exports.ProviderSearchResponseDto = exports.ProviderSearchResultDto = exports.ProviderSearchQueryDto = exports.PostSearchResponseDto = exports.PostSearchResultDto = exports.PostSearchQueryDto = exports.GlobalSearchResponseDto = exports.GlobalSearchQueryDto = exports.TradeDto = exports.ProviderSortBy = exports.PostSortBy = exports.SortOrder = exports.SearchType = exports.VIETNAM_PROVINCES = void 0;
+const post_status_enum_1 = __webpack_require__(/*! @/modules/posts/enums/post-status.enum */ "./src/modules/posts/enums/post-status.enum.ts");
+const swagger_1 = __webpack_require__(/*! @nestjs/swagger */ "@nestjs/swagger");
+const class_transformer_1 = __webpack_require__(/*! class-transformer */ "class-transformer");
+const class_validator_1 = __webpack_require__(/*! class-validator */ "class-validator");
+exports.VIETNAM_PROVINCES = [
+    'Hà Nội', 'TP. Hồ Chí Minh', 'Hải Phòng', 'Cần Thơ', 'Đà Nẵng',
+    'Huế', 'Cao Bằng', 'Điện Biên', 'Lai Châu', 'Sơn La', 'Lạng Sơn',
+    'Quảng Ninh', 'Thanh Hóa', 'Nghệ An', 'Hà Tĩnh', 'Tuyên Quang',
+    'Lào Cai', 'Thái Nguyên', 'Phú Thọ', 'Bắc Ninh', 'Hưng Yên',
+    'Ninh Bình', 'Quảng Trị', 'Quảng Ngãi', 'Gia Lai', 'Đắk Lắk',
+    'Khánh Hòa', 'Lâm Đồng', 'Tây Ninh', 'Đồng Tháp', 'An Giang',
+    'Vĩnh Long', 'Cà Mau',
+];
+var SearchType;
+(function (SearchType) {
+    SearchType["ALL"] = "all";
+    SearchType["POST"] = "post";
+    SearchType["PROVIDER"] = "provider";
+})(SearchType || (exports.SearchType = SearchType = {}));
+var SortOrder;
+(function (SortOrder) {
+    SortOrder["ASC"] = "asc";
+    SortOrder["DESC"] = "desc";
+})(SortOrder || (exports.SortOrder = SortOrder = {}));
+var PostSortBy;
+(function (PostSortBy) {
+    PostSortBy["CREATED_AT"] = "createdAt";
+    PostSortBy["BUDGET"] = "budget";
+    PostSortBy["DESIRED_TIME"] = "desiredTime";
+})(PostSortBy || (exports.PostSortBy = PostSortBy = {}));
+var ProviderSortBy;
+(function (ProviderSortBy) {
+    ProviderSortBy["DISPLAY_NAME"] = "displayName";
+    ProviderSortBy["CREATED_AT"] = "createdAt";
+})(ProviderSortBy || (exports.ProviderSortBy = ProviderSortBy = {}));
+const slugArrayTransform = ({ value }) => {
+    if (!value)
+        return undefined;
+    const arr = Array.isArray(value) ? value : [value];
+    return arr
+        .flatMap((v) => v.split(','))
+        .map((s) => s.trim())
+        .filter(Boolean);
+};
+class TradeDto {
+}
+exports.TradeDto = TradeDto;
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 'uuid-trade-1' }),
+    __metadata("design:type", String)
+], TradeDto.prototype, "id", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 'Thợ điện' }),
+    __metadata("design:type", String)
+], TradeDto.prototype, "name", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 'tho-dien' }),
+    __metadata("design:type", String)
+], TradeDto.prototype, "slug", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ example: 'Điện - Nước' }),
+    __metadata("design:type", String)
+], TradeDto.prototype, "category", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ example: '⚡' }),
+    __metadata("design:type", String)
+], TradeDto.prototype, "icon", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ example: 5 }),
+    __metadata("design:type", Number)
+], TradeDto.prototype, "yearsExperience", void 0);
+class GlobalSearchQueryDto {
+    constructor() {
+        this.type = SearchType.ALL;
+        this.limit = 5;
+    }
+}
+exports.GlobalSearchQueryDto = GlobalSearchQueryDto;
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'Từ khoá (1 ký tự trở lên). VD: "đ" → tất cả bài/thợ liên quan',
+        example: 'điện',
+        minLength: 1,
+    }),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MinLength)(1),
+    __metadata("design:type", String)
+], GlobalSearchQueryDto.prototype, "q", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({
+        description: 'Phạm vi: all | post | provider',
+        enum: SearchType,
+        default: SearchType.ALL,
+    }),
+    (0, class_validator_1.IsEnum)(SearchType),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
+], GlobalSearchQueryDto.prototype, "type", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({
+        description: 'Lọc theo tỉnh/thành (34 tỉnh)',
+        enum: exports.VIETNAM_PROVINCES,
+        example: 'Đà Nẵng',
+    }),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", typeof (_a = typeof VietnamProvince !== "undefined" && VietnamProvince) === "function" ? _a : Object)
+], GlobalSearchQueryDto.prototype, "province", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ description: 'Số kết quả mỗi loại', example: 5, default: 5 }),
+    (0, class_transformer_1.Type)(() => Number),
+    (0, class_validator_1.IsNumber)(),
+    (0, class_validator_1.Min)(1),
+    (0, class_validator_1.Max)(20),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", Number)
+], GlobalSearchQueryDto.prototype, "limit", void 0);
+class GlobalSearchResponseDto {
+}
+exports.GlobalSearchResponseDto = GlobalSearchResponseDto;
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 'điện' }),
+    __metadata("design:type", String)
+], GlobalSearchResponseDto.prototype, "query", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ type: () => PostSearchResultDto, isArray: true }),
+    __metadata("design:type", Array)
+], GlobalSearchResponseDto.prototype, "posts", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ type: () => ProviderSearchResultDto, isArray: true }),
+    __metadata("design:type", Array)
+], GlobalSearchResponseDto.prototype, "providers", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 42 }),
+    __metadata("design:type", Number)
+], GlobalSearchResponseDto.prototype, "totalPosts", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 8 }),
+    __metadata("design:type", Number)
+], GlobalSearchResponseDto.prototype, "totalProviders", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ description: 'Thời gian xử lý (ms)', example: 18 }),
+    __metadata("design:type", Number)
+], GlobalSearchResponseDto.prototype, "took", void 0);
+class PostSearchQueryDto {
+    constructor() {
+        this.sortBy = PostSortBy.CREATED_AT;
+        this.order = SortOrder.DESC;
+        this.limit = 10;
+        this.offset = 0;
+    }
+}
+exports.PostSearchQueryDto = PostSearchQueryDto;
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({
+        description: 'Tìm theo tiêu đề bài đăng (1 ký tự trở lên). ' +
+            'Hỗ trợ không dấu: "sua dien" → "sửa điện".',
+        example: 'sửa điện',
+    }),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MinLength)(1),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
+], PostSearchQueryDto.prototype, "title", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({
+        description: 'Lọc cứng theo tỉnh/thành — chọn từ 34 tỉnh',
+        enum: exports.VIETNAM_PROVINCES,
+        example: 'Đà Nẵng',
+    }),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", typeof (_b = typeof VietnamProvince !== "undefined" && VietnamProvince) === "function" ? _b : Object)
+], PostSearchQueryDto.prototype, "province", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({
+        description: 'Lọc bài đăng theo ngành nghề liên quan. ' +
+            'Tìm trong title + description của bài. ' +
+            'VD: ?tradeSlugs=tho-dien → các bài đăng cần thợ điện. ' +
+            'Nhiều nghề dùng repeat param hoặc phân cách phẩy.',
+        type: [String],
+        example: ['tho-dien'],
+    }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsArray)(),
+    (0, class_validator_1.IsString)({ each: true }),
+    (0, class_transformer_1.Transform)(slugArrayTransform),
+    __metadata("design:type", Array)
+], PostSearchQueryDto.prototype, "tradeSlugs", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ enum: post_status_enum_1.PostStatus, default: post_status_enum_1.PostStatus.OPEN }),
+    (0, class_validator_1.IsEnum)(post_status_enum_1.PostStatus),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", typeof (_c = typeof post_status_enum_1.PostStatus !== "undefined" && post_status_enum_1.PostStatus) === "function" ? _c : Object)
+], PostSearchQueryDto.prototype, "status", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ description: 'Ngân sách tối thiểu (VND)', example: 100000 }),
+    (0, class_transformer_1.Type)(() => Number),
+    (0, class_validator_1.IsNumber)(),
+    (0, class_validator_1.Min)(0),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", Number)
+], PostSearchQueryDto.prototype, "budgetMin", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ description: 'Ngân sách tối đa (VND)', example: 5000000 }),
+    (0, class_transformer_1.Type)(() => Number),
+    (0, class_validator_1.IsNumber)(),
+    (0, class_validator_1.Min)(0),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", Number)
+], PostSearchQueryDto.prototype, "budgetMax", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ enum: PostSortBy, default: PostSortBy.CREATED_AT }),
+    (0, class_validator_1.IsEnum)(PostSortBy),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
+], PostSearchQueryDto.prototype, "sortBy", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ enum: SortOrder, default: SortOrder.DESC }),
+    (0, class_validator_1.IsEnum)(SortOrder),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
+], PostSearchQueryDto.prototype, "order", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ example: 10, default: 10 }),
+    (0, class_transformer_1.Type)(() => Number),
+    (0, class_validator_1.IsNumber)(),
+    (0, class_validator_1.Min)(1),
+    (0, class_validator_1.Max)(50),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", Number)
+], PostSearchQueryDto.prototype, "limit", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ example: 0, default: 0 }),
+    (0, class_transformer_1.Type)(() => Number),
+    (0, class_validator_1.IsNumber)(),
+    (0, class_validator_1.Min)(0),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", Number)
+], PostSearchQueryDto.prototype, "offset", void 0);
+class PostSearchResultDto {
+}
+exports.PostSearchResultDto = PostSearchResultDto;
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 'uuid-123' }),
+    __metadata("design:type", String)
+], PostSearchResultDto.prototype, "id", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 'Cần thợ sửa điện nước tại nhà' }),
+    __metadata("design:type", String)
+], PostSearchResultDto.prototype, "title", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ example: 'Quận Hải Châu, Đà Nẵng' }),
+    __metadata("design:type", String)
+], PostSearchResultDto.prototype, "location", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ example: 'Đà Nẵng' }),
+    __metadata("design:type", String)
+], PostSearchResultDto.prototype, "province", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ enum: post_status_enum_1.PostStatus }),
+    __metadata("design:type", typeof (_d = typeof post_status_enum_1.PostStatus !== "undefined" && post_status_enum_1.PostStatus) === "function" ? _d : Object)
+], PostSearchResultDto.prototype, "status", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ example: 500000 }),
+    __metadata("design:type", Number)
+], PostSearchResultDto.prototype, "budget", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ example: '2025-11-20T10:00:00Z' }),
+    __metadata("design:type", typeof (_e = typeof Date !== "undefined" && Date) === "function" ? _e : Object)
+], PostSearchResultDto.prototype, "desiredTime", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        type: 'object',
+        properties: {
+            customerId: { type: 'string' },
+            displayName: { type: 'string', nullable: true },
+            avatarUrl: { type: 'string', nullable: true },
+        },
+    }),
+    __metadata("design:type", Object)
+], PostSearchResultDto.prototype, "customer", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: '2025-11-13T10:00:00Z' }),
+    __metadata("design:type", typeof (_f = typeof Date !== "undefined" && Date) === "function" ? _f : Object)
+], PostSearchResultDto.prototype, "createdAt", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({
+        description: 'Tiêu đề với từ khoá bọc <em>...</em> để FE highlight',
+        example: 'Cần thợ <em>sửa điện</em> nước tại nhà',
+    }),
+    __metadata("design:type", String)
+], PostSearchResultDto.prototype, "highlight", void 0);
+class PostSearchResponseDto {
+}
+exports.PostSearchResponseDto = PostSearchResponseDto;
+__decorate([
+    (0, swagger_1.ApiProperty)({ type: [PostSearchResultDto] }),
+    __metadata("design:type", Array)
+], PostSearchResponseDto.prototype, "data", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 42 }),
+    __metadata("design:type", Number)
+], PostSearchResponseDto.prototype, "total", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 10 }),
+    __metadata("design:type", Number)
+], PostSearchResponseDto.prototype, "limit", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 0 }),
+    __metadata("design:type", Number)
+], PostSearchResponseDto.prototype, "offset", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: true }),
+    __metadata("design:type", Boolean)
+], PostSearchResponseDto.prototype, "hasMore", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ description: 'Thời gian xử lý (ms)', example: 12 }),
+    __metadata("design:type", Number)
+], PostSearchResponseDto.prototype, "took", void 0);
+class ProviderSearchQueryDto {
+    constructor() {
+        this.sortBy = ProviderSortBy.CREATED_AT;
+        this.order = SortOrder.DESC;
+        this.limit = 20;
+        this.offset = 0;
+    }
+}
+exports.ProviderSearchQueryDto = ProviderSearchQueryDto;
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({
+        description: 'Tìm theo tên thợ (1 ký tự trở lên). ' +
+            'Hỗ trợ không dấu: "M" → tất cả thợ có tên chứa "M" hoặc "m".',
+        example: 'Minh',
+    }),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MinLength)(1),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
+], ProviderSearchQueryDto.prototype, "displayName", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({
+        description: 'Lọc cứng theo tỉnh/thành — chọn từ 34 tỉnh',
+        enum: exports.VIETNAM_PROVINCES,
+        example: 'Hà Nội',
+    }),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", typeof (_g = typeof VietnamProvince !== "undefined" && VietnamProvince) === "function" ? _g : Object)
+], ProviderSearchQueryDto.prototype, "province", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({
+        description: 'Lọc cứng theo slug nghề đã đăng ký (OR logic). ' +
+            'Chỉ trả về thợ có ÍT NHẤT 1 nghề khớp. ' +
+            'VD: ?tradeSlugs=tho-dien&tradeSlugs=tho-nuoc',
+        type: [String],
+        example: ['tho-dien'],
+    }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsArray)(),
+    (0, class_validator_1.IsString)({ each: true }),
+    (0, class_transformer_1.Transform)(slugArrayTransform),
+    __metadata("design:type", Array)
+], ProviderSearchQueryDto.prototype, "tradeSlugs", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ enum: ProviderSortBy, default: ProviderSortBy.CREATED_AT }),
+    (0, class_validator_1.IsEnum)(ProviderSortBy),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
+], ProviderSearchQueryDto.prototype, "sortBy", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ enum: SortOrder, default: SortOrder.DESC }),
+    (0, class_validator_1.IsEnum)(SortOrder),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
+], ProviderSearchQueryDto.prototype, "order", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ example: 20, default: 20 }),
+    (0, class_transformer_1.Type)(() => Number),
+    (0, class_validator_1.IsNumber)(),
+    (0, class_validator_1.Min)(1),
+    (0, class_validator_1.Max)(50),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", Number)
+], ProviderSearchQueryDto.prototype, "limit", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ example: 0, default: 0 }),
+    (0, class_transformer_1.Type)(() => Number),
+    (0, class_validator_1.IsNumber)(),
+    (0, class_validator_1.Min)(0),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", Number)
+], ProviderSearchQueryDto.prototype, "offset", void 0);
+class ProviderSearchResultDto {
+}
+exports.ProviderSearchResultDto = ProviderSearchResultDto;
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 'uuid-456' }),
+    __metadata("design:type", String)
+], ProviderSearchResultDto.prototype, "id", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ example: 'Thợ Điện Minh' }),
+    __metadata("design:type", String)
+], ProviderSearchResultDto.prototype, "displayName", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ example: 'https://cdn.example.com/avatar.jpg' }),
+    __metadata("design:type", String)
+], ProviderSearchResultDto.prototype, "avatarUrl", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ example: 'Thợ điện 10 năm kinh nghiệm...' }),
+    __metadata("design:type", String)
+], ProviderSearchResultDto.prototype, "bio", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ example: 'Quận 1, TP. Hồ Chí Minh' }),
+    __metadata("design:type", String)
+], ProviderSearchResultDto.prototype, "address", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ example: 'TP. Hồ Chí Minh' }),
+    __metadata("design:type", String)
+], ProviderSearchResultDto.prototype, "province", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ type: [TradeDto], description: 'Nghề của thợ kèm số năm kinh nghiệm' }),
+    __metadata("design:type", Array)
+], ProviderSearchResultDto.prototype, "trades", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: true }),
+    __metadata("design:type", Boolean)
+], ProviderSearchResultDto.prototype, "isVerified", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: '2025-01-01T00:00:00Z' }),
+    __metadata("design:type", typeof (_h = typeof Date !== "undefined" && Date) === "function" ? _h : Object)
+], ProviderSearchResultDto.prototype, "memberSince", void 0);
+class ProviderSearchResponseDto {
+}
+exports.ProviderSearchResponseDto = ProviderSearchResponseDto;
+__decorate([
+    (0, swagger_1.ApiProperty)({ type: [ProviderSearchResultDto] }),
+    __metadata("design:type", Array)
+], ProviderSearchResponseDto.prototype, "data", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 18 }),
+    __metadata("design:type", Number)
+], ProviderSearchResponseDto.prototype, "total", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 20 }),
+    __metadata("design:type", Number)
+], ProviderSearchResponseDto.prototype, "limit", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 0 }),
+    __metadata("design:type", Number)
+], ProviderSearchResponseDto.prototype, "offset", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: false }),
+    __metadata("design:type", Boolean)
+], ProviderSearchResponseDto.prototype, "hasMore", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ description: 'Thời gian xử lý (ms)', example: 9 }),
+    __metadata("design:type", Number)
+], ProviderSearchResponseDto.prototype, "took", void 0);
+class ByProvinceQueryDto {
+    constructor() {
+        this.postLimit = 10;
+        this.providerLimit = 10;
+    }
+}
+exports.ByProvinceQueryDto = ByProvinceQueryDto;
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'Tỉnh/thành — chọn từ 34 tỉnh',
+        enum: exports.VIETNAM_PROVINCES,
+        example: 'Đà Nẵng',
+    }),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", typeof (_j = typeof VietnamProvince !== "undefined" && VietnamProvince) === "function" ? _j : Object)
+], ByProvinceQueryDto.prototype, "province", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ description: 'Số bài đăng trả về', example: 10, default: 10 }),
+    (0, class_transformer_1.Type)(() => Number),
+    (0, class_validator_1.IsNumber)(),
+    (0, class_validator_1.Min)(1),
+    (0, class_validator_1.Max)(50),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", Number)
+], ByProvinceQueryDto.prototype, "postLimit", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ description: 'Số thợ trả về', example: 10, default: 10 }),
+    (0, class_transformer_1.Type)(() => Number),
+    (0, class_validator_1.IsNumber)(),
+    (0, class_validator_1.Min)(1),
+    (0, class_validator_1.Max)(50),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", Number)
+], ByProvinceQueryDto.prototype, "providerLimit", void 0);
+class ByProvinceResponseDto {
+}
+exports.ByProvinceResponseDto = ByProvinceResponseDto;
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 'Đà Nẵng' }),
+    __metadata("design:type", String)
+], ByProvinceResponseDto.prototype, "province", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ type: [PostSearchResultDto] }),
+    __metadata("design:type", Array)
+], ByProvinceResponseDto.prototype, "posts", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 24 }),
+    __metadata("design:type", Number)
+], ByProvinceResponseDto.prototype, "totalPosts", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ type: [ProviderSearchResultDto] }),
+    __metadata("design:type", Array)
+], ByProvinceResponseDto.prototype, "providers", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 7 }),
+    __metadata("design:type", Number)
+], ByProvinceResponseDto.prototype, "totalProviders", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ description: 'Thời gian xử lý (ms)', example: 15 }),
+    __metadata("design:type", Number)
+], ByProvinceResponseDto.prototype, "took", void 0);
+class ProvinceSuggestResponseDto {
+}
+exports.ProvinceSuggestResponseDto = ProvinceSuggestResponseDto;
+__decorate([
+    (0, swagger_1.ApiProperty)({ type: [String], example: ['Đà Nẵng', 'Đắk Lắk'] }),
+    __metadata("design:type", Array)
+], ProvinceSuggestResponseDto.prototype, "provinces", void 0);
+class TradeSuggestQueryDto {
+}
+exports.TradeSuggestQueryDto = TradeSuggestQueryDto;
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({
+        description: 'Lọc theo tên nghề (hỗ trợ không dấu). VD: "dien" → "Thợ điện"',
+        example: 'dien',
+    }),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
+], TradeSuggestQueryDto.prototype, "q", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ description: 'Lọc theo nhóm nghề', example: 'Điện - Nước' }),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
+], TradeSuggestQueryDto.prototype, "category", void 0);
+class TradeSuggestResponseDto {
+}
+exports.TradeSuggestResponseDto = TradeSuggestResponseDto;
+__decorate([
+    (0, swagger_1.ApiProperty)({ type: [TradeDto] }),
+    __metadata("design:type", typeof (_k = typeof Array !== "undefined" && Array) === "function" ? _k : Object)
+], TradeSuggestResponseDto.prototype, "trades", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        type: [String],
+        description: 'Tất cả nhóm nghề — dùng render filter tabs',
+        example: ['Điện - Nước', 'Xây dựng', 'Nội thất'],
+    }),
+    __metadata("design:type", Array)
+], TradeSuggestResponseDto.prototype, "categories", void 0);
+
+
+/***/ }),
+
+/***/ "./src/modules/search/repositories/search.repository.ts":
+/*!**************************************************************!*\
+  !*** ./src/modules/search/repositories/search.repository.ts ***!
+  \**************************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var __param = (this && this.__param) || function (paramIndex, decorator) {
+    return function (target, key) { decorator(target, key, paramIndex); }
+};
+var SearchRepository_1;
+var _a, _b, _c;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.SearchRepository = void 0;
+const user_role_enum_1 = __webpack_require__(/*! @/common/enums/user-role.enum */ "./src/common/enums/user-role.enum.ts");
+const post_entity_1 = __webpack_require__(/*! @/modules/posts/entities/post.entity */ "./src/modules/posts/entities/post.entity.ts");
+const post_status_enum_1 = __webpack_require__(/*! @/modules/posts/enums/post-status.enum */ "./src/modules/posts/enums/post-status.enum.ts");
+const profile_entity_1 = __webpack_require__(/*! @/modules/profile/entities/profile.entity */ "./src/modules/profile/entities/profile.entity.ts");
+const trade_entity_1 = __webpack_require__(/*! @/modules/profile/entities/trade.entity */ "./src/modules/profile/entities/trade.entity.ts");
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const typeorm_1 = __webpack_require__(/*! @nestjs/typeorm */ "@nestjs/typeorm");
+const typeorm_2 = __webpack_require__(/*! typeorm */ "typeorm");
+const search_dto_1 = __webpack_require__(/*! ../dtos/search.dto */ "./src/modules/search/dtos/search.dto.ts");
+function escapeLikeParam(raw) {
+    return raw
+        .replace(/\\/g, '\\\\')
+        .replace(/%/g, '\\%')
+        .replace(/_/g, '\\_');
+}
+const ESCAPE_CLAUSE = "ESCAPE '\\\\'";
+function escapeTradeNameCol(colSql) {
+    return `regexp_replace(${colSql}, '([%_\\\\])', '\\\\\\1', 'g')`;
+}
+let SearchRepository = SearchRepository_1 = class SearchRepository {
+    constructor(postRepo, profileRepo, tradeRepo) {
+        this.postRepo = postRepo;
+        this.profileRepo = profileRepo;
+        this.tradeRepo = tradeRepo;
+        this.logger = new common_1.Logger(SearchRepository_1.name);
+    }
+    async searchPosts(dto) {
+        const qb = this.buildPostBaseQuery();
+        qb.andWhere('post.status = :status', {
+            status: dto.status ?? post_status_enum_1.PostStatus.OPEN,
+        });
+        if (dto.title?.trim()) {
+            this.applyIlike(qb, 'post.title', dto.title.trim(), 'ptitle');
+        }
+        if (dto.province) {
+            qb.andWhere('post.location ILIKE :pProvince', {
+                pProvince: `%${dto.province}%`,
+            });
+        }
+        if (dto.tradeSlugs?.length) {
+            const escapedName = escapeTradeNameCol('_trFilter.name');
+            qb.andWhere(`EXISTS (
+                    SELECT 1
+                    FROM   trades _trFilter
+                    WHERE  _trFilter.slug      = ANY(:postTradeSlugs)
+                      AND  _trFilter.is_active = true
+                      AND  (
+                               unaccent(post.title)
+                                   ILIKE unaccent('%' || ${escapedName} || '%')
+                                   ${ESCAPE_CLAUSE}
+                            OR  post.title
+                                   ILIKE '%' || ${escapedName} || '%'
+                                   ${ESCAPE_CLAUSE}
+                            OR  unaccent(post.description)
+                                   ILIKE unaccent('%' || ${escapedName} || '%')
+                                   ${ESCAPE_CLAUSE}
+                            OR  post.description
+                                   ILIKE '%' || ${escapedName} || '%'
+                                   ${ESCAPE_CLAUSE}
+                           )
+                )`, { postTradeSlugs: dto.tradeSlugs });
+        }
+        if (dto.budgetMin !== undefined) {
+            qb.andWhere('post.budget >= :budgetMin', { budgetMin: dto.budgetMin });
+        }
+        if (dto.budgetMax !== undefined) {
+            qb.andWhere('post.budget <= :budgetMax', { budgetMax: dto.budgetMax });
+        }
+        const sortMap = {
+            [search_dto_1.PostSortBy.CREATED_AT]: 'post.createdAt',
+            [search_dto_1.PostSortBy.BUDGET]: 'post.budget',
+            [search_dto_1.PostSortBy.DESIRED_TIME]: 'post.desiredTime',
+        };
+        qb
+            .orderBy(sortMap[dto.sortBy ?? search_dto_1.PostSortBy.CREATED_AT], this.dir(dto.order))
+            .take(dto.limit ?? 10)
+            .skip(dto.offset ?? 0);
+        const [rows, total] = await qb.getManyAndCount();
+        return { rows, total };
+    }
+    async searchProviders(dto) {
+        const qb = this.buildProviderBaseQuery();
+        if (dto.displayName?.trim()) {
+            this.applyIlike(qb, 'profile.displayName', dto.displayName.trim(), 'pname');
+        }
+        if (dto.province) {
+            qb.andWhere('profile.address ILIKE :pprovince', {
+                pprovince: `%${dto.province}%`,
+            });
+        }
+        if (dto.tradeSlugs?.length) {
+            qb.andWhere(`EXISTS (
+                    SELECT 1
+                    FROM   provider_trades _ppt
+                    INNER JOIN trades      _ttr ON _ttr.id = _ppt.trade_id
+                    WHERE  _ppt.provider_id = user.id
+                      AND  _ttr.slug        = ANY(:provTradeSlugs)
+                      AND  _ttr.is_active   = true
+                )`, { provTradeSlugs: dto.tradeSlugs });
+        }
+        const sortMap = {
+            [search_dto_1.ProviderSortBy.DISPLAY_NAME]: 'profile.displayName',
+            [search_dto_1.ProviderSortBy.CREATED_AT]: 'user.createdAt',
+        };
+        qb
+            .orderBy(sortMap[dto.sortBy ?? search_dto_1.ProviderSortBy.CREATED_AT], this.dir(dto.order))
+            .take(dto.limit ?? 20)
+            .skip(dto.offset ?? 0);
+        const [rows, total] = await qb.getManyAndCount();
+        return { rows: rows, total };
+    }
+    async searchByProvince(dto) {
+        const [postResult, providerResult] = await Promise.all([
+            this.searchPosts({
+                province: dto.province,
+                limit: dto.postLimit ?? 10,
+                offset: 0,
+                status: post_status_enum_1.PostStatus.OPEN,
+            }),
+            this.searchProviders({
+                province: dto.province,
+                limit: dto.providerLimit ?? 10,
+                offset: 0,
+            }),
+        ]);
+        return {
+            posts: postResult.rows,
+            totalPosts: postResult.total,
+            providers: providerResult.rows,
+            totalProviders: providerResult.total,
+        };
+    }
+    async globalSearchPosts(keyword, province, limit = 5) {
+        return this.searchPosts({
+            title: keyword,
+            province: province,
+            limit,
+            offset: 0,
+            status: post_status_enum_1.PostStatus.OPEN,
+        });
+    }
+    async globalSearchProviders(keyword, province, limit = 5) {
+        const qb = this.buildProviderBaseQuery();
+        if (province) {
+            qb.andWhere('profile.address ILIKE :gprovince', {
+                gprovince: `%${province}%`,
+            });
+        }
+        const safeKw = escapeLikeParam(keyword);
+        const escapedGtName = escapeTradeNameCol('_gt.name');
+        qb.andWhere(new typeorm_2.Brackets((ob) => {
+            ob
+                .where(`unaccent(COALESCE(profile.displayName, '')) ILIKE unaccent(:glike) ${ESCAPE_CLAUSE}`, { glike: `%${safeKw}%` })
+                .orWhere(`COALESCE(profile.displayName, '') ILIKE :graw ${ESCAPE_CLAUSE}`, { graw: `%${safeKw}%` })
+                .orWhere(`EXISTS (
+                            SELECT 1
+                            FROM   provider_trades _gpt
+                            INNER JOIN trades      _gt ON _gt.id = _gpt.trade_id
+                            WHERE  _gpt.provider_id = user.id
+                              AND  _gt.is_active     = true
+                              AND  (
+                                       unaccent(${escapedGtName})
+                                           ILIKE unaccent(:gtLike) ${ESCAPE_CLAUSE}
+                                    OR  ${escapedGtName}
+                                           ILIKE :gtRaw ${ESCAPE_CLAUSE}
+                                   )
+                        )`, { gtLike: `%${keyword}%`, gtRaw: `%${keyword}%` });
+        }));
+        qb.orderBy('user.createdAt', 'DESC').take(limit).skip(0);
+        const [rows, total] = await qb.getManyAndCount();
+        return { rows: rows, total };
+    }
+    async findTrades(dto) {
+        const qb = this.tradeRepo
+            .createQueryBuilder('trade')
+            .where('trade.isActive = true');
+        if (dto.category) {
+            qb.andWhere('trade.category = :tcat', { tcat: dto.category });
+        }
+        if (dto.q?.trim()) {
+            this.applyIlike(qb, 'trade.name', dto.q.trim(), 'tname');
+        }
+        return qb
+            .orderBy('trade.sortOrder', 'ASC')
+            .addOrderBy('trade.name', 'ASC')
+            .getMany();
+    }
+    async findDistinctTradeCategories() {
+        const rows = await this.tradeRepo
+            .createQueryBuilder('trade')
+            .select('DISTINCT trade.category', 'category')
+            .where('trade.isActive = true')
+            .andWhere('trade.category IS NOT NULL')
+            .orderBy('trade.category', 'ASC')
+            .getRawMany();
+        return rows.map((r) => r.category).filter(Boolean);
+    }
+    buildPostBaseQuery() {
+        return this.postRepo
+            .createQueryBuilder('post')
+            .leftJoinAndSelect('post.customer', 'customer')
+            .leftJoinAndSelect('customer.profile', 'profile')
+            .where('post.deletedAt IS NULL');
+    }
+    buildProviderBaseQuery() {
+        return this.profileRepo
+            .createQueryBuilder('profile')
+            .innerJoinAndSelect('profile.user', 'user')
+            .leftJoinAndSelect('user.providerTrades', 'providerTrade')
+            .leftJoinAndSelect('providerTrade.trade', 'trade', 'trade.isActive = true')
+            .where('user.isActive = true')
+            .andWhere('user.role = :urole', { urole: user_role_enum_1.UserRole.PROVIDER });
+    }
+    applyIlike(qb, column, keyword, prefix) {
+        const pUnaccent = `${prefix}_u`;
+        const pRaw = `${prefix}_r`;
+        const safe = escapeLikeParam(keyword);
+        qb.andWhere(new typeorm_2.Brackets((b) => {
+            b
+                .where(`unaccent(COALESCE(${column}, '')) ILIKE unaccent(:${pUnaccent}) ${ESCAPE_CLAUSE}`, { [pUnaccent]: `%${safe}%` })
+                .orWhere(`COALESCE(${column}, '') ILIKE :${pRaw} ${ESCAPE_CLAUSE}`, { [pRaw]: `%${safe}%` });
+        }));
+    }
+    dir(order) {
+        return (order ?? search_dto_1.SortOrder.DESC).toUpperCase();
+    }
+};
+exports.SearchRepository = SearchRepository;
+exports.SearchRepository = SearchRepository = SearchRepository_1 = __decorate([
+    (0, common_1.Injectable)(),
+    __param(0, (0, typeorm_1.InjectRepository)(post_entity_1.PostCustomer)),
+    __param(1, (0, typeorm_1.InjectRepository)(profile_entity_1.Profile)),
+    __param(2, (0, typeorm_1.InjectRepository)(trade_entity_1.Trade)),
+    __metadata("design:paramtypes", [typeof (_a = typeof typeorm_2.Repository !== "undefined" && typeorm_2.Repository) === "function" ? _a : Object, typeof (_b = typeof typeorm_2.Repository !== "undefined" && typeorm_2.Repository) === "function" ? _b : Object, typeof (_c = typeof typeorm_2.Repository !== "undefined" && typeorm_2.Repository) === "function" ? _c : Object])
+], SearchRepository);
+
+
+/***/ }),
+
+/***/ "./src/modules/search/search.controller.ts":
+/*!*************************************************!*\
+  !*** ./src/modules/search/search.controller.ts ***!
+  \*************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var __param = (this && this.__param) || function (paramIndex, decorator) {
+    return function (target, key) { decorator(target, key, paramIndex); }
+};
+var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.SearchController = void 0;
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const swagger_1 = __webpack_require__(/*! @nestjs/swagger */ "@nestjs/swagger");
+const search_dto_1 = __webpack_require__(/*! ./dtos/search.dto */ "./src/modules/search/dtos/search.dto.ts");
+const search_service_1 = __webpack_require__(/*! ./services/search.service */ "./src/modules/search/services/search.service.ts");
+let SearchController = class SearchController {
+    constructor(searchService) {
+        this.searchService = searchService;
+    }
+    async globalSearch(query) {
+        return this.searchService.globalSearch(query);
+    }
+    async searchPosts(query) {
+        return this.searchService.searchPosts(query);
+    }
+    async searchProviders(query) {
+        return this.searchService.searchProviders(query);
+    }
+    async searchByProvince(query) {
+        return this.searchService.searchByProvince(query);
+    }
+    async suggestProvinces(q) {
+        return this.searchService.suggestProvinces(q);
+    }
+    async suggestTrades(query) {
+        return this.searchService.suggestTrades(query);
+    }
+};
+exports.SearchController = SearchController;
+__decorate([
+    (0, common_1.Get)(),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    (0, swagger_1.ApiOperation)({
+        summary: 'Global search — tìm cả bài đăng lẫn thợ',
+        description: 'Tìm đồng thời bài đăng và thợ trong 1 request. ' +
+            'Dùng cho search bar header/homepage. ' +
+            'Chỉ cần 1 ký tự. Hỗ trợ lọc province và giới hạn type.',
+    }),
+    (0, swagger_1.ApiResponse)({ status: common_1.HttpStatus.OK, type: search_dto_1.GlobalSearchResponseDto }),
+    __param(0, (0, common_1.Query)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [typeof (_b = typeof search_dto_1.GlobalSearchQueryDto !== "undefined" && search_dto_1.GlobalSearchQueryDto) === "function" ? _b : Object]),
+    __metadata("design:returntype", typeof (_c = typeof Promise !== "undefined" && Promise) === "function" ? _c : Object)
+], SearchController.prototype, "globalSearch", null);
+__decorate([
+    (0, common_1.Get)('posts'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    (0, swagger_1.ApiOperation)({
+        summary: 'Tìm kiếm bài đăng',
+        description: 'Tìm bài đăng theo:\n' +
+            '  • title — 1 ký tự trở lên, hỗ trợ không dấu\n' +
+            '  • province — lọc cứng 34 tỉnh/thành\n' +
+            '  • tradeSlugs — lọc bài đăng liên quan đến ngành nghề\n' +
+            '  • budgetMin / budgetMax — khoảng ngân sách\n' +
+            '  • sortBy / order — sắp xếp\n' +
+            'Mặc định chỉ trả về bài OPEN.',
+    }),
+    (0, swagger_1.ApiResponse)({ status: common_1.HttpStatus.OK, type: search_dto_1.PostSearchResponseDto }),
+    __param(0, (0, common_1.Query)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [typeof (_d = typeof search_dto_1.PostSearchQueryDto !== "undefined" && search_dto_1.PostSearchQueryDto) === "function" ? _d : Object]),
+    __metadata("design:returntype", typeof (_e = typeof Promise !== "undefined" && Promise) === "function" ? _e : Object)
+], SearchController.prototype, "searchPosts", null);
+__decorate([
+    (0, common_1.Get)('providers'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    (0, swagger_1.ApiOperation)({
+        summary: 'Tìm kiếm thợ (Provider)',
+        description: 'Tìm thợ theo:\n' +
+            '  • displayName — 1 ký tự trở lên, hỗ trợ không dấu\n' +
+            '  • province — lọc cứng 34 tỉnh/thành\n' +
+            '  • tradeSlugs — lọc cứng theo nghề đã đăng ký (OR logic)\n' +
+            'Kết quả luôn kèm danh sách nghề + số năm kinh nghiệm.',
+    }),
+    (0, swagger_1.ApiResponse)({ status: common_1.HttpStatus.OK, type: search_dto_1.ProviderSearchResponseDto }),
+    __param(0, (0, common_1.Query)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [typeof (_f = typeof search_dto_1.ProviderSearchQueryDto !== "undefined" && search_dto_1.ProviderSearchQueryDto) === "function" ? _f : Object]),
+    __metadata("design:returntype", typeof (_g = typeof Promise !== "undefined" && Promise) === "function" ? _g : Object)
+], SearchController.prototype, "searchProviders", null);
+__decorate([
+    (0, common_1.Get)('by-province'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    (0, swagger_1.ApiOperation)({
+        summary: 'Lọc theo tỉnh/thành — trả về cả bài đăng lẫn thợ',
+        description: 'Lọc cứng theo 1 tỉnh/thành trong 34 tỉnh được hỗ trợ. ' +
+            'Trả về bài đăng (OPEN) và thợ đang hoạt động tại tỉnh đó trong 1 request. ' +
+            'Dùng cho trang "Xem dịch vụ theo khu vực".',
+    }),
+    (0, swagger_1.ApiResponse)({ status: common_1.HttpStatus.OK, type: search_dto_1.ByProvinceResponseDto }),
+    __param(0, (0, common_1.Query)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [typeof (_h = typeof search_dto_1.ByProvinceQueryDto !== "undefined" && search_dto_1.ByProvinceQueryDto) === "function" ? _h : Object]),
+    __metadata("design:returntype", typeof (_j = typeof Promise !== "undefined" && Promise) === "function" ? _j : Object)
+], SearchController.prototype, "searchByProvince", null);
+__decorate([
+    (0, common_1.Get)('provinces'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    (0, swagger_1.ApiOperation)({
+        summary: 'Danh sách tỉnh/thành (autocomplete)',
+        description: 'Trả về 34 tỉnh/thành, lọc theo q nếu có. ' +
+            'Không truyền q → trả về đủ 34. Dùng cho dropdown/autocomplete.',
+    }),
+    (0, swagger_1.ApiQuery)({ name: 'q', required: false, example: 'Đà' }),
+    (0, swagger_1.ApiResponse)({ status: common_1.HttpStatus.OK, type: search_dto_1.ProvinceSuggestResponseDto }),
+    __param(0, (0, common_1.Query)('q')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", typeof (_k = typeof Promise !== "undefined" && Promise) === "function" ? _k : Object)
+], SearchController.prototype, "suggestProvinces", null);
+__decorate([
+    (0, common_1.Get)('trades'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    (0, swagger_1.ApiOperation)({
+        summary: 'Danh mục nghề nghiệp (catalog + autocomplete)',
+        description: 'Trả về danh sách nghề đang hoạt động + nhóm nghề. ' +
+            'Lọc theo tên (q, hỗ trợ không dấu) hoặc nhóm (category). ' +
+            'Dùng slug từ response làm tradeSlugs ở /search/providers hoặc /search/posts.',
+    }),
+    (0, swagger_1.ApiQuery)({ name: 'q', required: false, example: 'dien' }),
+    (0, swagger_1.ApiQuery)({ name: 'category', required: false, example: 'Điện - Nước' }),
+    (0, swagger_1.ApiResponse)({ status: common_1.HttpStatus.OK, type: search_dto_1.TradeSuggestResponseDto }),
+    __param(0, (0, common_1.Query)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [typeof (_l = typeof search_dto_1.TradeSuggestQueryDto !== "undefined" && search_dto_1.TradeSuggestQueryDto) === "function" ? _l : Object]),
+    __metadata("design:returntype", typeof (_m = typeof Promise !== "undefined" && Promise) === "function" ? _m : Object)
+], SearchController.prototype, "suggestTrades", null);
+exports.SearchController = SearchController = __decorate([
+    (0, swagger_1.ApiTags)('Search'),
+    (0, common_1.Controller)('search'),
+    __metadata("design:paramtypes", [typeof (_a = typeof search_service_1.SearchService !== "undefined" && search_service_1.SearchService) === "function" ? _a : Object])
+], SearchController);
+
+
+/***/ }),
+
+/***/ "./src/modules/search/search.module.ts":
+/*!*********************************************!*\
+  !*** ./src/modules/search/search.module.ts ***!
+  \*********************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.SearchModule = void 0;
+const post_entity_1 = __webpack_require__(/*! @/modules/posts/entities/post.entity */ "./src/modules/posts/entities/post.entity.ts");
+const profile_entity_1 = __webpack_require__(/*! @/modules/profile/entities/profile.entity */ "./src/modules/profile/entities/profile.entity.ts");
+const providertrade_entity_1 = __webpack_require__(/*! @/modules/profile/entities/providertrade.entity */ "./src/modules/profile/entities/providertrade.entity.ts");
+const trade_entity_1 = __webpack_require__(/*! @/modules/profile/entities/trade.entity */ "./src/modules/profile/entities/trade.entity.ts");
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const typeorm_1 = __webpack_require__(/*! @nestjs/typeorm */ "@nestjs/typeorm");
+const search_controller_1 = __webpack_require__(/*! ./search.controller */ "./src/modules/search/search.controller.ts");
+const search_repository_1 = __webpack_require__(/*! ./repositories/search.repository */ "./src/modules/search/repositories/search.repository.ts");
+const search_mapper_service_1 = __webpack_require__(/*! ./services/search mapper.service */ "./src/modules/search/services/search mapper.service.ts");
+const search_service_1 = __webpack_require__(/*! ./services/search.service */ "./src/modules/search/services/search.service.ts");
+let SearchModule = class SearchModule {
+};
+exports.SearchModule = SearchModule;
+exports.SearchModule = SearchModule = __decorate([
+    (0, common_1.Module)({
+        imports: [
+            typeorm_1.TypeOrmModule.forFeature([post_entity_1.PostCustomer, profile_entity_1.Profile, trade_entity_1.Trade, providertrade_entity_1.ProviderTrade]),
+        ],
+        controllers: [search_controller_1.SearchController],
+        providers: [search_service_1.SearchService, search_repository_1.SearchRepository, search_mapper_service_1.SearchMapperService],
+        exports: [search_service_1.SearchService],
+    })
+], SearchModule);
+
+
+/***/ }),
+
+/***/ "./src/modules/search/services/search mapper.service.ts":
+/*!**************************************************************!*\
+  !*** ./src/modules/search/services/search mapper.service.ts ***!
+  \**************************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.SearchMapperService = void 0;
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const search_dto_1 = __webpack_require__(/*! ../dtos/search.dto */ "./src/modules/search/dtos/search.dto.ts");
+let SearchMapperService = class SearchMapperService {
+    toPostResult(post, keyword) {
+        const profile = post.customer?.profile;
+        return {
+            id: post.id,
+            title: post.title,
+            location: post.location,
+            province: this.extractProvince(post.location),
+            status: post.status,
+            budget: post.budget != null ? Number(post.budget) : undefined,
+            desiredTime: post.desiredTime,
+            customer: {
+                customerId: post.customerId,
+                displayName: profile?.displayName ?? null,
+                avatarUrl: profile?.avatarUrl ?? null,
+            },
+            createdAt: post.createdAt,
+            highlight: keyword?.trim()
+                ? this.buildHighlight(post.title, keyword.trim())
+                : undefined,
+        };
+    }
+    toProviderResult(row) {
+        return {
+            id: row.user.id,
+            displayName: row.displayName,
+            avatarUrl: row.avatarUrl,
+            bio: row.bio ? this.truncate(row.bio, 120) : undefined,
+            address: row.address,
+            province: this.extractProvince(row.address),
+            trades: this.mapTrades(row.providerTrades ?? []),
+            isVerified: row.user.isVerified ?? false,
+            memberSince: row.user.createdAt,
+        };
+    }
+    toTradeDto(trade, yearsExperience) {
+        return {
+            id: trade.id,
+            name: trade.name,
+            slug: trade.slug,
+            category: trade.category,
+            icon: trade.icon,
+            yearsExperience: yearsExperience ?? undefined,
+        };
+    }
+    extractProvince(location) {
+        if (!location?.trim())
+            return undefined;
+        const norm = location.trim();
+        const lower = norm.toLowerCase();
+        const matched = search_dto_1.VIETNAM_PROVINCES.find((p) => lower.includes(p.toLowerCase()));
+        if (matched)
+            return matched;
+        const last = norm.split(',').pop()?.trim();
+        return last || undefined;
+    }
+    buildHighlight(text, keyword) {
+        const escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const highlighted = text.replace(new RegExp(`(${escaped})`, 'gi'), '<em>$1</em>');
+        return this.truncate(highlighted, 200);
+    }
+    mapTrades(providerTrades) {
+        return providerTrades
+            .filter((pt) => pt.trade?.isActive !== false)
+            .sort((a, b) => (a.trade?.sortOrder ?? 0) - (b.trade?.sortOrder ?? 0))
+            .map((pt) => this.toTradeDto(pt.trade, pt.yearsExperience ?? undefined));
+    }
+    truncate(str, max) {
+        return str.length <= max ? str : `${str.slice(0, max - 1)}…`;
+    }
+};
+exports.SearchMapperService = SearchMapperService;
+exports.SearchMapperService = SearchMapperService = __decorate([
+    (0, common_1.Injectable)()
+], SearchMapperService);
+
+
+/***/ }),
+
+/***/ "./src/modules/search/services/search.service.ts":
+/*!*******************************************************!*\
+  !*** ./src/modules/search/services/search.service.ts ***!
+  \*******************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var SearchService_1;
+var _a, _b;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.SearchService = void 0;
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const search_dto_1 = __webpack_require__(/*! ../dtos/search.dto */ "./src/modules/search/dtos/search.dto.ts");
+const search_repository_1 = __webpack_require__(/*! ../repositories/search.repository */ "./src/modules/search/repositories/search.repository.ts");
+const search_mapper_service_1 = __webpack_require__(/*! ./search mapper.service */ "./src/modules/search/services/search mapper.service.ts");
+let SearchService = SearchService_1 = class SearchService {
+    constructor(repo, mapper) {
+        this.repo = repo;
+        this.mapper = mapper;
+        this.logger = new common_1.Logger(SearchService_1.name);
+    }
+    async globalSearch(dto) {
+        const t0 = Date.now();
+        const { q, type = search_dto_1.SearchType.ALL, province, limit = 5 } = dto;
+        this.logger.log(`[global] q="${q}" type=${type} province=${province ?? '-'}`);
+        const doPost = type === search_dto_1.SearchType.ALL || type === search_dto_1.SearchType.POST;
+        const doProvider = type === search_dto_1.SearchType.ALL || type === search_dto_1.SearchType.PROVIDER;
+        const [postRes, provRes] = await Promise.all([
+            doPost
+                ? this.repo.globalSearchPosts(q, province, limit)
+                : Promise.resolve({ rows: [], total: 0 }),
+            doProvider
+                ? this.repo.globalSearchProviders(q, province, limit)
+                : Promise.resolve({ rows: [], total: 0 }),
+        ]);
+        return {
+            query: q,
+            posts: doPost ? postRes.rows.map((p) => this.mapper.toPostResult(p, q)) : undefined,
+            providers: doProvider ? provRes.rows.map((p) => this.mapper.toProviderResult(p)) : undefined,
+            totalPosts: postRes.total,
+            totalProviders: provRes.total,
+            took: Date.now() - t0,
+        };
+    }
+    async searchPosts(dto) {
+        const t0 = Date.now();
+        const limit = dto.limit ?? 10;
+        const offset = dto.offset ?? 0;
+        this.logger.log(`[posts] title="${dto.title ?? ''}" province="${dto.province ?? ''}" ` +
+            `trades=[${(dto.tradeSlugs ?? []).join(',')}] ` +
+            `budget=[${dto.budgetMin ?? '*'},${dto.budgetMax ?? '*'}]`);
+        const { rows, total } = await this.repo.searchPosts(dto);
+        return {
+            data: rows.map((p) => this.mapper.toPostResult(p, dto.title)),
+            total,
+            limit,
+            offset,
+            hasMore: offset + rows.length < total,
+            took: Date.now() - t0,
+        };
+    }
+    async searchProviders(dto) {
+        const t0 = Date.now();
+        const limit = dto.limit ?? 20;
+        const offset = dto.offset ?? 0;
+        this.logger.log(`[providers] name="${dto.displayName ?? ''}" ` +
+            `province="${dto.province ?? ''}" ` +
+            `trades=[${(dto.tradeSlugs ?? []).join(',')}]`);
+        const { rows, total } = await this.repo.searchProviders(dto);
+        return {
+            data: rows.map((p) => this.mapper.toProviderResult(p)),
+            total,
+            limit,
+            offset,
+            hasMore: offset + rows.length < total,
+            took: Date.now() - t0,
+        };
+    }
+    async searchByProvince(dto) {
+        const t0 = Date.now();
+        this.logger.log(`[by-province] province="${dto.province}"`);
+        const { posts, totalPosts, providers, totalProviders } = await this.repo.searchByProvince(dto);
+        return {
+            province: dto.province,
+            posts: posts.map((p) => this.mapper.toPostResult(p)),
+            totalPosts,
+            providers: providers.map((p) => this.mapper.toProviderResult(p)),
+            totalProviders,
+            took: Date.now() - t0,
+        };
+    }
+    suggestProvinces(q) {
+        if (!q?.trim())
+            return { provinces: [...search_dto_1.VIETNAM_PROVINCES] };
+        const kw = q.trim().toLowerCase();
+        return {
+            provinces: search_dto_1.VIETNAM_PROVINCES.filter((p) => p.toLowerCase().includes(kw)),
+        };
+    }
+    async suggestTrades(dto) {
+        const [trades, categories] = await Promise.all([
+            this.repo.findTrades(dto),
+            this.repo.findDistinctTradeCategories(),
+        ]);
+        return {
+            trades: trades.map((t) => this.mapper.toTradeDto(t)),
+            categories,
+        };
+    }
+};
+exports.SearchService = SearchService;
+exports.SearchService = SearchService = SearchService_1 = __decorate([
+    (0, common_1.Injectable)(),
+    __metadata("design:paramtypes", [typeof (_a = typeof search_repository_1.SearchRepository !== "undefined" && search_repository_1.SearchRepository) === "function" ? _a : Object, typeof (_b = typeof search_mapper_service_1.SearchMapperService !== "undefined" && search_mapper_service_1.SearchMapperService) === "function" ? _b : Object])
+], SearchService);
 
 
 /***/ }),
