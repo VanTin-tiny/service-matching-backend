@@ -1,5 +1,6 @@
+import { UploadService } from '@/common/upload/upload.service';
 import { JwtPayload } from '@/modules/auth/interfaces/jwt-payload.interface';
-import { toProfile } from '@/modules/profile/mapper/profile-mapper'
+import { toProfile } from '@/modules/profile/mapper/profile-mapper';
 import { toUser } from '@/modules/users/mapper/user.mapper';
 import {
     BadRequestException,
@@ -33,9 +34,52 @@ export class ProfileService {
         private readonly profileBuilder: ProfileResponseBuilder,
         private readonly profileDomainService: ProfileDomainService,
         private readonly dataSource: DataSource,
+        private readonly uploadService: UploadService
+
     ) { }
 
-    
+
+    async updateAvatarFile(
+        jwtUser: JwtPayload,
+        file: Express.Multer.File,
+    ): Promise<ProfileResponseDto> {
+        const queryRunner = this.dataSource.createQueryRunner();
+        await queryRunner.connect();
+        await queryRunner.startTransaction();
+
+        try {
+            if (!file) {
+                throw new BadRequestException('Avatar file is required');
+            }
+            // 1. upload ảnh
+            const { publicUrl: avatarUrl } = await this.uploadService.uploadSingle(file, 'avatars');
+            // 2. update DB
+            const updatedProfile = await this.profileRepo.updateAvatar(
+                jwtUser.id,
+                avatarUrl,
+                queryRunner.manager,
+            );
+
+            const user = await this.profileRepo.findUserWithProfile(
+                jwtUser.id,
+                queryRunner.manager
+            );
+
+            await queryRunner.commitTransaction();
+
+            const userMapper = toUser(user!);
+            const profileMapper = toProfile(updatedProfile);
+
+            return this.profileBuilder.buildProfileResponse(userMapper, profileMapper);
+
+        } catch (error) {
+            await queryRunner.rollbackTransaction();
+            throw error;
+        } finally {
+            await queryRunner.release();
+        }
+    }
+
     async getMyProfile(jwtUser: JwtPayload): Promise<ProfileResponseDto> {
         try {
             const user = await this.profileRepo.findUserWithProfile(jwtUser.id);
@@ -69,7 +113,7 @@ export class ProfileService {
         }
     }
 
-    
+
     async getPublicProfile(userId: string): Promise<PublicProfileResponseDto> {
         try {
             const user = await this.profileRepo.findUserWithProfile(userId);
@@ -115,7 +159,7 @@ export class ProfileService {
         }
     }
 
-    
+
     async updateProfile(
         jwtUser: JwtPayload,
         dto: UpdateProfileDto,
@@ -180,7 +224,7 @@ export class ProfileService {
         }
     }
 
-    
+
     async updateContact(
         jwtUser: JwtPayload,
         dto: UpdateContactDto,
@@ -267,7 +311,7 @@ export class ProfileService {
         }
     }
 
-    
+
     async changeDisplayName(
         jwtUser: JwtPayload,
         dto: ChangeDisplayNameDto,
@@ -356,7 +400,7 @@ export class ProfileService {
         }
     }
 
-    
+
     async updateAvatar(
         jwtUser: JwtPayload,
         avatarUrl: string,
@@ -399,7 +443,7 @@ export class ProfileService {
         }
     }
 
-    
+
     async deleteAccount(
         jwtUser: JwtPayload
     ): Promise<{ success: boolean; message: string }> {
@@ -430,7 +474,7 @@ export class ProfileService {
         }
     }
 
-    
+
     async searchProfiles(
         searchTerm: string,
         limit: number = 20,

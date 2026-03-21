@@ -5,6 +5,7 @@ import { UserRole } from '@/common/enums/user-role.enum';
 import { JwtAuthGuard } from '@/common/guards/jwt-auth.guard';
 import { RolesGuard } from '@/common/guards/roles.guard';
 import { JwtPayload } from '@/modules/auth/interfaces/jwt-payload.interface';
+import { UploadedFiles } from '@nestjs/common';
 import {
     Body,
     Controller,
@@ -19,8 +20,10 @@ import {
     Patch,
     Post,
     Query,
-    UseGuards
+    UseGuards,
+    UseInterceptors
 } from '@nestjs/common';
+import { FilesInterceptor } from '@nestjs/platform-express';
 import {
     ApiBearerAuth,
     ApiOperation,
@@ -108,6 +111,7 @@ export class PostController {
     @Post()
     @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles(UserRole.CUSTOMER)
+    @UseInterceptors(FilesInterceptor('files', 10))
     @HttpCode(HttpStatus.CREATED)
     @ApiBearerAuth()
     @ApiOperation({
@@ -132,6 +136,7 @@ export class PostController {
         description: 'Invalid input data',
     })
     async createPost(
+        @UploadedFiles() files: Express.Multer.File[],
         @Body() dto: CreatePostDto,
         @CurrentUser() user: JwtPayload,
         //
@@ -143,7 +148,7 @@ export class PostController {
 
 
         const context = this.getRequestContext(ipAddress, userAgent);
-        return await this.postService.create(dto, user, context);
+        return await this.postService.createWithFiles(dto, files, user, context);
     }
 
     @Patch(':id')

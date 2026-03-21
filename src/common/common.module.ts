@@ -1,9 +1,11 @@
 import { Global, Module } from '@nestjs/common';
 import { JwtService } from './services/jwt.service';
+import { UploadService } from './upload/upload.service';
 
-@Global() 
+
+@Global()
 @Module({
-    providers: [JwtService],
-    exports: [JwtService], 
+    providers: [JwtService, UploadService],
+    exports: [JwtService, UploadService],
 })
 export class CommonModule { }

@@ -19,14 +19,15 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.CommonModule = void 0;
 const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
 const jwt_service_1 = __webpack_require__(/*! ./services/jwt.service */ "./src/common/services/jwt.service.ts");
+const upload_service_1 = __webpack_require__(/*! ./upload/upload.service */ "./src/common/upload/upload.service.ts");
 let CommonModule = class CommonModule {
 };
 exports.CommonModule = CommonModule;
 exports.CommonModule = CommonModule = __decorate([
     (0, common_1.Global)(),
     (0, common_1.Module)({
-        providers: [jwt_service_1.JwtService],
-        exports: [jwt_service_1.JwtService],
+        providers: [jwt_service_1.JwtService, upload_service_1.UploadService],
+        exports: [jwt_service_1.JwtService, upload_service_1.UploadService],
     })
 ], CommonModule);
 
@@ -1288,6 +1289,147 @@ exports.JwtService = JwtService = JwtService_1 = __decorate([
 
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
+
+
+/***/ }),
+
+/***/ "./src/common/upload/upload.service.ts":
+/*!*********************************************!*\
+  !*** ./src/common/upload/upload.service.ts ***!
+  \*********************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var UploadService_1;
+var _a;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.UploadService = void 0;
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const config_1 = __webpack_require__(/*! @nestjs/config */ "@nestjs/config");
+const supabase_js_1 = __webpack_require__(/*! @supabase/supabase-js */ "@supabase/supabase-js");
+const uuid_1 = __webpack_require__(/*! uuid */ "uuid");
+const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+const BUCKET_NAME = 'images';
+const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024;
+const MAX_FILES_PER_UPLOAD = 10;
+let UploadService = UploadService_1 = class UploadService {
+    constructor(configService) {
+        this.configService = configService;
+        this.logger = new common_1.Logger(UploadService_1.name);
+        const supabaseUrl = this.configService.getOrThrow('SUPABASE_URL');
+        const supabaseKey = this.configService.getOrThrow('SUPABASE_KEY');
+        this.supabase = (0, supabase_js_1.createClient)(supabaseUrl, supabaseKey);
+    }
+    async uploadSingle(file, folder) {
+        this.validateFile(file);
+        const fileName = this.buildFileName(folder, file.originalname);
+        const { error } = await this.supabase.storage
+            .from(BUCKET_NAME)
+            .upload(fileName, file.buffer, {
+            contentType: file.mimetype,
+            upsert: false,
+        });
+        if (error) {
+            this.logger.error(`Upload failed for [${fileName}]: ${error.message}`);
+            throw new common_1.InternalServerErrorException(`Upload failed: ${error.message}`);
+        }
+        const { data: { publicUrl } } = this.supabase.storage
+            .from(BUCKET_NAME)
+            .getPublicUrl(fileName);
+        this.logger.log(`Uploaded: ${fileName} (${file.size} bytes)`);
+        return {
+            publicUrl,
+            fileName,
+            size: file.size,
+            mimeType: file.mimetype,
+        };
+    }
+    async uploadMultiple(files, folder) {
+        if (!files?.length) {
+            throw new common_1.BadRequestException('No files provided');
+        }
+        if (files.length > MAX_FILES_PER_UPLOAD) {
+            throw new common_1.BadRequestException(`Too many files. Maximum allowed: ${MAX_FILES_PER_UPLOAD}`);
+        }
+        const settlements = await Promise.allSettled(files.map((file) => this.uploadSingle(file, folder)));
+        const succeeded = [];
+        const failed = [];
+        settlements.forEach((result, index) => {
+            if (result.status === 'fulfilled') {
+                succeeded.push(result.value);
+            }
+            else {
+                const reason = result.reason?.message ?? 'Unknown error';
+                failed.push({ index, originalName: files[index].originalname, reason });
+                this.logger.warn(`Upload failed for file[${index}] "${files[index].originalname}": ${reason}`);
+            }
+        });
+        this.logger.log(`uploadMultiple — ${succeeded.length} succeeded, ${failed.length} failed`);
+        return { succeeded, failed };
+    }
+    async uploadMultipleOrFail(files, folder) {
+        const { succeeded, failed } = await this.uploadMultiple(files, folder);
+        if (failed.length > 0) {
+            const details = failed
+                .map((f) => `"${f.originalName}": ${f.reason}`)
+                .join('; ');
+            throw new common_1.InternalServerErrorException(`Some uploads failed — ${details}`);
+        }
+        return succeeded;
+    }
+    async deleteFile(fileName) {
+        const { error } = await this.supabase.storage
+            .from(BUCKET_NAME)
+            .remove([fileName]);
+        if (error) {
+            this.logger.error(`Delete failed for [${fileName}]: ${error.message}`);
+            throw new common_1.InternalServerErrorException(`Delete failed: ${error.message}`);
+        }
+        this.logger.log(`Deleted file: ${fileName}`);
+    }
+    async deleteFiles(fileNames) {
+        if (!fileNames?.length)
+            return;
+        const { error } = await this.supabase.storage
+            .from(BUCKET_NAME)
+            .remove(fileNames);
+        if (error) {
+            this.logger.error(`Bulk delete failed: ${error.message}`);
+            throw new common_1.InternalServerErrorException(`Bulk delete failed: ${error.message}`);
+        }
+        this.logger.log(`Deleted ${fileNames.length} files`);
+    }
+    validateFile(file) {
+        if (!file) {
+            throw new common_1.BadRequestException('File is required');
+        }
+        if (!ALLOWED_MIME_TYPES.includes(file.mimetype)) {
+            throw new common_1.BadRequestException(`Invalid file type "${file.mimetype}". Allowed: ${ALLOWED_MIME_TYPES.join(', ')}`);
+        }
+        if (file.size > MAX_FILE_SIZE_BYTES) {
+            throw new common_1.BadRequestException(`File "${file.originalname}" exceeds max size of ${MAX_FILE_SIZE_BYTES / 1024 / 1024}MB`);
+        }
+    }
+    buildFileName(folder, originalName) {
+        const ext = originalName.split('.').pop()?.toLowerCase() ?? 'bin';
+        const safeFolder = folder.replace(/[^a-zA-Z0-9_-]/g, '');
+        return `${safeFolder}/${(0, uuid_1.v4)()}.${ext}`;
+    }
+};
+exports.UploadService = UploadService;
+exports.UploadService = UploadService = UploadService_1 = __decorate([
+    (0, common_1.Injectable)(),
+    __metadata("design:paramtypes", [typeof (_a = typeof config_1.ConfigService !== "undefined" && config_1.ConfigService) === "function" ? _a : Object])
+], UploadService);
 
 
 /***/ }),
@@ -9062,9 +9204,10 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 var PostService_1;
-var _a, _b, _c, _d, _e;
+var _a, _b, _c, _d, _e, _f;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.PostService = void 0;
+const upload_service_1 = __webpack_require__(/*! @/common/upload/upload.service */ "./src/common/upload/upload.service.ts");
 const user_repository_1 = __webpack_require__(/*! @/modules/users/repositorys/user.repository */ "./src/modules/users/repositorys/user.repository.ts");
 const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
 const post_repository_1 = __webpack_require__(/*! ./repositories/post.repository */ "./src/modules/posts/repositories/post.repository.ts");
@@ -9072,13 +9215,24 @@ const post_business_service_1 = __webpack_require__(/*! ./services/post-business
 const post_mapper_service_1 = __webpack_require__(/*! ./services/post-mapper.service */ "./src/modules/posts/services/post-mapper.service.ts");
 const post_validation_service_1 = __webpack_require__(/*! ./services/post-validation.service */ "./src/modules/posts/services/post-validation.service.ts");
 let PostService = PostService_1 = class PostService {
-    constructor(postRepository, userRepository, validationService, mapperService, businessService) {
+    constructor(postRepository, userRepository, validationService, mapperService, businessService, uploadService) {
         this.postRepository = postRepository;
         this.userRepository = userRepository;
         this.validationService = validationService;
         this.mapperService = mapperService;
         this.businessService = businessService;
+        this.uploadService = uploadService;
         this.logger = new common_1.Logger(PostService_1.name);
+    }
+    async createWithFiles(dto, files, jwtUser, context) {
+        if (files?.length > 0) {
+            const { succeeded, failed } = await this.uploadService.uploadMultiple(files, 'posts');
+            if (failed.length > 0) {
+                this.logger.warn(`Some images failed to upload: ${failed.map(f => f.originalName).join(', ')}`);
+            }
+            dto.imageUrls = succeeded.map(r => r.publicUrl);
+        }
+        return this.create(dto, jwtUser, context);
     }
     async create(dto, jwtUser, context) {
         this.logger.log(`Creating post for user: ${jwtUser.id}`);
@@ -9155,7 +9309,7 @@ let PostService = PostService_1 = class PostService {
 exports.PostService = PostService;
 exports.PostService = PostService = PostService_1 = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [typeof (_a = typeof post_repository_1.PostRepository !== "undefined" && post_repository_1.PostRepository) === "function" ? _a : Object, typeof (_b = typeof user_repository_1.UserRepository !== "undefined" && user_repository_1.UserRepository) === "function" ? _b : Object, typeof (_c = typeof post_validation_service_1.PostValidationService !== "undefined" && post_validation_service_1.PostValidationService) === "function" ? _c : Object, typeof (_d = typeof post_mapper_service_1.PostMapperService !== "undefined" && post_mapper_service_1.PostMapperService) === "function" ? _d : Object, typeof (_e = typeof post_business_service_1.PostBusinessService !== "undefined" && post_business_service_1.PostBusinessService) === "function" ? _e : Object])
+    __metadata("design:paramtypes", [typeof (_a = typeof post_repository_1.PostRepository !== "undefined" && post_repository_1.PostRepository) === "function" ? _a : Object, typeof (_b = typeof user_repository_1.UserRepository !== "undefined" && user_repository_1.UserRepository) === "function" ? _b : Object, typeof (_c = typeof post_validation_service_1.PostValidationService !== "undefined" && post_validation_service_1.PostValidationService) === "function" ? _c : Object, typeof (_d = typeof post_mapper_service_1.PostMapperService !== "undefined" && post_mapper_service_1.PostMapperService) === "function" ? _d : Object, typeof (_e = typeof post_business_service_1.PostBusinessService !== "undefined" && post_business_service_1.PostBusinessService) === "function" ? _e : Object, typeof (_f = typeof upload_service_1.UploadService !== "undefined" && upload_service_1.UploadService) === "function" ? _f : Object])
 ], PostService);
 
 
@@ -9190,6 +9344,8 @@ const jwt_auth_guard_1 = __webpack_require__(/*! @/common/guards/jwt-auth.guard 
 const roles_guard_1 = __webpack_require__(/*! @/common/guards/roles.guard */ "./src/common/guards/roles.guard.ts");
 const jwt_payload_interface_1 = __webpack_require__(/*! @/modules/auth/interfaces/jwt-payload.interface */ "./src/modules/auth/interfaces/jwt-payload.interface.ts");
 const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const common_2 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const platform_express_1 = __webpack_require__(/*! @nestjs/platform-express */ "@nestjs/platform-express");
 const swagger_1 = __webpack_require__(/*! @nestjs/swagger */ "@nestjs/swagger");
 const post_dto_1 = __webpack_require__(/*! ./dtos/post.dto */ "./src/modules/posts/dtos/post.dto.ts");
 const post_service_1 = __webpack_require__(/*! ./post.service */ "./src/modules/posts/post.service.ts");
@@ -9209,9 +9365,9 @@ let PostController = class PostController {
     async getPostById(id) {
         return await this.postService.getById(id);
     }
-    async createPost(dto, user, ipAddress, userAgent) {
+    async createPost(files, dto, user, ipAddress, userAgent) {
         const context = this.getRequestContext(ipAddress, userAgent);
-        return await this.postService.create(dto, user, context);
+        return await this.postService.createWithFiles(dto, files, user, context);
     }
     async updatePost(id, dto, user, ipAddress, userAgent) {
         const context = this.getRequestContext(ipAddress, userAgent);
@@ -9229,190 +9385,192 @@ let PostController = class PostController {
 };
 exports.PostController = PostController;
 __decorate([
-    (0, common_1.Get)('feed'),
-    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    (0, common_2.Get)('feed'),
+    (0, common_2.HttpCode)(common_2.HttpStatus.OK),
     (0, swagger_1.ApiOperation)({
         summary: 'Get public feed of open posts',
         description: 'Retrieve paginated list of all open posts from customers. Uses cursor-based pagination for infinite scroll.',
     }),
     (0, swagger_1.ApiResponse)({
-        status: common_1.HttpStatus.OK,
+        status: common_2.HttpStatus.OK,
         description: 'Feed retrieved successfully',
         type: post_dto_1.FeedResponseDto,
     }),
     (0, swagger_1.ApiQuery)({ type: post_dto_1.GetFeedQueryDto }),
     (0, swagger_1.ApiResponse)({
-        status: common_1.HttpStatus.BAD_REQUEST,
+        status: common_2.HttpStatus.BAD_REQUEST,
         description: 'Invalid cursor format',
     }),
     (0, swagger_1.ApiResponse)({
-        status: common_1.HttpStatus.INTERNAL_SERVER_ERROR,
+        status: common_2.HttpStatus.INTERNAL_SERVER_ERROR,
         description: 'Failed to fetch feed',
     }),
-    __param(0, (0, common_1.Query)()),
+    __param(0, (0, common_2.Query)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [typeof (_b = typeof post_dto_1.GetFeedQueryDto !== "undefined" && post_dto_1.GetFeedQueryDto) === "function" ? _b : Object]),
     __metadata("design:returntype", typeof (_c = typeof Promise !== "undefined" && Promise) === "function" ? _c : Object)
 ], PostController.prototype, "getFeed", null);
 __decorate([
-    (0, common_1.Get)(':id'),
-    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    (0, common_2.Get)(':id'),
+    (0, common_2.HttpCode)(common_2.HttpStatus.OK),
     (0, swagger_1.ApiOperation)({
         summary: 'Get post by ID',
         description: 'Retrieve detailed information of a specific post',
     }),
     (0, swagger_1.ApiResponse)({
-        status: common_1.HttpStatus.OK,
+        status: common_2.HttpStatus.OK,
         description: 'Post retrieved successfully',
         type: post_dto_1.PostResponseDto,
     }),
     (0, swagger_1.ApiResponse)({
-        status: common_1.HttpStatus.NOT_FOUND,
+        status: common_2.HttpStatus.NOT_FOUND,
         description: 'Post not found',
     }),
-    __param(0, (0, common_1.Param)('id', common_1.ParseUUIDPipe)),
+    __param(0, (0, common_2.Param)('id', common_2.ParseUUIDPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", typeof (_d = typeof Promise !== "undefined" && Promise) === "function" ? _d : Object)
 ], PostController.prototype, "getPostById", null);
 __decorate([
-    (0, common_1.Post)(),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
+    (0, common_2.Post)(),
+    (0, common_2.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
     (0, _Roles_1.Roles)(user_role_enum_1.UserRole.CUSTOMER),
-    (0, common_1.HttpCode)(common_1.HttpStatus.CREATED),
+    (0, common_2.UseInterceptors)((0, platform_express_1.FilesInterceptor)('files', 10)),
+    (0, common_2.HttpCode)(common_2.HttpStatus.CREATED),
     (0, swagger_1.ApiBearerAuth)(),
     (0, swagger_1.ApiOperation)({
         summary: 'Create new post',
         description: 'Create a new service request post (Customer only)',
     }),
     (0, swagger_1.ApiResponse)({
-        status: common_1.HttpStatus.CREATED,
+        status: common_2.HttpStatus.CREATED,
         description: 'Post created successfully',
         type: post_dto_1.PostResponseDto,
     }),
     (0, swagger_1.ApiResponse)({
-        status: common_1.HttpStatus.UNAUTHORIZED,
+        status: common_2.HttpStatus.UNAUTHORIZED,
         description: 'Unauthorized - Invalid or missing token',
     }),
     (0, swagger_1.ApiResponse)({
-        status: common_1.HttpStatus.FORBIDDEN,
+        status: common_2.HttpStatus.FORBIDDEN,
         description: 'Forbidden - Customer role required',
     }),
     (0, swagger_1.ApiResponse)({
-        status: common_1.HttpStatus.BAD_REQUEST,
+        status: common_2.HttpStatus.BAD_REQUEST,
         description: 'Invalid input data',
     }),
-    __param(0, (0, common_1.Body)()),
-    __param(1, (0, _CurrentUser_1.CurrentUser)()),
-    __param(2, (0, common_1.Ip)()),
-    __param(3, (0, common_1.Headers)('user-agent')),
+    __param(0, (0, common_1.UploadedFiles)()),
+    __param(1, (0, common_2.Body)()),
+    __param(2, (0, _CurrentUser_1.CurrentUser)()),
+    __param(3, (0, common_2.Ip)()),
+    __param(4, (0, common_2.Headers)('user-agent')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [typeof (_e = typeof post_dto_1.CreatePostDto !== "undefined" && post_dto_1.CreatePostDto) === "function" ? _e : Object, typeof (_f = typeof jwt_payload_interface_1.JwtPayload !== "undefined" && jwt_payload_interface_1.JwtPayload) === "function" ? _f : Object, String, String]),
+    __metadata("design:paramtypes", [Array, typeof (_e = typeof post_dto_1.CreatePostDto !== "undefined" && post_dto_1.CreatePostDto) === "function" ? _e : Object, typeof (_f = typeof jwt_payload_interface_1.JwtPayload !== "undefined" && jwt_payload_interface_1.JwtPayload) === "function" ? _f : Object, String, String]),
     __metadata("design:returntype", typeof (_g = typeof Promise !== "undefined" && Promise) === "function" ? _g : Object)
 ], PostController.prototype, "createPost", null);
 __decorate([
-    (0, common_1.Patch)(':id'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
+    (0, common_2.Patch)(':id'),
+    (0, common_2.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
     (0, _Roles_1.Roles)(user_role_enum_1.UserRole.CUSTOMER),
-    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    (0, common_2.HttpCode)(common_2.HttpStatus.OK),
     (0, swagger_1.ApiBearerAuth)(),
     (0, swagger_1.ApiOperation)({
         summary: 'Update post',
         description: 'Update an existing post. Only the post owner can update it.',
     }),
     (0, swagger_1.ApiResponse)({
-        status: common_1.HttpStatus.OK,
+        status: common_2.HttpStatus.OK,
         description: 'Post updated successfully',
         type: post_dto_1.PostResponseDto,
     }),
     (0, swagger_1.ApiResponse)({
-        status: common_1.HttpStatus.NOT_FOUND,
+        status: common_2.HttpStatus.NOT_FOUND,
         description: 'Post not found or you do not have permission',
     }),
     (0, swagger_1.ApiResponse)({
-        status: common_1.HttpStatus.FORBIDDEN,
+        status: common_2.HttpStatus.FORBIDDEN,
         description: 'Cannot update a closed post',
     }),
-    __param(0, (0, common_1.Param)('id', common_1.ParseUUIDPipe)),
-    __param(1, (0, common_1.Body)()),
+    __param(0, (0, common_2.Param)('id', common_2.ParseUUIDPipe)),
+    __param(1, (0, common_2.Body)()),
     __param(2, (0, _CurrentUser_1.CurrentUser)()),
-    __param(3, (0, common_1.Ip)()),
-    __param(4, (0, common_1.Headers)('user-agent')),
+    __param(3, (0, common_2.Ip)()),
+    __param(4, (0, common_2.Headers)('user-agent')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String, typeof (_h = typeof post_dto_1.UpdatePostDto !== "undefined" && post_dto_1.UpdatePostDto) === "function" ? _h : Object, typeof (_j = typeof jwt_payload_interface_1.JwtPayload !== "undefined" && jwt_payload_interface_1.JwtPayload) === "function" ? _j : Object, String, String]),
     __metadata("design:returntype", typeof (_k = typeof Promise !== "undefined" && Promise) === "function" ? _k : Object)
 ], PostController.prototype, "updatePost", null);
 __decorate([
-    (0, common_1.Delete)(':id'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
+    (0, common_2.Delete)(':id'),
+    (0, common_2.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
     (0, _Roles_1.Roles)(user_role_enum_1.UserRole.CUSTOMER),
-    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    (0, common_2.HttpCode)(common_2.HttpStatus.OK),
     (0, swagger_1.ApiBearerAuth)(),
     (0, swagger_1.ApiOperation)({
         summary: 'Delete post',
         description: 'Soft delete a post. Only the post owner can delete it.',
     }),
     (0, swagger_1.ApiResponse)({
-        status: common_1.HttpStatus.OK,
+        status: common_2.HttpStatus.OK,
         description: 'Post deleted successfully',
         type: post_dto_1.DeletePostResponseDto,
     }),
     (0, swagger_1.ApiResponse)({
-        status: common_1.HttpStatus.NOT_FOUND,
+        status: common_2.HttpStatus.NOT_FOUND,
         description: 'Post not found or you do not have permission',
     }),
-    __param(0, (0, common_1.Param)('id', common_1.ParseUUIDPipe)),
+    __param(0, (0, common_2.Param)('id', common_2.ParseUUIDPipe)),
     __param(1, (0, _CurrentUser_1.CurrentUser)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String, typeof (_l = typeof jwt_payload_interface_1.JwtPayload !== "undefined" && jwt_payload_interface_1.JwtPayload) === "function" ? _l : Object]),
     __metadata("design:returntype", typeof (_m = typeof Promise !== "undefined" && Promise) === "function" ? _m : Object)
 ], PostController.prototype, "deletePost", null);
 __decorate([
-    (0, common_1.Patch)(':id/close'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
+    (0, common_2.Patch)(':id/close'),
+    (0, common_2.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
     (0, _Roles_1.Roles)(user_role_enum_1.UserRole.CUSTOMER),
-    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    (0, common_2.HttpCode)(common_2.HttpStatus.OK),
     (0, swagger_1.ApiBearerAuth)(),
     (0, swagger_1.ApiOperation)({
         summary: 'Close post',
         description: 'Change post status to CLOSED. Only the post owner can close it.',
     }),
     (0, swagger_1.ApiResponse)({
-        status: common_1.HttpStatus.OK,
+        status: common_2.HttpStatus.OK,
         description: 'Post closed successfully',
         type: post_dto_1.PostResponseDto,
     }),
     (0, swagger_1.ApiResponse)({
-        status: common_1.HttpStatus.NOT_FOUND,
+        status: common_2.HttpStatus.NOT_FOUND,
         description: 'Post not found or you do not have permission',
     }),
     (0, swagger_1.ApiResponse)({
-        status: common_1.HttpStatus.FORBIDDEN,
+        status: common_2.HttpStatus.FORBIDDEN,
         description: 'Post is already closed',
     }),
-    __param(0, (0, common_1.Param)('id', common_1.ParseUUIDPipe)),
+    __param(0, (0, common_2.Param)('id', common_2.ParseUUIDPipe)),
     __param(1, (0, _CurrentUser_1.CurrentUser)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String, typeof (_o = typeof jwt_payload_interface_1.JwtPayload !== "undefined" && jwt_payload_interface_1.JwtPayload) === "function" ? _o : Object]),
     __metadata("design:returntype", typeof (_p = typeof Promise !== "undefined" && Promise) === "function" ? _p : Object)
 ], PostController.prototype, "closePost", null);
 __decorate([
-    (0, common_1.Get)('my/posts'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
+    (0, common_2.Get)('my/posts'),
+    (0, common_2.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
     (0, _Roles_1.Roles)(user_role_enum_1.UserRole.CUSTOMER),
-    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    (0, common_2.HttpCode)(common_2.HttpStatus.OK),
     (0, swagger_1.ApiBearerAuth)(),
     (0, swagger_1.ApiOperation)({
         summary: 'Get my posts',
         description: 'Retrieve all posts created by the current customer',
     }),
     (0, swagger_1.ApiResponse)({
-        status: common_1.HttpStatus.OK,
+        status: common_2.HttpStatus.OK,
         description: 'Posts retrieved successfully',
         type: post_dto_1.FeedResponseDto,
     }),
     (0, swagger_1.ApiQuery)({ type: post_dto_1.GetFeedQueryDto }),
-    __param(0, (0, common_1.Query)()),
+    __param(0, (0, common_2.Query)()),
     __param(1, (0, _CurrentUser_1.CurrentUser)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [typeof (_q = typeof post_dto_1.GetFeedQueryDto !== "undefined" && post_dto_1.GetFeedQueryDto) === "function" ? _q : Object, typeof (_r = typeof jwt_payload_interface_1.JwtPayload !== "undefined" && jwt_payload_interface_1.JwtPayload) === "function" ? _r : Object]),
@@ -9420,7 +9578,7 @@ __decorate([
 ], PostController.prototype, "getMyPosts", null);
 exports.PostController = PostController = __decorate([
     (0, swagger_1.ApiTags)('Posts'),
-    (0, common_1.Controller)('posts'),
+    (0, common_2.Controller)('posts'),
     __metadata("design:paramtypes", [typeof (_a = typeof post_service_1.PostService !== "undefined" && post_service_1.PostService) === "function" ? _a : Object])
 ], PostController);
 
@@ -9937,13 +10095,14 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
-var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v;
+var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.ProfileController = void 0;
 const _CurrentUser_1 = __webpack_require__(/*! @/common/decorators/@CurrentUser */ "./src/common/decorators/@CurrentUser.ts");
 const jwt_auth_guard_1 = __webpack_require__(/*! @/common/guards/jwt-auth.guard */ "./src/common/guards/jwt-auth.guard.ts");
 const jwt_payload_interface_1 = __webpack_require__(/*! @/modules/auth/interfaces/jwt-payload.interface */ "./src/modules/auth/interfaces/jwt-payload.interface.ts");
 const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const platform_express_1 = __webpack_require__(/*! @nestjs/platform-express */ "@nestjs/platform-express");
 const swagger_1 = __webpack_require__(/*! @nestjs/swagger */ "@nestjs/swagger");
 const profile_dto_1 = __webpack_require__(/*! ../dtos/profile.dto */ "./src/modules/profile/dtos/profile.dto.ts");
 const profile_service_1 = __webpack_require__(/*! ../services/profile.service */ "./src/modules/profile/services/profile.service.ts");
@@ -9963,8 +10122,8 @@ let ProfileController = class ProfileController {
     async changeDisplayName(dto, user) {
         return this.profileService.changeDisplayName(user, dto);
     }
-    async updateAvatar(dto, user) {
-        return this.profileService.updateAvatar(user, dto.avatarUrl);
+    async updateAvatar(file, user) {
+        return this.profileService.updateAvatarFile(user, file);
     }
     async deleteAccount(user) {
         return this.profileService.deleteAccount(user);
@@ -10114,6 +10273,9 @@ __decorate([
 __decorate([
     (0, common_1.Patch)('avatar'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.UseInterceptors)((0, platform_express_1.FileInterceptor)('file', {
+        limits: { fileSize: 2 * 1024 * 1024 },
+    })),
     (0, common_1.HttpCode)(common_1.HttpStatus.OK),
     (0, swagger_1.ApiBearerAuth)(),
     (0, swagger_1.ApiOperation)({
@@ -10133,11 +10295,11 @@ __decorate([
         status: common_1.HttpStatus.UNAUTHORIZED,
         description: 'Unauthorized - Invalid or missing token',
     }),
-    __param(0, (0, common_1.Body)()),
+    __param(0, (0, common_1.UploadedFile)()),
     __param(1, (0, _CurrentUser_1.CurrentUser)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [typeof (_o = typeof profile_dto_1.UpdateAvatarDto !== "undefined" && profile_dto_1.UpdateAvatarDto) === "function" ? _o : Object, typeof (_p = typeof jwt_payload_interface_1.JwtPayload !== "undefined" && jwt_payload_interface_1.JwtPayload) === "function" ? _p : Object]),
-    __metadata("design:returntype", typeof (_q = typeof Promise !== "undefined" && Promise) === "function" ? _q : Object)
+    __metadata("design:paramtypes", [typeof (_p = typeof Express !== "undefined" && (_o = Express.Multer) !== void 0 && _o.File) === "function" ? _p : Object, typeof (_q = typeof jwt_payload_interface_1.JwtPayload !== "undefined" && jwt_payload_interface_1.JwtPayload) === "function" ? _q : Object]),
+    __metadata("design:returntype", typeof (_r = typeof Promise !== "undefined" && Promise) === "function" ? _r : Object)
 ], ProfileController.prototype, "updateAvatar", null);
 __decorate([
     (0, common_1.Delete)('me'),
@@ -10163,8 +10325,8 @@ __decorate([
     }),
     __param(0, (0, _CurrentUser_1.CurrentUser)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [typeof (_r = typeof jwt_payload_interface_1.JwtPayload !== "undefined" && jwt_payload_interface_1.JwtPayload) === "function" ? _r : Object]),
-    __metadata("design:returntype", typeof (_s = typeof Promise !== "undefined" && Promise) === "function" ? _s : Object)
+    __metadata("design:paramtypes", [typeof (_s = typeof jwt_payload_interface_1.JwtPayload !== "undefined" && jwt_payload_interface_1.JwtPayload) === "function" ? _s : Object]),
+    __metadata("design:returntype", typeof (_t = typeof Promise !== "undefined" && Promise) === "function" ? _t : Object)
 ], ProfileController.prototype, "deleteAccount", null);
 __decorate([
     (0, common_1.Get)('user/:id'),
@@ -10194,7 +10356,7 @@ __decorate([
     __param(0, (0, common_1.Param)('id', common_1.ParseUUIDPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String]),
-    __metadata("design:returntype", typeof (_t = typeof Promise !== "undefined" && Promise) === "function" ? _t : Object)
+    __metadata("design:returntype", typeof (_u = typeof Promise !== "undefined" && Promise) === "function" ? _u : Object)
 ], ProfileController.prototype, "getPublicProfile", null);
 __decorate([
     (0, common_1.Get)('search'),
@@ -10232,8 +10394,8 @@ __decorate([
     }),
     __param(0, (0, common_1.Query)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [typeof (_u = typeof profile_dto_1.SearchProfilesQueryDto !== "undefined" && profile_dto_1.SearchProfilesQueryDto) === "function" ? _u : Object]),
-    __metadata("design:returntype", typeof (_v = typeof Promise !== "undefined" && Promise) === "function" ? _v : Object)
+    __metadata("design:paramtypes", [typeof (_v = typeof profile_dto_1.SearchProfilesQueryDto !== "undefined" && profile_dto_1.SearchProfilesQueryDto) === "function" ? _v : Object]),
+    __metadata("design:returntype", typeof (_w = typeof Promise !== "undefined" && Promise) === "function" ? _w : Object)
 ], ProfileController.prototype, "searchProfiles", null);
 exports.ProfileController = ProfileController = __decorate([
     (0, swagger_1.ApiTags)('Profile'),
@@ -11674,9 +11836,10 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 var ProfileService_1;
-var _a, _b, _c, _d;
+var _a, _b, _c, _d, _e;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.ProfileService = void 0;
+const upload_service_1 = __webpack_require__(/*! @/common/upload/upload.service */ "./src/common/upload/upload.service.ts");
 const profile_mapper_1 = __webpack_require__(/*! @/modules/profile/mapper/profile-mapper */ "./src/modules/profile/mapper/profile-mapper.ts");
 const user_mapper_1 = __webpack_require__(/*! @/modules/users/mapper/user.mapper */ "./src/modules/users/mapper/user.mapper.ts");
 const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
@@ -11685,12 +11848,37 @@ const profile_repository_1 = __webpack_require__(/*! ../repositorys/profile-repo
 const profile_domain_service_1 = __webpack_require__(/*! ./profile-domain.service */ "./src/modules/profile/services/profile-domain.service.ts");
 const profile_response_builder_service_1 = __webpack_require__(/*! ./profile-response-builder.service */ "./src/modules/profile/services/profile-response-builder.service.ts");
 let ProfileService = ProfileService_1 = class ProfileService {
-    constructor(profileRepo, profileBuilder, profileDomainService, dataSource) {
+    constructor(profileRepo, profileBuilder, profileDomainService, dataSource, uploadService) {
         this.profileRepo = profileRepo;
         this.profileBuilder = profileBuilder;
         this.profileDomainService = profileDomainService;
         this.dataSource = dataSource;
+        this.uploadService = uploadService;
         this.logger = new common_1.Logger(ProfileService_1.name);
+    }
+    async updateAvatarFile(jwtUser, file) {
+        const queryRunner = this.dataSource.createQueryRunner();
+        await queryRunner.connect();
+        await queryRunner.startTransaction();
+        try {
+            if (!file) {
+                throw new common_1.BadRequestException('Avatar file is required');
+            }
+            const { publicUrl: avatarUrl } = await this.uploadService.uploadSingle(file, 'avatars');
+            const updatedProfile = await this.profileRepo.updateAvatar(jwtUser.id, avatarUrl, queryRunner.manager);
+            const user = await this.profileRepo.findUserWithProfile(jwtUser.id, queryRunner.manager);
+            await queryRunner.commitTransaction();
+            const userMapper = (0, user_mapper_1.toUser)(user);
+            const profileMapper = (0, profile_mapper_1.toProfile)(updatedProfile);
+            return this.profileBuilder.buildProfileResponse(userMapper, profileMapper);
+        }
+        catch (error) {
+            await queryRunner.rollbackTransaction();
+            throw error;
+        }
+        finally {
+            await queryRunner.release();
+        }
     }
     async getMyProfile(jwtUser) {
         try {
@@ -11978,7 +12166,7 @@ let ProfileService = ProfileService_1 = class ProfileService {
 exports.ProfileService = ProfileService;
 exports.ProfileService = ProfileService = ProfileService_1 = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [typeof (_a = typeof profile_repository_1.ProfileRepository !== "undefined" && profile_repository_1.ProfileRepository) === "function" ? _a : Object, typeof (_b = typeof profile_response_builder_service_1.ProfileResponseBuilder !== "undefined" && profile_response_builder_service_1.ProfileResponseBuilder) === "function" ? _b : Object, typeof (_c = typeof profile_domain_service_1.ProfileDomainService !== "undefined" && profile_domain_service_1.ProfileDomainService) === "function" ? _c : Object, typeof (_d = typeof typeorm_1.DataSource !== "undefined" && typeorm_1.DataSource) === "function" ? _d : Object])
+    __metadata("design:paramtypes", [typeof (_a = typeof profile_repository_1.ProfileRepository !== "undefined" && profile_repository_1.ProfileRepository) === "function" ? _a : Object, typeof (_b = typeof profile_response_builder_service_1.ProfileResponseBuilder !== "undefined" && profile_response_builder_service_1.ProfileResponseBuilder) === "function" ? _b : Object, typeof (_c = typeof profile_domain_service_1.ProfileDomainService !== "undefined" && profile_domain_service_1.ProfileDomainService) === "function" ? _c : Object, typeof (_d = typeof typeorm_1.DataSource !== "undefined" && typeorm_1.DataSource) === "function" ? _d : Object, typeof (_e = typeof upload_service_1.UploadService !== "undefined" && upload_service_1.UploadService) === "function" ? _e : Object])
 ], ProfileService);
 
 
@@ -14199,6 +14387,16 @@ module.exports = require("@nestjs/jwt");
 
 /***/ }),
 
+/***/ "@nestjs/platform-express":
+/*!*******************************************!*\
+  !*** external "@nestjs/platform-express" ***!
+  \*******************************************/
+/***/ ((module) => {
+
+module.exports = require("@nestjs/platform-express");
+
+/***/ }),
+
 /***/ "@nestjs/platform-socket.io":
 /*!*********************************************!*\
   !*** external "@nestjs/platform-socket.io" ***!
@@ -14246,6 +14444,16 @@ module.exports = require("@nestjs/typeorm");
 /***/ ((module) => {
 
 module.exports = require("@nestjs/websockets");
+
+/***/ }),
+
+/***/ "@supabase/supabase-js":
+/*!****************************************!*\
+  !*** external "@supabase/supabase-js" ***!
+  \****************************************/
+/***/ ((module) => {
+
+module.exports = require("@supabase/supabase-js");
 
 /***/ }),
 

@@ -1,5 +1,7 @@
+import { UploadService } from '@/common/upload/upload.service';
 import { JwtPayload } from '@/modules/auth/interfaces/jwt-payload.interface';
 import { UserRepository } from '@/modules/users/repositorys/user.repository';
+
 import { Injectable, Logger } from '@nestjs/common';
 import {
     CreatePostDto,
@@ -24,8 +26,31 @@ export class PostService {
         private readonly validationService: PostValidationService,
         private readonly mapperService: PostMapperService,
         private readonly businessService: PostBusinessService,
+        private readonly uploadService: UploadService,
     ) { }
 
+    async createWithFiles(
+        dto: CreatePostDto,
+        files: Express.Multer.File[],
+        jwtUser: JwtPayload,
+        context?: ModerationContext,
+    ): Promise<PostResponseDto> {
+        // 1. upload ảnh
+        if (files?.length > 0) {
+            const { succeeded, failed } = await this.uploadService.uploadMultiple(files, 'posts');
+
+            if (failed.length > 0) {
+                this.logger.warn(
+                    `Some images failed to upload: ${failed.map(f => f.originalName).join(', ')}`,
+                );
+            }
+
+            dto.imageUrls = succeeded.map(r => r.publicUrl);
+        }
+
+        // 2. giữ nguyên logic cũ
+        return this.create(dto, jwtUser, context);
+    }
 
     async create(
         dto: CreatePostDto,
