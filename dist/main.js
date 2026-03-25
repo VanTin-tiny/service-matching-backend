@@ -1685,6 +1685,7 @@ const quotes_module_1 = __webpack_require__(/*! @/modules/quotes/quotes.module *
 const search_module_1 = __webpack_require__(/*! @/modules/search/search.module */ "./src/modules/search/search.module.ts");
 const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
 const event_emitter_1 = __webpack_require__(/*! @nestjs/event-emitter */ "@nestjs/event-emitter");
+const schedule_1 = __webpack_require__(/*! @nestjs/schedule */ "@nestjs/schedule");
 const throttler_1 = __webpack_require__(/*! @nestjs/throttler */ "@nestjs/throttler");
 let AppModule = class AppModule {
 };
@@ -1692,6 +1693,7 @@ exports.AppModule = AppModule;
 exports.AppModule = AppModule = __decorate([
     (0, common_1.Module)({
         imports: [
+            schedule_1.ScheduleModule.forRoot(),
             config_module_1.AppConfigModule,
             typeorm_module_1.TypeOrmDatabaseModule,
             auth_module_1.AuthModule,
@@ -1838,7 +1840,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
-var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0;
+var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0, _1, _2, _3, _4, _5;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.AuthController = void 0;
 const error_response_dto_1 = __webpack_require__(/*! @/common/dtos/error-response.dto */ "./src/common/dtos/error-response.dto.ts");
@@ -1851,14 +1853,17 @@ const auth_service_1 = __webpack_require__(/*! ./auth.service */ "./src/modules/
 const device_id_decorator_1 = __webpack_require__(/*! ./decorators/device-id.decorator */ "./src/modules/auth/decorators/device-id.decorator.ts");
 const auth_response_dto_1 = __webpack_require__(/*! ./dtos/auth-response.dto */ "./src/modules/auth/dtos/auth-response.dto.ts");
 const auth_dto_1 = __webpack_require__(/*! ./dtos/auth.dto */ "./src/modules/auth/dtos/auth.dto.ts");
+const password_reset_dto_1 = __webpack_require__(/*! ./dtos/password-reset.dto */ "./src/modules/auth/dtos/password-reset.dto.ts");
 const device_id_validation_pipe_1 = __webpack_require__(/*! ./pipes/device-id-validation.pipe */ "./src/modules/auth/pipes/device-id-validation.pipe.ts");
 const auth_response_builder_service_1 = __webpack_require__(/*! ./services/auth-response-builder.service */ "./src/modules/auth/services/auth-response-builder.service.ts");
 const cookie_service_1 = __webpack_require__(/*! ./services/cookie.service */ "./src/modules/auth/services/cookie.service.ts");
+const password_reset_service_1 = __webpack_require__(/*! ./services/password-reset.service */ "./src/modules/auth/services/password-reset.service.ts");
 let AuthController = class AuthController {
-    constructor(authService, cookieService, responseBuilder) {
+    constructor(authService, cookieService, responseBuilder, passwordResetService) {
         this.authService = authService;
         this.cookieService = cookieService;
         this.responseBuilder = responseBuilder;
+        this.passwordResetService = passwordResetService;
     }
     healthCheck() {
         return this.responseBuilder.buildHealthCheckResponse();
@@ -1915,6 +1920,20 @@ let AuthController = class AuthController {
         await this.authService.revokeAllDeviceTokens(refreshToken, deviceId);
         return this.responseBuilder.buildLogoutDeviceResponse();
     }
+    async forgotPassword(dto, ip) {
+        await this.passwordResetService.forgotPassword(dto.email, ip ?? null);
+        return {
+            success: true,
+            message: 'If this email is registered, you will receive a reset link shortly.',
+        };
+    }
+    async resetPassword(dto, ip) {
+        await this.passwordResetService.resetPassword(dto.token, dto.newPassword, ip ?? null);
+        return {
+            success: true,
+            message: 'Password reset successfully. Please login with your new password.',
+        };
+    }
 };
 exports.AuthController = AuthController;
 __decorate([
@@ -1922,7 +1941,7 @@ __decorate([
     (0, swagger_1.ApiExcludeEndpoint)(),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
-    __metadata("design:returntype", typeof (_d = typeof health_check_response_interface_1.HealthCheckResponse !== "undefined" && health_check_response_interface_1.HealthCheckResponse) === "function" ? _d : Object)
+    __metadata("design:returntype", typeof (_e = typeof health_check_response_interface_1.HealthCheckResponse !== "undefined" && health_check_response_interface_1.HealthCheckResponse) === "function" ? _e : Object)
 ], AuthController.prototype, "healthCheck", null);
 __decorate([
     (0, common_1.Post)('register'),
@@ -1952,8 +1971,8 @@ __decorate([
     })),
     __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [typeof (_e = typeof auth_dto_1.RegisterDto !== "undefined" && auth_dto_1.RegisterDto) === "function" ? _e : Object]),
-    __metadata("design:returntype", typeof (_f = typeof Promise !== "undefined" && Promise) === "function" ? _f : Object)
+    __metadata("design:paramtypes", [typeof (_f = typeof auth_dto_1.RegisterDto !== "undefined" && auth_dto_1.RegisterDto) === "function" ? _f : Object]),
+    __metadata("design:returntype", typeof (_g = typeof Promise !== "undefined" && Promise) === "function" ? _g : Object)
 ], AuthController.prototype, "register", null);
 __decorate([
     (0, common_1.Post)('logout-all'),
@@ -1974,8 +1993,8 @@ __decorate([
     __param(1, (0, common_1.Body)('refreshToken')),
     __param(2, (0, common_1.Res)({ passthrough: true })),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [typeof (_g = typeof express_1.Request !== "undefined" && express_1.Request) === "function" ? _g : Object, String, typeof (_h = typeof express_1.Response !== "undefined" && express_1.Response) === "function" ? _h : Object]),
-    __metadata("design:returntype", typeof (_j = typeof Promise !== "undefined" && Promise) === "function" ? _j : Object)
+    __metadata("design:paramtypes", [typeof (_h = typeof express_1.Request !== "undefined" && express_1.Request) === "function" ? _h : Object, String, typeof (_j = typeof express_1.Response !== "undefined" && express_1.Response) === "function" ? _j : Object]),
+    __metadata("design:returntype", typeof (_k = typeof Promise !== "undefined" && Promise) === "function" ? _k : Object)
 ], AuthController.prototype, "logoutAll", null);
 __decorate([
     (0, common_1.Post)('login'),
@@ -2010,8 +2029,8 @@ __decorate([
     __param(0, (0, common_1.Body)()),
     __param(1, (0, common_1.Res)({ passthrough: true })),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [typeof (_k = typeof auth_dto_1.LoginDto !== "undefined" && auth_dto_1.LoginDto) === "function" ? _k : Object, typeof (_l = typeof express_1.Response !== "undefined" && express_1.Response) === "function" ? _l : Object]),
-    __metadata("design:returntype", typeof (_m = typeof Promise !== "undefined" && Promise) === "function" ? _m : Object)
+    __metadata("design:paramtypes", [typeof (_l = typeof auth_dto_1.LoginDto !== "undefined" && auth_dto_1.LoginDto) === "function" ? _l : Object, typeof (_m = typeof express_1.Response !== "undefined" && express_1.Response) === "function" ? _m : Object]),
+    __metadata("design:returntype", typeof (_o = typeof Promise !== "undefined" && Promise) === "function" ? _o : Object)
 ], AuthController.prototype, "login", null);
 __decorate([
     (0, common_1.Post)('refresh'),
@@ -2032,8 +2051,8 @@ __decorate([
     __param(0, (0, common_1.Req)()),
     __param(1, (0, common_1.Res)({ passthrough: true })),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [typeof (_o = typeof express_1.Request !== "undefined" && express_1.Request) === "function" ? _o : Object, typeof (_p = typeof express_1.Response !== "undefined" && express_1.Response) === "function" ? _p : Object]),
-    __metadata("design:returntype", typeof (_q = typeof Promise !== "undefined" && Promise) === "function" ? _q : Object)
+    __metadata("design:paramtypes", [typeof (_p = typeof express_1.Request !== "undefined" && express_1.Request) === "function" ? _p : Object, typeof (_q = typeof express_1.Response !== "undefined" && express_1.Response) === "function" ? _q : Object]),
+    __metadata("design:returntype", typeof (_r = typeof Promise !== "undefined" && Promise) === "function" ? _r : Object)
 ], AuthController.prototype, "refresh", null);
 __decorate([
     (0, common_1.Post)('logout'),
@@ -2060,8 +2079,8 @@ __decorate([
     __param(0, (0, common_1.Req)()),
     __param(1, (0, common_1.Res)({ passthrough: true })),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [typeof (_r = typeof express_1.Request !== "undefined" && express_1.Request) === "function" ? _r : Object, typeof (_s = typeof express_1.Response !== "undefined" && express_1.Response) === "function" ? _s : Object]),
-    __metadata("design:returntype", typeof (_t = typeof Promise !== "undefined" && Promise) === "function" ? _t : Object)
+    __metadata("design:paramtypes", [typeof (_s = typeof express_1.Request !== "undefined" && express_1.Request) === "function" ? _s : Object, typeof (_t = typeof express_1.Response !== "undefined" && express_1.Response) === "function" ? _t : Object]),
+    __metadata("design:returntype", typeof (_u = typeof Promise !== "undefined" && Promise) === "function" ? _u : Object)
 ], AuthController.prototype, "logout", null);
 __decorate([
     (0, common_1.Post)('login-mobile'),
@@ -2113,8 +2132,8 @@ __decorate([
     __param(0, (0, common_1.Body)()),
     __param(1, (0, device_id_decorator_1.DeviceId)(device_id_validation_pipe_1.DeviceIdValidationPipe)),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [typeof (_u = typeof auth_dto_1.LoginMobileDto !== "undefined" && auth_dto_1.LoginMobileDto) === "function" ? _u : Object, String]),
-    __metadata("design:returntype", typeof (_v = typeof Promise !== "undefined" && Promise) === "function" ? _v : Object)
+    __metadata("design:paramtypes", [typeof (_v = typeof auth_dto_1.LoginMobileDto !== "undefined" && auth_dto_1.LoginMobileDto) === "function" ? _v : Object, String]),
+    __metadata("design:returntype", typeof (_w = typeof Promise !== "undefined" && Promise) === "function" ? _w : Object)
 ], AuthController.prototype, "loginMobile", null);
 __decorate([
     (0, common_1.Post)('refresh-mobile'),
@@ -2150,8 +2169,8 @@ __decorate([
     __param(0, (0, common_1.Body)()),
     __param(1, (0, device_id_decorator_1.DeviceId)(device_id_validation_pipe_1.DeviceIdValidationPipe)),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [typeof (_w = typeof auth_dto_1.RefreshTokenDto !== "undefined" && auth_dto_1.RefreshTokenDto) === "function" ? _w : Object, String]),
-    __metadata("design:returntype", typeof (_x = typeof Promise !== "undefined" && Promise) === "function" ? _x : Object)
+    __metadata("design:paramtypes", [typeof (_x = typeof auth_dto_1.RefreshTokenDto !== "undefined" && auth_dto_1.RefreshTokenDto) === "function" ? _x : Object, String]),
+    __metadata("design:returntype", typeof (_y = typeof Promise !== "undefined" && Promise) === "function" ? _y : Object)
 ], AuthController.prototype, "refreshMobile", null);
 __decorate([
     (0, common_1.Post)('logout-mobile'),
@@ -2176,8 +2195,8 @@ __decorate([
     __param(0, (0, common_1.Body)()),
     __param(1, (0, device_id_decorator_1.DeviceId)(device_id_validation_pipe_1.DeviceIdValidationPipe)),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [typeof (_y = typeof auth_dto_1.RefreshTokenDto !== "undefined" && auth_dto_1.RefreshTokenDto) === "function" ? _y : Object, String]),
-    __metadata("design:returntype", typeof (_z = typeof Promise !== "undefined" && Promise) === "function" ? _z : Object)
+    __metadata("design:paramtypes", [typeof (_z = typeof auth_dto_1.RefreshTokenDto !== "undefined" && auth_dto_1.RefreshTokenDto) === "function" ? _z : Object, String]),
+    __metadata("design:returntype", typeof (_0 = typeof Promise !== "undefined" && Promise) === "function" ? _0 : Object)
 ], AuthController.prototype, "logoutMobile", null);
 __decorate([
     (0, common_1.Post)('logout-device'),
@@ -2203,11 +2222,77 @@ __decorate([
     __param(1, (0, device_id_decorator_1.DeviceId)(device_id_validation_pipe_1.DeviceIdValidationPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String, String]),
-    __metadata("design:returntype", typeof (_0 = typeof Promise !== "undefined" && Promise) === "function" ? _0 : Object)
+    __metadata("design:returntype", typeof (_1 = typeof Promise !== "undefined" && Promise) === "function" ? _1 : Object)
 ], AuthController.prototype, "logoutDevice", null);
+__decorate([
+    (0, common_1.Post)('forgot-password'),
+    (0, swagger_1.ApiTags)('Auth - Common'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    (0, throttler_1.Throttle)({ default: { limit: 3, ttl: 900000 } }),
+    (0, swagger_1.ApiOperation)({
+        summary: 'Quên mật khẩu',
+        description: 'Gửi email chứa link reset password qua Resend. ' +
+            'Luôn trả 200 OK dù email có tồn tại hay không (tránh user enumeration). ' +
+            'Rate limit: 3 request / 15 phút.',
+    }),
+    (0, swagger_1.ApiOkResponse)({
+        description: 'Yêu cầu được xử lý (không xác nhận email có tồn tại hay không)',
+        type: password_reset_dto_1.ForgotPasswordResponseDto,
+    }),
+    (0, swagger_1.ApiTooManyRequestsResponse)({ description: 'Quá nhiều yêu cầu, thử lại sau' }),
+    (0, swagger_1.ApiInternalServerErrorResponse)({
+        description: 'Internal server error',
+        type: error_response_dto_1.ErrorResponseDto,
+    }),
+    (0, common_1.UsePipes)(new common_1.ValidationPipe({
+        whitelist: true,
+        forbidNonWhitelisted: true,
+        transform: true,
+    })),
+    __param(0, (0, common_1.Body)()),
+    __param(1, (0, common_1.Ip)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [typeof (_2 = typeof password_reset_dto_1.ForgotPasswordDto !== "undefined" && password_reset_dto_1.ForgotPasswordDto) === "function" ? _2 : Object, String]),
+    __metadata("design:returntype", typeof (_3 = typeof Promise !== "undefined" && Promise) === "function" ? _3 : Object)
+], AuthController.prototype, "forgotPassword", null);
+__decorate([
+    (0, common_1.Post)('reset-password'),
+    (0, swagger_1.ApiTags)('Auth - Common'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    (0, throttler_1.Throttle)({ default: { limit: 5, ttl: 900000 } }),
+    (0, swagger_1.ApiOperation)({
+        summary: 'Đặt lại mật khẩu',
+        description: 'Xác thực token từ email, cập nhật mật khẩu mới, ' +
+            'revoke toàn bộ refresh tokens (đăng xuất tất cả thiết bị), ' +
+            'gửi email thông báo qua Resend.',
+    }),
+    (0, swagger_1.ApiOkResponse)({
+        description: 'Đặt lại mật khẩu thành công',
+        type: password_reset_dto_1.ResetPasswordResponseDto,
+    }),
+    (0, swagger_1.ApiBadRequestResponse)({
+        description: 'Token không hợp lệ / đã dùng / hết hạn / mật khẩu trùng cũ',
+        type: error_response_dto_1.ErrorResponseDto,
+    }),
+    (0, swagger_1.ApiTooManyRequestsResponse)({ description: 'Quá nhiều yêu cầu, thử lại sau' }),
+    (0, swagger_1.ApiInternalServerErrorResponse)({
+        description: 'Internal server error',
+        type: error_response_dto_1.ErrorResponseDto,
+    }),
+    (0, common_1.UsePipes)(new common_1.ValidationPipe({
+        whitelist: true,
+        forbidNonWhitelisted: true,
+        transform: true,
+    })),
+    __param(0, (0, common_1.Body)()),
+    __param(1, (0, common_1.Ip)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [typeof (_4 = typeof password_reset_dto_1.ResetPasswordDto !== "undefined" && password_reset_dto_1.ResetPasswordDto) === "function" ? _4 : Object, String]),
+    __metadata("design:returntype", typeof (_5 = typeof Promise !== "undefined" && Promise) === "function" ? _5 : Object)
+], AuthController.prototype, "resetPassword", null);
 exports.AuthController = AuthController = __decorate([
     (0, common_1.Controller)('auth'),
-    __metadata("design:paramtypes", [typeof (_a = typeof auth_service_1.AuthService !== "undefined" && auth_service_1.AuthService) === "function" ? _a : Object, typeof (_b = typeof cookie_service_1.CookieService !== "undefined" && cookie_service_1.CookieService) === "function" ? _b : Object, typeof (_c = typeof auth_response_builder_service_1.AuthResponseBuilder !== "undefined" && auth_response_builder_service_1.AuthResponseBuilder) === "function" ? _c : Object])
+    __metadata("design:paramtypes", [typeof (_a = typeof auth_service_1.AuthService !== "undefined" && auth_service_1.AuthService) === "function" ? _a : Object, typeof (_b = typeof cookie_service_1.CookieService !== "undefined" && cookie_service_1.CookieService) === "function" ? _b : Object, typeof (_c = typeof auth_response_builder_service_1.AuthResponseBuilder !== "undefined" && auth_response_builder_service_1.AuthResponseBuilder) === "function" ? _c : Object, typeof (_d = typeof password_reset_service_1.PasswordResetService !== "undefined" && password_reset_service_1.PasswordResetService) === "function" ? _d : Object])
 ], AuthController);
 
 
@@ -2238,7 +2323,9 @@ const users_module_1 = __webpack_require__(/*! ../users/users.module */ "./src/m
 const auth_service_1 = __webpack_require__(/*! ./auth.service */ "./src/modules/auth/auth.service.ts");
 const auth_controller_1 = __webpack_require__(/*! ./auth.controller */ "./src/modules/auth/auth.controller.ts");
 const refresh_token_entity_1 = __webpack_require__(/*! ./entities/refresh-token.entity */ "./src/modules/auth/entities/refresh-token.entity.ts");
+const password_reset_token_entity_1 = __webpack_require__(/*! ./entities/password-reset-token.entity */ "./src/modules/auth/entities/password-reset-token.entity.ts");
 const refresh_token_repository_1 = __webpack_require__(/*! ./repositories/refresh-token.repository */ "./src/modules/auth/repositories/refresh-token.repository.ts");
+const password_reset_token_repository_1 = __webpack_require__(/*! ./repositories/password-reset-token.repository */ "./src/modules/auth/repositories/password-reset-token.repository.ts");
 const auth_config_service_1 = __webpack_require__(/*! ./services/auth-config.service */ "./src/modules/auth/services/auth-config.service.ts");
 const auth_response_builder_service_1 = __webpack_require__(/*! ./services/auth-response-builder.service */ "./src/modules/auth/services/auth-response-builder.service.ts");
 const authentication_factory_service_1 = __webpack_require__(/*! ./services/authentication-factory.service */ "./src/modules/auth/services/authentication-factory.service.ts");
@@ -2246,6 +2333,9 @@ const cookie_service_1 = __webpack_require__(/*! ./services/cookie.service */ ".
 const token_management_service_1 = __webpack_require__(/*! ./services/token-management.service */ "./src/modules/auth/services/token-management.service.ts");
 const user_validation_service_1 = __webpack_require__(/*! ./services/user-validation.service */ "./src/modules/auth/services/user-validation.service.ts");
 const profile_module_1 = __webpack_require__(/*! @/modules/profile/profile.module */ "./src/modules/profile/profile.module.ts");
+const resend_mail_service_1 = __webpack_require__(/*! ./services/resend-mail.service */ "./src/modules/auth/services/resend-mail.service.ts");
+const password_reset_service_1 = __webpack_require__(/*! ./services/password-reset.service */ "./src/modules/auth/services/password-reset.service.ts");
+const password_reset_cleanup_service_1 = __webpack_require__(/*! ./services/password-reset-cleanup.service */ "./src/modules/auth/services/password-reset-cleanup.service.ts");
 let AuthModule = class AuthModule {
 };
 exports.AuthModule = AuthModule;
@@ -2254,7 +2344,7 @@ exports.AuthModule = AuthModule = __decorate([
         imports: [
             users_module_1.UsersModule,
             profile_module_1.ProfileModule,
-            typeorm_1.TypeOrmModule.forFeature([refresh_token_entity_1.RefreshToken]),
+            typeorm_1.TypeOrmModule.forFeature([refresh_token_entity_1.RefreshToken, password_reset_token_entity_1.PasswordResetToken]),
         ],
         controllers: [auth_controller_1.AuthController],
         providers: [
@@ -2266,6 +2356,10 @@ exports.AuthModule = AuthModule = __decorate([
             cookie_service_1.CookieService,
             auth_response_builder_service_1.AuthResponseBuilder,
             refresh_token_repository_1.RefreshTokenRepository,
+            password_reset_token_repository_1.PasswordResetTokenRepository,
+            resend_mail_service_1.ResendMailService,
+            password_reset_service_1.PasswordResetService,
+            password_reset_cleanup_service_1.PasswordResetCleanupService,
             {
                 provide: core_1.APP_INTERCEPTOR,
                 useClass: correlation_id_interceptor_1.CorrelationIdInterceptor,
@@ -3006,6 +3100,175 @@ __decorate([
 
 /***/ }),
 
+/***/ "./src/modules/auth/dtos/password-reset.dto.ts":
+/*!*****************************************************!*\
+  !*** ./src/modules/auth/dtos/password-reset.dto.ts ***!
+  \*****************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.ResetPasswordResponseDto = exports.ForgotPasswordResponseDto = exports.ResetPasswordDto = exports.ForgotPasswordDto = void 0;
+const swagger_1 = __webpack_require__(/*! @nestjs/swagger */ "@nestjs/swagger");
+const class_transformer_1 = __webpack_require__(/*! class-transformer */ "class-transformer");
+const class_validator_1 = __webpack_require__(/*! class-validator */ "class-validator");
+const auth_constants_1 = __webpack_require__(/*! ../constants/auth.constants */ "./src/modules/auth/constants/auth.constants.ts");
+class ForgotPasswordDto {
+}
+exports.ForgotPasswordDto = ForgotPasswordDto;
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        example: 'user@example.com',
+        description: 'Email đã đăng ký tài khoản',
+    }),
+    (0, class_validator_1.IsEmail)({}, { message: 'Invalid email format' }),
+    (0, class_validator_1.IsNotEmpty)({ message: 'Email is required' }),
+    (0, class_transformer_1.Transform)(({ value }) => value?.toLowerCase().trim()),
+    __metadata("design:type", String)
+], ForgotPasswordDto.prototype, "email", void 0);
+class ResetPasswordDto {
+}
+exports.ResetPasswordDto = ResetPasswordDto;
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'Raw token lấy từ link email (64-char hex string)',
+        example: 'a3f1c2d4e5b6...',
+    }),
+    (0, class_validator_1.IsString)({ message: 'Token must be a string' }),
+    (0, class_validator_1.IsNotEmpty)({ message: 'Token is required' }),
+    __metadata("design:type", String)
+], ResetPasswordDto.prototype, "token", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        example: 'NewPassword123!',
+        description: 'Mật khẩu mới (min 8 ký tự, hoa, thường, số, ký tự đặc biệt)',
+    }),
+    (0, class_validator_1.IsString)({ message: 'Password must be a string' }),
+    (0, class_validator_1.IsNotEmpty)({ message: 'Password is required' }),
+    (0, class_validator_1.IsStrongPassword)({
+        minLength: auth_constants_1.AUTH_CONSTANTS.PASSWORD_MIN_LENGTH,
+        minUppercase: auth_constants_1.AUTH_CONSTANTS.PASSWORD_MIN_UPPERCASE,
+        minLowercase: auth_constants_1.AUTH_CONSTANTS.PASSWORD_MIN_LOWERCASE,
+        minNumbers: auth_constants_1.AUTH_CONSTANTS.PASSWORD_MIN_NUMBERS,
+        minSymbols: auth_constants_1.AUTH_CONSTANTS.PASSWORD_MIN_SYMBOLS,
+    }, {
+        message: 'Password must contain at least 8 characters, including uppercase, lowercase, number, and special character',
+    }),
+    __metadata("design:type", String)
+], ResetPasswordDto.prototype, "newPassword", void 0);
+class ForgotPasswordResponseDto {
+}
+exports.ForgotPasswordResponseDto = ForgotPasswordResponseDto;
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: true }),
+    __metadata("design:type", Boolean)
+], ForgotPasswordResponseDto.prototype, "success", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        example: 'If this email is registered, you will receive a reset link shortly.',
+    }),
+    __metadata("design:type", String)
+], ForgotPasswordResponseDto.prototype, "message", void 0);
+class ResetPasswordResponseDto {
+}
+exports.ResetPasswordResponseDto = ResetPasswordResponseDto;
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: true }),
+    __metadata("design:type", Boolean)
+], ResetPasswordResponseDto.prototype, "success", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 'Password reset successfully. Please login with your new password.' }),
+    __metadata("design:type", String)
+], ResetPasswordResponseDto.prototype, "message", void 0);
+
+
+/***/ }),
+
+/***/ "./src/modules/auth/entities/password-reset-token.entity.ts":
+/*!******************************************************************!*\
+  !*** ./src/modules/auth/entities/password-reset-token.entity.ts ***!
+  \******************************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var _a, _b, _c, _d;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.PasswordResetToken = void 0;
+const user_entity_1 = __webpack_require__(/*! @/modules/users/entities/user.entity */ "./src/modules/users/entities/user.entity.ts");
+const typeorm_1 = __webpack_require__(/*! typeorm */ "typeorm");
+let PasswordResetToken = class PasswordResetToken {
+    isExpired() {
+        return new Date() > this.expiresAt;
+    }
+    isUsed() {
+        return this.usedAt !== null;
+    }
+    isValid() {
+        return !this.isExpired() && !this.isUsed();
+    }
+};
+exports.PasswordResetToken = PasswordResetToken;
+__decorate([
+    (0, typeorm_1.PrimaryGeneratedColumn)('uuid'),
+    __metadata("design:type", String)
+], PasswordResetToken.prototype, "id", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'user_id' }),
+    __metadata("design:type", String)
+], PasswordResetToken.prototype, "userId", void 0);
+__decorate([
+    (0, typeorm_1.ManyToOne)(() => user_entity_1.User, { onDelete: 'CASCADE' }),
+    (0, typeorm_1.JoinColumn)({ name: 'user_id' }),
+    __metadata("design:type", typeof (_a = typeof user_entity_1.User !== "undefined" && user_entity_1.User) === "function" ? _a : Object)
+], PasswordResetToken.prototype, "user", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'token_hash', length: 64, unique: true }),
+    __metadata("design:type", String)
+], PasswordResetToken.prototype, "tokenHash", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'ip_address', length: 45, nullable: true }),
+    __metadata("design:type", String)
+], PasswordResetToken.prototype, "ipAddress", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'expires_at', type: 'timestamp with time zone' }),
+    __metadata("design:type", typeof (_b = typeof Date !== "undefined" && Date) === "function" ? _b : Object)
+], PasswordResetToken.prototype, "expiresAt", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'used_at', type: 'timestamp with time zone', nullable: true }),
+    __metadata("design:type", typeof (_c = typeof Date !== "undefined" && Date) === "function" ? _c : Object)
+], PasswordResetToken.prototype, "usedAt", void 0);
+__decorate([
+    (0, typeorm_1.CreateDateColumn)({ name: 'created_at', type: 'timestamp with time zone' }),
+    __metadata("design:type", typeof (_d = typeof Date !== "undefined" && Date) === "function" ? _d : Object)
+], PasswordResetToken.prototype, "createdAt", void 0);
+exports.PasswordResetToken = PasswordResetToken = __decorate([
+    (0, typeorm_1.Entity)('password_reset_tokens'),
+    (0, typeorm_1.Index)('idx_prt_token_hash', ['tokenHash']),
+    (0, typeorm_1.Index)('idx_prt_user_id', ['userId']),
+    (0, typeorm_1.Index)('idx_prt_cleanup', ['expiresAt', 'usedAt'])
+], PasswordResetToken);
+
+
+/***/ }),
+
 /***/ "./src/modules/auth/entities/refresh-token.entity.ts":
 /*!***********************************************************!*\
   !*** ./src/modules/auth/entities/refresh-token.entity.ts ***!
@@ -3126,6 +3389,47 @@ exports.AccountLockedException = AccountLockedException;
 
 /***/ }),
 
+/***/ "./src/modules/auth/exceptions/password-reset.exception.ts":
+/*!*****************************************************************!*\
+  !*** ./src/modules/auth/exceptions/password-reset.exception.ts ***!
+  \*****************************************************************/
+/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.UserForResetNotFoundException = exports.SamePasswordException = exports.InvalidResetTokenException = void 0;
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+class InvalidResetTokenException extends common_1.BadRequestException {
+    constructor() {
+        super({
+            code: 'INVALID_RESET_TOKEN',
+            message: 'Reset token is invalid or has expired',
+        });
+    }
+}
+exports.InvalidResetTokenException = InvalidResetTokenException;
+class SamePasswordException extends common_1.BadRequestException {
+    constructor() {
+        super({
+            code: 'SAME_PASSWORD',
+            message: 'New password must be different from the current password',
+        });
+    }
+}
+exports.SamePasswordException = SamePasswordException;
+class UserForResetNotFoundException extends common_1.NotFoundException {
+    constructor(email) {
+        super({
+            code: 'USER_NOT_FOUND_FOR_RESET',
+            message: `User with email ${email} not found`,
+        });
+    }
+}
+exports.UserForResetNotFoundException = UserForResetNotFoundException;
+
+
+/***/ }),
+
 /***/ "./src/modules/auth/interfaces/jwt-payload.interface.ts":
 /*!**************************************************************!*\
   !*** ./src/modules/auth/interfaces/jwt-payload.interface.ts ***!
@@ -3221,6 +3525,99 @@ exports.DeviceIdValidationPipe = DeviceIdValidationPipe;
 exports.DeviceIdValidationPipe = DeviceIdValidationPipe = __decorate([
     (0, common_1.Injectable)()
 ], DeviceIdValidationPipe);
+
+
+/***/ }),
+
+/***/ "./src/modules/auth/repositories/password-reset-token.repository.ts":
+/*!**************************************************************************!*\
+  !*** ./src/modules/auth/repositories/password-reset-token.repository.ts ***!
+  \**************************************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var __param = (this && this.__param) || function (paramIndex, decorator) {
+    return function (target, key) { decorator(target, key, paramIndex); }
+};
+var PasswordResetTokenRepository_1;
+var _a;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.PasswordResetTokenRepository = void 0;
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const typeorm_1 = __webpack_require__(/*! @nestjs/typeorm */ "@nestjs/typeorm");
+const typeorm_2 = __webpack_require__(/*! typeorm */ "typeorm");
+const password_reset_token_entity_1 = __webpack_require__(/*! ../entities/password-reset-token.entity */ "./src/modules/auth/entities/password-reset-token.entity.ts");
+let PasswordResetTokenRepository = PasswordResetTokenRepository_1 = class PasswordResetTokenRepository {
+    constructor(repo) {
+        this.repo = repo;
+        this.logger = new common_1.Logger(PasswordResetTokenRepository_1.name);
+    }
+    getRepo(manager) {
+        return manager ? manager.getRepository(password_reset_token_entity_1.PasswordResetToken) : this.repo;
+    }
+    async create(data, manager) {
+        const repo = this.getRepo(manager);
+        const entity = repo.create({
+            userId: data.userId,
+            tokenHash: data.tokenHash,
+            expiresAt: data.expiresAt,
+            ipAddress: data.ipAddress,
+            usedAt: null,
+        });
+        const saved = await repo.save(entity);
+        this.logger.log(`Password reset token created for userId=${data.userId}`);
+        return saved;
+    }
+    async findValidByHash(tokenHash, manager) {
+        return this.getRepo(manager).findOne({
+            where: {
+                tokenHash,
+                usedAt: undefined,
+            },
+            relations: ['user'],
+        });
+    }
+    async markAsUsed(tokenId, manager) {
+        await this.getRepo(manager).update(tokenId, {
+            usedAt: new Date(),
+        });
+        this.logger.log(`Password reset token marked as used: id=${tokenId}`);
+    }
+    async deleteOldTokensByUserId(userId, manager) {
+        await this.getRepo(manager)
+            .createQueryBuilder()
+            .delete()
+            .from(password_reset_token_entity_1.PasswordResetToken)
+            .where('user_id = :userId', { userId })
+            .execute();
+        this.logger.log(`Old password reset tokens deleted for userId=${userId}`);
+    }
+    async deleteExpired() {
+        const result = await this.repo.delete({
+            expiresAt: (0, typeorm_2.LessThan)(new Date()),
+        });
+        const affected = result.affected ?? 0;
+        if (affected > 0) {
+            this.logger.log(`Cleanup: deleted ${affected} expired password reset tokens`);
+        }
+        return affected;
+    }
+};
+exports.PasswordResetTokenRepository = PasswordResetTokenRepository;
+exports.PasswordResetTokenRepository = PasswordResetTokenRepository = PasswordResetTokenRepository_1 = __decorate([
+    (0, common_1.Injectable)(),
+    __param(0, (0, typeorm_1.InjectRepository)(password_reset_token_entity_1.PasswordResetToken)),
+    __metadata("design:paramtypes", [typeof (_a = typeof typeorm_2.Repository !== "undefined" && typeorm_2.Repository) === "function" ? _a : Object])
+], PasswordResetTokenRepository);
 
 
 /***/ }),
@@ -3665,6 +4062,406 @@ exports.CookieService = CookieService = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [typeof (_a = typeof config_1.ConfigService !== "undefined" && config_1.ConfigService) === "function" ? _a : Object])
 ], CookieService);
+
+
+/***/ }),
+
+/***/ "./src/modules/auth/services/password-reset-cleanup.service.ts":
+/*!*********************************************************************!*\
+  !*** ./src/modules/auth/services/password-reset-cleanup.service.ts ***!
+  \*********************************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var PasswordResetCleanupService_1;
+var _a, _b;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.PasswordResetCleanupService = void 0;
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const schedule_1 = __webpack_require__(/*! @nestjs/schedule */ "@nestjs/schedule");
+const password_reset_token_repository_1 = __webpack_require__(/*! ../repositories/password-reset-token.repository */ "./src/modules/auth/repositories/password-reset-token.repository.ts");
+let PasswordResetCleanupService = PasswordResetCleanupService_1 = class PasswordResetCleanupService {
+    constructor(resetTokenRepo) {
+        this.resetTokenRepo = resetTokenRepo;
+        this.logger = new common_1.Logger(PasswordResetCleanupService_1.name);
+    }
+    async cleanupExpiredTokens() {
+        this.logger.log('Running password reset token cleanup...');
+        try {
+            const deleted = await this.resetTokenRepo.deleteExpired();
+            this.logger.log(`Cleanup complete: ${deleted} expired tokens removed`);
+        }
+        catch (err) {
+            this.logger.error('Password reset token cleanup failed', err);
+        }
+    }
+};
+exports.PasswordResetCleanupService = PasswordResetCleanupService;
+__decorate([
+    (0, schedule_1.Cron)(schedule_1.CronExpression.EVERY_DAY_AT_2AM),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", typeof (_b = typeof Promise !== "undefined" && Promise) === "function" ? _b : Object)
+], PasswordResetCleanupService.prototype, "cleanupExpiredTokens", null);
+exports.PasswordResetCleanupService = PasswordResetCleanupService = PasswordResetCleanupService_1 = __decorate([
+    (0, common_1.Injectable)(),
+    __metadata("design:paramtypes", [typeof (_a = typeof password_reset_token_repository_1.PasswordResetTokenRepository !== "undefined" && password_reset_token_repository_1.PasswordResetTokenRepository) === "function" ? _a : Object])
+], PasswordResetCleanupService);
+
+
+/***/ }),
+
+/***/ "./src/modules/auth/services/password-reset.service.ts":
+/*!*************************************************************!*\
+  !*** ./src/modules/auth/services/password-reset.service.ts ***!
+  \*************************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var __param = (this && this.__param) || function (paramIndex, decorator) {
+    return function (target, key) { decorator(target, key, paramIndex); }
+};
+var PasswordResetService_1;
+var _a, _b, _c, _d, _e, _f, _g, _h;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.PasswordResetService = void 0;
+const _Transaction_1 = __webpack_require__(/*! @/common/decorators/@Transaction */ "./src/common/decorators/@Transaction.ts");
+const exceptions_1 = __webpack_require__(/*! @/common/exceptions */ "./src/common/exceptions/index.ts");
+const error_util_1 = __webpack_require__(/*! @/common/utils/error.util */ "./src/common/utils/error.util.ts");
+const user_repository_1 = __webpack_require__(/*! @/modules/users/repositorys/user.repository */ "./src/modules/users/repositorys/user.repository.ts");
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const crypto = __importStar(__webpack_require__(/*! crypto */ "crypto"));
+const typeorm_1 = __webpack_require__(/*! typeorm */ "typeorm");
+const auth_constants_1 = __webpack_require__(/*! ../constants/auth.constants */ "./src/modules/auth/constants/auth.constants.ts");
+const password_reset_token_repository_1 = __webpack_require__(/*! ../repositories/password-reset-token.repository */ "./src/modules/auth/repositories/password-reset-token.repository.ts");
+const token_management_service_1 = __webpack_require__(/*! ./token-management.service */ "./src/modules/auth/services/token-management.service.ts");
+const resend_mail_service_1 = __webpack_require__(/*! ./resend-mail.service */ "./src/modules/auth/services/resend-mail.service.ts");
+const password_util_1 = __webpack_require__(/*! ../utils/password.util */ "./src/modules/auth/utils/password.util.ts");
+const password_reset_exception_1 = __webpack_require__(/*! ../exceptions/password-reset.exception */ "./src/modules/auth/exceptions/password-reset.exception.ts");
+let PasswordResetService = PasswordResetService_1 = class PasswordResetService {
+    constructor(userRepo, resetTokenRepo, tokenMgmt, mailService) {
+        this.userRepo = userRepo;
+        this.resetTokenRepo = resetTokenRepo;
+        this.tokenMgmt = tokenMgmt;
+        this.mailService = mailService;
+        this.logger = new common_1.Logger(PasswordResetService_1.name);
+        this.RESET_TOKEN_EXPIRE_MINUTES = 15;
+    }
+    async forgotPassword(email, ipAddress, manager) {
+        try {
+            const user = await this.userRepo.findByEmail(email, manager);
+            if (!user) {
+                this.logger.warn(`Forgot password requested for unknown email: ${email} from IP: ${ipAddress}`);
+                return;
+            }
+            await this.resetTokenRepo.deleteOldTokensByUserId(user.id, manager);
+            const rawToken = crypto.randomBytes(32).toString('hex');
+            const tokenHash = crypto
+                .createHash('sha256')
+                .update(rawToken)
+                .digest('hex');
+            const expiresAt = new Date(Date.now() + this.RESET_TOKEN_EXPIRE_MINUTES * 60 * 1000);
+            await this.resetTokenRepo.create({
+                userId: user.id,
+                tokenHash,
+                expiresAt,
+                ipAddress,
+            }, manager);
+            this.logger.log(`Password reset token created for userId=${user.id}`);
+            const resetUrl = this.buildResetUrl(rawToken);
+            void this.mailService.sendResetPasswordEmail({
+                toEmail: email,
+                resetUrl,
+                expiresInMinutes: this.RESET_TOKEN_EXPIRE_MINUTES,
+            });
+        }
+        catch (error) {
+            const errorMessage = error_util_1.ErrorUtil.getMessage(error);
+            const errorStack = error_util_1.ErrorUtil.getStack(error);
+            this.logger.error(`forgotPassword failed for ${email}: ${errorMessage}`, errorStack);
+            throw new exceptions_1.InternalServerException('Failed to process forgot password request');
+        }
+    }
+    async resetPassword(rawToken, newPassword, ipAddress, manager) {
+        try {
+            const tokenHash = crypto
+                .createHash('sha256')
+                .update(rawToken)
+                .digest('hex');
+            const resetToken = await this.resetTokenRepo.findValidByHash(tokenHash, manager);
+            if (!resetToken || !resetToken.isValid()) {
+                this.logger.warn(`Invalid/expired reset token attempt from IP: ${ipAddress}`);
+                throw new password_reset_exception_1.InvalidResetTokenException();
+            }
+            const user = resetToken.user;
+            const isSamePassword = await password_util_1.PasswordUtil.compareConstantTime(newPassword, user.passwordHash ?? null);
+            if (isSamePassword) {
+                throw new password_reset_exception_1.SamePasswordException();
+            }
+            const newPasswordHash = await password_util_1.PasswordUtil.hash(newPassword, auth_constants_1.AUTH_CONSTANTS.BCRYPT_ROUNDS);
+            await this.userRepo.updateUser(user.id, { passwordHash: newPasswordHash }, manager);
+            await this.resetTokenRepo.markAsUsed(resetToken.id, manager);
+            await this.tokenMgmt.revokeAllByUserId(user.id, manager).catch((err) => {
+                this.logger.warn(`revokeAllByUserId for ${user.id}: ${error_util_1.ErrorUtil.getMessage(err)}`);
+            });
+            this.logger.log(`Password reset successful for userId=${user.id} from IP=${ipAddress}`);
+            if (user.email) {
+                void this.mailService.sendPasswordChangedEmail({
+                    toEmail: user.email,
+                    ipAddress,
+                    changedAt: new Date(),
+                });
+            }
+        }
+        catch (error) {
+            if (error_util_1.ErrorUtil.isKnownException(error, password_reset_exception_1.InvalidResetTokenException, password_reset_exception_1.SamePasswordException)) {
+                throw error;
+            }
+            const errorMessage = error_util_1.ErrorUtil.getMessage(error);
+            const errorStack = error_util_1.ErrorUtil.getStack(error);
+            this.logger.error(`resetPassword failed: ${errorMessage}`, errorStack);
+            throw new exceptions_1.InternalServerException('Failed to reset password');
+        }
+    }
+    buildResetUrl(rawToken) {
+        const baseUrl = process.env['FRONTEND_URL'] ?? 'http://localhost:3000';
+        return `${baseUrl}/reset-password?token=${rawToken}`;
+    }
+};
+exports.PasswordResetService = PasswordResetService;
+__decorate([
+    (0, _Transaction_1.Transactional)(),
+    __param(2, (0, _Transaction_1.TransactionManager)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String, typeof (_e = typeof typeorm_1.EntityManager !== "undefined" && typeorm_1.EntityManager) === "function" ? _e : Object]),
+    __metadata("design:returntype", typeof (_f = typeof Promise !== "undefined" && Promise) === "function" ? _f : Object)
+], PasswordResetService.prototype, "forgotPassword", null);
+__decorate([
+    (0, _Transaction_1.Transactional)(),
+    __param(3, (0, _Transaction_1.TransactionManager)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String, String, typeof (_g = typeof typeorm_1.EntityManager !== "undefined" && typeorm_1.EntityManager) === "function" ? _g : Object]),
+    __metadata("design:returntype", typeof (_h = typeof Promise !== "undefined" && Promise) === "function" ? _h : Object)
+], PasswordResetService.prototype, "resetPassword", null);
+exports.PasswordResetService = PasswordResetService = PasswordResetService_1 = __decorate([
+    (0, common_1.Injectable)(),
+    __metadata("design:paramtypes", [typeof (_a = typeof user_repository_1.UserRepository !== "undefined" && user_repository_1.UserRepository) === "function" ? _a : Object, typeof (_b = typeof password_reset_token_repository_1.PasswordResetTokenRepository !== "undefined" && password_reset_token_repository_1.PasswordResetTokenRepository) === "function" ? _b : Object, typeof (_c = typeof token_management_service_1.TokenManagementService !== "undefined" && token_management_service_1.TokenManagementService) === "function" ? _c : Object, typeof (_d = typeof resend_mail_service_1.ResendMailService !== "undefined" && resend_mail_service_1.ResendMailService) === "function" ? _d : Object])
+], PasswordResetService);
+
+
+/***/ }),
+
+/***/ "./src/modules/auth/services/resend-mail.service.ts":
+/*!**********************************************************!*\
+  !*** ./src/modules/auth/services/resend-mail.service.ts ***!
+  \**********************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var ResendMailService_1;
+var _a;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.ResendMailService = void 0;
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const config_1 = __webpack_require__(/*! @nestjs/config */ "@nestjs/config");
+const resend_1 = __webpack_require__(/*! resend */ "resend");
+let ResendMailService = ResendMailService_1 = class ResendMailService {
+    constructor(configService) {
+        this.configService = configService;
+        this.logger = new common_1.Logger(ResendMailService_1.name);
+        const apiKey = this.configService.getOrThrow('RESEND_API_KEY');
+        this.fromEmail = this.configService.getOrThrow('RESEND_FROM_EMAIL');
+        this.appName = this.configService.get('APP_NAME', 'MyApp');
+        this.resend = new resend_1.Resend(apiKey);
+    }
+    async sendResetPasswordEmail(payload) {
+        const { toEmail, resetUrl, expiresInMinutes } = payload;
+        try {
+            const { error } = await this.resend.emails.send({
+                from: `${this.appName} <${this.fromEmail}>`,
+                to: toEmail,
+                subject: `[${this.appName}] Đặt lại mật khẩu của bạn`,
+                html: this.buildResetEmailHtml({ resetUrl, expiresInMinutes, appName: this.appName }),
+            });
+            if (error) {
+                this.logger.error(`Resend failed to send reset email to ${toEmail}: ${JSON.stringify(error)}`);
+                return;
+            }
+            this.logger.log(`Reset password email sent to ${toEmail}`);
+        }
+        catch (err) {
+            this.logger.error(`Unexpected error sending reset email to ${toEmail}`, err);
+        }
+    }
+    async sendPasswordChangedEmail(payload) {
+        const { toEmail, ipAddress, changedAt } = payload;
+        try {
+            const { error } = await this.resend.emails.send({
+                from: `${this.appName} <${this.fromEmail}>`,
+                to: toEmail,
+                subject: `[${this.appName}] Mật khẩu của bạn đã được thay đổi`,
+                html: this.buildPasswordChangedHtml({ ipAddress, changedAt, appName: this.appName }),
+            });
+            if (error) {
+                this.logger.error(`Resend failed to send password-changed email to ${toEmail}: ${JSON.stringify(error)}`);
+                return;
+            }
+            this.logger.log(`Password changed notification sent to ${toEmail}`);
+        }
+        catch (err) {
+            this.logger.error(`Unexpected error sending password-changed email to ${toEmail}`, err);
+        }
+    }
+    buildResetEmailHtml(params) {
+        const { resetUrl, expiresInMinutes, appName } = params;
+        return `
+<!DOCTYPE html>
+<html lang="vi">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
+<body style="font-family:Arial,sans-serif;background:#f4f4f4;margin:0;padding:0;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f4;padding:40px 0;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.08);">
+        <tr><td style="background:#1a1a2e;padding:32px;text-align:center;">
+          <h1 style="color:#ffffff;margin:0;font-size:24px;">${appName}</h1>
+        </td></tr>
+        <tr><td style="padding:40px;">
+          <h2 style="color:#1a1a2e;margin:0 0 16px;">Đặt lại mật khẩu</h2>
+          <p style="color:#555;line-height:1.6;margin:0 0 24px;">
+            Chúng tôi nhận được yêu cầu đặt lại mật khẩu cho tài khoản của bạn.
+            Nhấn vào nút bên dưới để tiếp tục. Link sẽ hết hạn sau <strong>${expiresInMinutes} phút</strong>.
+          </p>
+          <div style="text-align:center;margin:32px 0;">
+            <a href="${resetUrl}"
+               style="display:inline-block;background:#4f46e5;color:#ffffff;text-decoration:none;padding:14px 32px;border-radius:6px;font-size:16px;font-weight:bold;">
+              Đặt lại mật khẩu
+            </a>
+          </div>
+          <p style="color:#888;font-size:13px;line-height:1.6;margin:24px 0 0;">
+            Nếu bạn không yêu cầu điều này, hãy bỏ qua email này. Mật khẩu của bạn sẽ không thay đổi.<br><br>
+            Hoặc copy link này vào trình duyệt:<br>
+            <span style="color:#4f46e5;word-break:break-all;">${resetUrl}</span>
+          </p>
+        </td></tr>
+        <tr><td style="background:#f9f9f9;padding:20px;text-align:center;">
+          <p style="color:#aaa;font-size:12px;margin:0;">
+            © ${new Date().getFullYear()} ${appName}. All rights reserved.
+          </p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+    }
+    buildPasswordChangedHtml(params) {
+        const { ipAddress, changedAt, appName } = params;
+        const timeStr = changedAt.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
+        return `
+<!DOCTYPE html>
+<html lang="vi">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
+<body style="font-family:Arial,sans-serif;background:#f4f4f4;margin:0;padding:0;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f4;padding:40px 0;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.08);">
+        <tr><td style="background:#dc2626;padding:32px;text-align:center;">
+          <h1 style="color:#ffffff;margin:0;font-size:24px;">${appName}</h1>
+        </td></tr>
+        <tr><td style="padding:40px;">
+          <h2 style="color:#1a1a2e;margin:0 0 16px;">⚠️ Mật khẩu đã được thay đổi</h2>
+          <p style="color:#555;line-height:1.6;margin:0 0 16px;">
+            Mật khẩu tài khoản của bạn vừa được đặt lại thành công.
+          </p>
+          <table style="background:#f4f4f4;border-radius:6px;padding:16px;width:100%;margin:0 0 24px;">
+            <tr><td style="color:#555;font-size:14px;padding:4px 0;">
+              <strong>Thời gian:</strong> ${timeStr}
+            </td></tr>
+            <tr><td style="color:#555;font-size:14px;padding:4px 0;">
+              <strong>IP:</strong> ${ipAddress ?? 'Không xác định'}
+            </td></tr>
+          </table>
+          <p style="color:#dc2626;font-weight:bold;margin:0 0 8px;">
+            Nếu KHÔNG phải bạn thực hiện hành động này, vui lòng liên hệ hỗ trợ ngay lập tức!
+          </p>
+        </td></tr>
+        <tr><td style="background:#f9f9f9;padding:20px;text-align:center;">
+          <p style="color:#aaa;font-size:12px;margin:0;">
+            © ${new Date().getFullYear()} ${appName}. All rights reserved.
+          </p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+    }
+};
+exports.ResendMailService = ResendMailService;
+exports.ResendMailService = ResendMailService = ResendMailService_1 = __decorate([
+    (0, common_1.Injectable)(),
+    __metadata("design:paramtypes", [typeof (_a = typeof config_1.ConfigService !== "undefined" && config_1.ConfigService) === "function" ? _a : Object])
+], ResendMailService);
 
 
 /***/ }),
@@ -15822,6 +16619,16 @@ module.exports = require("@nestjs/platform-socket.io");
 
 /***/ }),
 
+/***/ "@nestjs/schedule":
+/*!***********************************!*\
+  !*** external "@nestjs/schedule" ***!
+  \***********************************/
+/***/ ((module) => {
+
+module.exports = require("@nestjs/schedule");
+
+/***/ }),
+
 /***/ "@nestjs/swagger":
 /*!**********************************!*\
   !*** external "@nestjs/swagger" ***!
@@ -15942,6 +16749,16 @@ module.exports = require("jsonwebtoken");
 
 /***/ }),
 
+/***/ "resend":
+/*!*************************!*\
+  !*** external "resend" ***!
+  \*************************/
+/***/ ((module) => {
+
+module.exports = require("resend");
+
+/***/ }),
+
 /***/ "rxjs":
 /*!***********************!*\
   !*** external "rxjs" ***!
@@ -15999,6 +16816,16 @@ module.exports = require("uuid");
 /***/ ((module) => {
 
 module.exports = require("child_process");
+
+/***/ }),
+
+/***/ "crypto":
+/*!*************************!*\
+  !*** external "crypto" ***!
+  \*************************/
+/***/ ((module) => {
+
+module.exports = require("crypto");
 
 /***/ }),
 

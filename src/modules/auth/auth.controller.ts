@@ -7,6 +7,7 @@ import {
     Get,
     HttpCode,
     HttpStatus,
+    Ip,
     Post,
     Req,
     Res,
@@ -14,6 +15,7 @@ import {
     ValidationPipe
 } from '@nestjs/common';
 import {
+    ApiBadRequestResponse,
     ApiCreatedResponse,
     ApiExcludeEndpoint,
     ApiForbiddenResponse,
@@ -22,6 +24,7 @@ import {
     ApiOkResponse,
     ApiOperation,
     ApiTags,
+    ApiTooManyRequestsResponse,
     ApiUnauthorizedResponse
 } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
@@ -30,9 +33,16 @@ import { AuthService } from './auth.service';
 import { DeviceId } from './decorators/device-id.decorator';
 import { LoginResponseDto, RegisterResponseDto, TokenResponseDto } from './dtos/auth-response.dto';
 import { LoginDto, LoginMobileDto, RefreshTokenDto, RegisterDto } from './dtos/auth.dto';
+import {
+    ForgotPasswordDto,
+    ForgotPasswordResponseDto,
+    ResetPasswordDto,
+    ResetPasswordResponseDto,
+} from './dtos/password-reset.dto';
 import { DeviceIdValidationPipe } from './pipes/device-id-validation.pipe';
 import { AuthResponseBuilder } from './services/auth-response-builder.service';
 import { CookieService } from './services/cookie.service';
+import { PasswordResetService } from './services/password-reset.service';
 
 
 @Controller('auth')
@@ -41,6 +51,7 @@ export class AuthController {
         private readonly authService: AuthService,
         private readonly cookieService: CookieService,
         private readonly responseBuilder: AuthResponseBuilder,
+        private readonly passwordResetService: PasswordResetService
     ) { }
 
     @Get('health')
@@ -394,4 +405,91 @@ export class AuthController {
 
         return this.responseBuilder.buildLogoutDeviceResponse();
     }
+
+
+
+
+    @Post('forgot-password')
+    @ApiTags('Auth - Common')
+    @HttpCode(HttpStatus.OK)
+    @Throttle({ default: { limit: 3, ttl: 900_000 } }) // 3 lần / 15 phút / IP
+    @ApiOperation({
+        summary: 'Quên mật khẩu',
+        description:
+            'Gửi email chứa link reset password qua Resend. ' +
+            'Luôn trả 200 OK dù email có tồn tại hay không (tránh user enumeration). ' +
+            'Rate limit: 3 request / 15 phút.',
+    })
+    @ApiOkResponse({
+        description: 'Yêu cầu được xử lý (không xác nhận email có tồn tại hay không)',
+        type: ForgotPasswordResponseDto,
+    })
+    @ApiTooManyRequestsResponse({ description: 'Quá nhiều yêu cầu, thử lại sau' })
+    @ApiInternalServerErrorResponse({
+        description: 'Internal server error',
+        type: ErrorResponseDto,
+    })
+    @UsePipes(
+        new ValidationPipe({
+            whitelist: true,
+            forbidNonWhitelisted: true,
+            transform: true,
+        }),
+    )
+    async forgotPassword(
+        @Body() dto: ForgotPasswordDto,
+        @Ip() ip: string,
+    ): Promise<ForgotPasswordResponseDto> {
+        await this.passwordResetService.forgotPassword(dto.email, ip ?? null);
+        return {
+            success: true,
+            message: 'If this email is registered, you will receive a reset link shortly.',
+        };
+    }
+
+    // ─── RESET PASSWORD ───────────────────────────────────────────────────────────
+
+    @Post('reset-password')
+    @ApiTags('Auth - Common')
+    @HttpCode(HttpStatus.OK)
+    @Throttle({ default: { limit: 5, ttl: 900_000 } }) // 5 lần / 15 phút / IP
+    @ApiOperation({
+        summary: 'Đặt lại mật khẩu',
+        description:
+            'Xác thực token từ email, cập nhật mật khẩu mới, ' +
+            'revoke toàn bộ refresh tokens (đăng xuất tất cả thiết bị), ' +
+            'gửi email thông báo qua Resend.',
+    })
+    @ApiOkResponse({
+        description: 'Đặt lại mật khẩu thành công',
+        type: ResetPasswordResponseDto,
+    })
+    @ApiBadRequestResponse({
+        description: 'Token không hợp lệ / đã dùng / hết hạn / mật khẩu trùng cũ',
+        type: ErrorResponseDto,
+    })
+    @ApiTooManyRequestsResponse({ description: 'Quá nhiều yêu cầu, thử lại sau' })
+    @ApiInternalServerErrorResponse({
+        description: 'Internal server error',
+        type: ErrorResponseDto,
+    })
+    @UsePipes(
+        new ValidationPipe({
+            whitelist: true,
+            forbidNonWhitelisted: true,
+            transform: true,
+        }),
+    )
+    async resetPassword(
+        @Body() dto: ResetPasswordDto,
+        @Ip() ip: string,
+    ): Promise<ResetPasswordResponseDto> {
+        await this.passwordResetService.resetPassword(dto.token, dto.newPassword, ip ?? null);
+        return {
+            success: true,
+            message: 'Password reset successfully. Please login with your new password.',
+        };
+    }
 }
+
+
