@@ -11,9 +11,11 @@ import { QuoteModule } from '@/modules/quotes/quotes.module';
 import { SearchModule } from '@/modules/search/search.module';
 import { Module } from '@nestjs/common';
 import { EventEmitterModule } from '@nestjs/event-emitter';
+import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerModule } from '@nestjs/throttler';
 @Module({
   imports: [
+    ScheduleModule.forRoot(),
     AppConfigModule,
     TypeOrmDatabaseModule,
     AuthModule,

@@ -48,7 +48,6 @@ export class PostService {
             dto.imageUrls = succeeded.map(r => r.publicUrl);
         }
 
-        // 2. giữ nguyên logic cũ
         return this.create(dto, jwtUser, context);
     }
 
