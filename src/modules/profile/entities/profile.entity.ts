@@ -107,6 +107,24 @@ export class Profile {
     }>;
 
     @Column({
+        name: 'average_rating',
+        type: 'decimal',
+        precision: 3,
+        scale: 2,
+        nullable: true,
+        comment: 'Denormalised average rating (recalculated on every new review)',
+    })
+    averageRating?: number;
+
+    @Column({
+        name: 'review_count',
+        type: 'int',
+        default: 0,
+        comment: 'Total number of public reviews received',
+    })
+    reviewCount: number = 0;
+
+    @Column({
         type: 'jsonb',
         nullable: true,
         comment: 'Additional profile metadata (preferences, settings, etc.)'

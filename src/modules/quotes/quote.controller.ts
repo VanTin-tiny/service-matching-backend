@@ -28,7 +28,7 @@ import {
     QuoteResponseDto,
     RejectQuoteDto,
     ReviseQuoteDto,
-    UpdateQuoteDto
+    UpdateQuoteDto,
 } from './dtos/quote.dto';
 import { QuoteService } from './quote.service';
 
@@ -164,21 +164,18 @@ export class QuoteController {
     @Roles(UserRole.CUSTOMER)
     @HttpCode(HttpStatus.OK)
     @ApiOperation({
-        summary: '[Customer] Nhấn đặt đơn với revision cụ thể',
-        description: 'Customer chọn một revision (hoặc revision hiện tại) để tạo order. Provider cần confirm.'
+        summary: '[Customer] Đặt đơn theo giá hiện tại',
+        description:
+            'Customer xác nhận muốn đặt đơn với giá báo hiện tại (ACCEPTED_FOR_CHAT hoặc REVISING). ' +
+            'Provider cần vào /orders/confirm-from-quote/:quoteId để xác nhận và tạo đơn hàng.',
     })
     @ApiResponse({ status: 200, description: 'Order requested successfully' })
-    @ApiResponse({ status: 400, description: 'Cannot request order' })
-    async requestOrderFromRevision(
+    @ApiResponse({ status: 400, description: 'Cannot request order at current quote status' })
+    async requestOrder(
         @Param('id') quoteId: string,
         @CurrentUserId('id') customerId: string,
-        @Body() dto: CreateQuoteDto,
     ) {
-        return await this.quoteService.reviseQuote(
-            quoteId,
-            customerId,
-            dto,
-        );
+        return await this.quoteService.requestOrder(quoteId, customerId);
     }
 
     @Post(':id/reject')

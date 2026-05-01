@@ -1,4 +1,5 @@
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
+import { CurrentUserId } from '@/common/decorators/current-user-id.decorator';
 import { Roles } from '@/common/decorators/roles.decorator';
 import { UserRole } from '@/common/enums/user-role.enum';
 import { JwtAuthGuard } from '@/common/guards/jwt-auth.guard';
@@ -30,6 +31,28 @@ import { OrderService } from './order.service';
 @ApiBearerAuth()
 export class OrderController {
     constructor(private readonly orderService: OrderService) { }
+
+    // ============ CUSTOMER ACTIONS ============
+
+    @Post('accept-quote-direct/:quoteId')
+    @Roles(UserRole.CUSTOMER)
+    @HttpCode(HttpStatus.CREATED)
+    @ApiOperation({
+        summary: '[Customer] Chấp nhận báo giá ngay → Tạo đơn hàng',
+        description:
+            'Khách hàng chấp nhận báo giá (PENDING) ngay lập tức tại mức giá đã báo, hệ thống tự động tạo đơn hàng IN_PROGRESS. ' +
+            'Không cần thảo luận thêm, không cần thợ xác nhận lại.',
+    })
+    @ApiResponse({ status: 201, description: 'Order created from direct acceptance' })
+    @ApiResponse({ status: 400, description: 'Quote is not PENDING or already has an order' })
+    @ApiResponse({ status: 403, description: 'Not the customer for this quote' })
+    @ApiResponse({ status: 404, description: 'Quote not found' })
+    async acceptQuoteDirect(
+        @Param('quoteId') quoteId: string,
+        @CurrentUserId('id') customerId: string,
+    ) {
+        return await this.orderService.createOrderFromDirectAcceptance(quoteId, customerId);
+    }
 
     // ============ PROVIDER ACTIONS ============
 

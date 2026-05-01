@@ -9,6 +9,7 @@ import { OrdersModule } from '@/modules/orders/orders.module';
 import { PostsModule } from '@/modules/posts/posts.module';
 import { ProfileModule } from '@/modules/profile/profile.module';
 import { QuoteModule } from '@/modules/quotes/quotes.module';
+import { ReviewsModule } from '@/modules/reviews/reviews.module';
 import { SearchModule } from '@/modules/search/search.module';
 import { Module } from '@nestjs/common';
 import { EventEmitterModule } from '@nestjs/event-emitter';
@@ -30,6 +31,7 @@ import { ThrottlerModule } from '@nestjs/throttler';
     OrdersModule,
     SearchModule,
     CustomRequestsModule,
+    ReviewsModule,
     EventEmitterModule.forRoot(),
     ThrottlerModule.forRoot([{
       ttl: 60000,

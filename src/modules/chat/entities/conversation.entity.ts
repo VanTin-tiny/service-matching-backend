@@ -14,8 +14,9 @@ import {
 import { Message } from './message.entity';
 
 export enum ConversationType {
-    QUOTE_BASED = 'quote_based', 
-    DIRECT_REQUEST = 'direct_request', 
+    QUOTE_BASED = 'quote_based',
+    DIRECT_REQUEST = 'direct_request',
+    ORDER_CHAT = 'order_chat',
 }
 
 @Entity('conversations')
@@ -48,6 +49,10 @@ export class Conversation {
     @ManyToOne(() => Quote, { nullable: true })
     @JoinColumn({ name: 'quote_id' })
     quote?: Quote;
+
+    @Column({ name: 'order_id', nullable: true, comment: 'Set for ORDER_CHAT type conversations' })
+    @Index({ where: 'order_id IS NOT NULL', unique: true })
+    orderId?: string;
 
     @Column({
         type: 'enum',

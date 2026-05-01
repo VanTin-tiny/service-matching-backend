@@ -66,4 +66,6 @@ export interface DirectRequestNotificationData {
     providerName?: string;
     budget?: number;
     reason?: string;
+    quotedPrice?: number;
+    quoteId?: string;
 }

@@ -1,3 +1,5 @@
+import { Quote } from '@/modules/quotes/entities/quote.entity';
+import { QuoteStatus } from '@/modules/quotes/enums/quote-status.enum';
 import { UserRepository } from '@/modules/users/repositories/user.repository';
 import {
     BadRequestException,
@@ -6,7 +8,10 @@ import {
     Logger,
     NotFoundException,
 } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import {
+    AcceptCustomRequestDto,
     CreateCustomRequestDto,
     CustomRequestListResponseDto,
     CustomRequestResponseDto,
@@ -25,6 +30,8 @@ export class CustomRequestService {
         private readonly customRequestRepo: CustomRequestRepository,
         private readonly userRepo: UserRepository,
         private readonly notificationService: CustomRequestNotificationService,
+        @InjectRepository(Quote)
+        private readonly quoteRepo: Repository<Quote>,
     ) {}
 
     async createRequest(
@@ -66,7 +73,11 @@ export class CustomRequestService {
         return this.toResponseDto(saved, customer, provider);
     }
 
-    async acceptRequest(requestId: string, providerId: string): Promise<CustomRequestResponseDto> {
+    async acceptRequest(
+        requestId: string,
+        providerId: string,
+        dto: AcceptCustomRequestDto,
+    ): Promise<CustomRequestResponseDto> {
         const request = await this.customRequestRepo.findByIdWithRelations(requestId, [
             'customer',
             'customer.profile',
@@ -88,20 +99,76 @@ export class CustomRequestService {
             );
         }
 
+        if (request.budget && dto.acceptedPrice > parseFloat(request.budget.toString()) * 1.5) {
+            throw new BadRequestException(
+                'Quoted price cannot exceed 150% of the customer\'s budget',
+            );
+        }
+
         request.status = CustomRequestStatus.ACCEPTED;
         request.acceptedAt = new Date();
 
         const saved = await this.customRequestRepo.save(request);
+
+        const quote = this.quoteRepo.create({
+            customRequestId: saved.id,
+            providerId,
+            price: dto.acceptedPrice,
+            description: dto.quoteDescription,
+            estimatedDuration: dto.estimatedDuration,
+            terms: dto.terms,
+            status: QuoteStatus.PENDING,
+            imageUrls: [],
+        });
+        const savedQuote = await this.quoteRepo.save(quote);
 
         const providerName =
             request.provider?.profile?.fullName ||
             request.provider?.profile?.displayName ||
             'Thợ';
 
-        await this.notificationService.notifyRequestAccepted(saved, providerName);
+        await this.notificationService.notifyRequestAcceptedWithQuote(
+            saved,
+            providerName,
+            dto.acceptedPrice,
+            savedQuote.id,
+        );
 
-        this.logger.log(`Custom request accepted: ${requestId} by provider ${providerId}`);
+        this.logger.log(
+            `Custom request accepted: ${requestId} by provider ${providerId}, quote created: ${savedQuote.id}`,
+        );
         return this.toResponseDto(saved, saved.customer, saved.provider);
+    }
+
+    async getQuoteForRequest(requestId: string, userId: string): Promise<Quote> {
+        const request = await this.customRequestRepo.findByIdWithRelations(requestId, [
+            'customer',
+            'provider',
+        ]);
+
+        if (!request) {
+            throw new NotFoundException('Custom request not found');
+        }
+
+        if (!request.isParticipant(userId)) {
+            throw new ForbiddenException('You do not have access to this request');
+        }
+
+        if (!request.isAccepted()) {
+            throw new BadRequestException('This request has not been accepted yet — no quote available');
+        }
+
+        const quote = await this.quoteRepo.findOne({
+            where: { customRequestId: requestId },
+            relations: ['provider', 'provider.profile'],
+            order: { createdAt: 'DESC' },
+        });
+
+        if (!quote) {
+            throw new NotFoundException('No quote found for this request');
+        }
+
+        return quote;
     }
 
     async rejectRequest(

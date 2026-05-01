@@ -143,6 +143,8 @@ export class QuoteService {
     }
 
 
+    private static readonly MAX_REVISIONS_AFTER_CHAT = 3;
+
     async reviseQuote(
         quoteId: string,
         providerId: string,
@@ -157,6 +159,12 @@ export class QuoteService {
 
         if (!quote.canRevise()) {
             throw new BadRequestException('Quote cannot be revised at this stage');
+        }
+
+        if (quote.revisionCount > QuoteService.MAX_REVISIONS_AFTER_CHAT) {
+            throw new BadRequestException(
+                `Maximum ${QuoteService.MAX_REVISIONS_AFTER_CHAT} re-quotes are allowed after chat is opened`,
+            );
         }
 
         const budget = quote.post?.budget ?? quote.customRequest?.budget;

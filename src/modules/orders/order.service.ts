@@ -137,7 +137,94 @@ export class OrderService {
         });
     }
 
-    
+    async createOrderFromDirectAcceptance(
+        quoteId: string,
+        customerId: string,
+    ): Promise<Order> {
+        const quote = await this.quoteRepo.findOne({
+            where: { id: quoteId },
+            relations: ['post', 'post.customer', 'provider', 'customRequest'],
+        });
+
+        if (!quote) {
+            throw new NotFoundException('Quote not found');
+        }
+
+        if (quote.status !== QuoteStatus.PENDING) {
+            throw new BadRequestException(
+                `Only PENDING quotes can be accepted directly. ` +
+                `Current status: ${quote.status}. Use /quotes/:id/accept-for-chat to negotiate first.`,
+            );
+        }
+
+        const ownerCustomerId = quote.post?.customerId ?? quote.customRequest?.customerId;
+        if (!ownerCustomerId || ownerCustomerId !== customerId) {
+            throw new ForbiddenException('You are not the customer for this quote');
+        }
+
+        const existing = await this.orderRepo.findOne({ where: { quoteId } });
+        if (existing) {
+            this.logger.warn(`Order already exists for quote ${quoteId}`);
+            return existing;
+        }
+
+        const revision = await this.quoteRevisionService.createRevision(
+            quote,
+            quote.providerId,
+            'Customer accepted directly at quoted price',
+        );
+
+        await this.quoteStatusService.confirmOrder(quote);
+
+        const orderNumber = await this.generateOrderNumber();
+        const price = parseFloat(quote.price.toString());
+        const serviceFee = this.calculateServiceFee(price);
+        const totalAmount = price + serviceFee;
+
+        const title = quote.post?.title ?? quote.customRequest?.title ?? 'Đơn dịch vụ';
+        const location = quote.post?.location ?? quote.customRequest?.location;
+        const scheduledAt = quote.post?.desiredTime ?? quote.customRequest?.desiredTime;
+
+        const order = this.orderRepo.create({
+            orderNumber,
+            customerId,
+            providerId: quote.providerId,
+            quoteId,
+            title,
+            description: quote.description,
+            price,
+            serviceFee,
+            totalAmount,
+            status: OrderStatus.IN_PROGRESS,
+            paymentStatus: PaymentStatus.PENDING,
+            location,
+            scheduledAt,
+            estimatedDuration: quote.estimatedDuration,
+            startedAt: new Date(),
+        });
+
+        const saved = await this.orderRepo.save(order);
+
+        await this.quoteRevisionService.markRevisionAsUsedForOrder(revision.id, saved.id);
+
+        await this.notificationService.notifyOrderCreated(
+            saved.customerId,
+            saved.providerId,
+            saved.id,
+            saved.title,
+        );
+
+        await this.notificationService.notifyOrderInProgress(
+            saved.customerId,
+            saved.id,
+            saved.title,
+        );
+
+        this.logger.log(`Order ${saved.id} created from direct quote acceptance (quote: ${quoteId})`);
+        return saved;
+    }
+
+
     async createDirectOrder(
         customerId: string,
         dto: CreateOrderDto,
@@ -298,15 +385,26 @@ export class OrderService {
             order.customerId,
             order.id,
             order.title,
-            false, 
+            false,
         );
 
         await this.notificationService.notifyOrderCompleted(
             order.providerId,
             order.id,
             order.title,
-            true, 
+            true,
         );
+
+        try {
+            await this.chatService.createOrderConversation(
+                saved.id,
+                saved.customerId,
+                saved.providerId,
+                saved.title,
+            );
+        } catch {
+            this.logger.warn(`Failed to create post-order conversation for order ${orderId}`);
+        }
 
         this.logger.log(`Order completed: ${orderId}`);
         return saved;
