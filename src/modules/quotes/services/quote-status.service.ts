@@ -46,7 +46,7 @@ export class QuoteStatusService {
         return savedQuote;
     }
 
-    
+
     async reviseQuote(
         quote: Quote,
         newPrice: number,
@@ -72,16 +72,16 @@ export class QuoteStatusService {
         quote.revisionCount += 1;
 
         const savedQuote = await this.quoteRepo.save(quote);
-        await this.notificationService.notifyQuoteRevised(
-            savedQuote,
-            quote.post.customerId,
 
-        );
+        const customerId = quote.post?.customerId ?? quote.customRequest?.customerId;
+        if (customerId) {
+            await this.notificationService.notifyQuoteRevised(savedQuote, customerId);
+        }
 
         return savedQuote;
     }
 
-    
+
     async requestOrder(quote: Quote, customerId: string): Promise<Quote> {
         this.logger.log(`Customer ${customerId} requesting order for quote ${quote.id}`);
 
@@ -98,7 +98,7 @@ export class QuoteStatusService {
         return savedQuote;
     }
 
-    
+
     async confirmOrder(quote: Quote): Promise<Quote> {
         this.logger.log(`Provider confirming order for quote ${quote.id}`);
 
@@ -107,9 +107,11 @@ export class QuoteStatusService {
 
         const savedQuote = await this.quoteRepo.save(quote);
 
-        await this.postRepo.closePost(quote.post);
-
-        await this.rejectOtherQuotes(quote.postId, quote.id);
+        // Close the associated post and reject other quotes only for post-based quotes
+        if (quote.post && quote.postId) {
+            await this.postRepo.closePost(quote.post);
+            await this.rejectOtherQuotes(quote.postId, quote.id);
+        }
 
         return savedQuote;
     }

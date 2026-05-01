@@ -15,9 +15,19 @@ import {
 import { QuoteStatus } from '../enums/quote-status.enum';
 
 export class CreateQuoteDto {
-    @ApiProperty({ description: 'ID post' })
+    @ApiPropertyOptional({
+        description: 'ID of the public post to quote on (provide either postId or customRequestId)',
+    })
+    @IsOptional()
     @IsUUID()
-    postId!: string;
+    postId?: string;
+
+    @ApiPropertyOptional({
+        description: 'ID of the custom request to quote on (provide either postId or customRequestId)',
+    })
+    @IsOptional()
+    @IsUUID()
+    customRequestId?: string;
 
     @ApiProperty({ description: 'the price of a quote ', example: 500000 })
     @IsNumber()
@@ -114,9 +124,13 @@ export class QuoteResponseDto {
     @Expose()
     id!: string;
 
-    @ApiProperty({ description: 'ID post' })
+    @ApiPropertyOptional({ description: 'ID post' })
     @Expose()
     postId?: string;
+
+    @ApiPropertyOptional({ description: 'ID custom request' })
+    @Expose()
+    customRequestId?: string;
 
     @ApiProperty({ description: 'ID provider' })
     @Expose()

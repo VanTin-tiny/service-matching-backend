@@ -43,7 +43,7 @@ export class OrderService {
         return await this.dataSource.transaction(async (manager) => {
             const quote = await manager.findOne(Quote, {
                 where: { id: quoteId },
-                relations: ['post', 'post.customer', 'provider', 'revisions'],
+                relations: ['post', 'post.customer', 'provider', 'revisions', 'customRequest'],
                 lock: { mode: 'pessimistic_write' },
             });
 
@@ -85,20 +85,25 @@ export class OrderService {
             const serviceFee = this.calculateServiceFee(price);
             const totalAmount = price + serviceFee;
 
+            const customerId = quote.post?.customerId ?? quote.customRequest?.customerId ?? '';
+            const title = quote.post?.title ?? quote.customRequest?.title ?? 'Đơn dịch vụ';
+            const location = quote.post?.location ?? quote.customRequest?.location;
+            const scheduledAt = quote.post?.desiredTime ?? quote.customRequest?.desiredTime;
+
             const order = manager.create(Order, {
                 orderNumber,
-                customerId: quote.post.customerId,
+                customerId,
                 providerId: quote.providerId,
                 quoteId,
-                title: quote.post.title,
+                title,
                 description: quote.description,
                 price,
                 serviceFee,
                 totalAmount,
-                status: OrderStatus.IN_PROGRESS, 
+                status: OrderStatus.IN_PROGRESS,
                 paymentStatus: PaymentStatus.PENDING,
-                location: quote.post.location,
-                scheduledAt: quote.post.desiredTime,
+                location,
+                scheduledAt,
                 estimatedDuration: quote.estimatedDuration,
                 startedAt: new Date(),
             });

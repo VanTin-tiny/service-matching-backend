@@ -1,3 +1,4 @@
+import { CustomRequest } from '@/modules/custom-requests/entities/custom-request.entity';
 import { NotificationsModule } from '@/modules/notifications/notifications.module';
 import { Quote } from '@/modules/quotes/entities/quote.entity';
 import { Module } from '@nestjs/common';
@@ -11,7 +12,7 @@ import { Message } from './entities/message.entity';
 
 @Module({
     imports: [
-        TypeOrmModule.forFeature([Conversation, Message, Quote]),
+        TypeOrmModule.forFeature([Conversation, Message, Quote, CustomRequest]),
         JwtModule.register({
             secret: process.env.JWT_SECRET || 'your-secret-key',
             signOptions: { expiresIn: '7d' },

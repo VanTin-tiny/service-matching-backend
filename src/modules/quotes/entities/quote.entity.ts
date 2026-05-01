@@ -1,3 +1,4 @@
+import { CustomRequest } from '@/modules/custom-requests/entities/custom-request.entity';
 import { PostCustomer } from '@/modules/posts/entities/post.entity';
 import { User } from '@/modules/users/entities/user.entity';
 import {
@@ -19,17 +20,26 @@ import { QuoteRevision } from './quote-revision.entity';
 @Index(['postId', 'providerId', 'status'])
 @Index(['providerId', 'status', 'createdAt'])
 @Index(['postId', 'status', 'createdAt'])
+@Index(['customRequestId', 'providerId'])
 export class Quote {
     @PrimaryGeneratedColumn('uuid')
     id!: string;
 
-    @Column({ name: 'post_id' })
+    @Column({ name: 'post_id', nullable: true })
     @Index()
-    postId!: string;
+    postId?: string;
 
-    @ManyToOne(() => PostCustomer, { onDelete: 'CASCADE' })
+    @ManyToOne(() => PostCustomer, { nullable: true, onDelete: 'CASCADE' })
     @JoinColumn({ name: 'post_id' })
-    post!: PostCustomer;
+    post?: PostCustomer;
+
+    @Column({ name: 'custom_request_id', nullable: true })
+    @Index()
+    customRequestId?: string;
+
+    @ManyToOne(() => CustomRequest, { nullable: true, onDelete: 'CASCADE' })
+    @JoinColumn({ name: 'custom_request_id' })
+    customRequest?: CustomRequest;
 
     @Column({ name: 'provider_id' })
     @Index()
