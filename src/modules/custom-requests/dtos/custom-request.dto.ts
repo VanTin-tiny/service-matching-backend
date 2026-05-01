@@ -75,6 +75,31 @@ export class CreateCustomRequestDto {
     budget?: number;
 }
 
+export class AcceptCustomRequestDto {
+    @ApiProperty({ description: 'Quoted price in VND', example: 500000 })
+    @IsNumber({ maxDecimalPlaces: 2 })
+    @IsPositive()
+    acceptedPrice!: number;
+
+    @ApiProperty({ description: 'Scope of work / quote description', example: 'Kiểm tra và thay thế toàn bộ hệ thống điện khu vực phòng khách' })
+    @IsString()
+    @IsNotEmpty()
+    @MaxLength(2000)
+    quoteDescription!: string;
+
+    @ApiPropertyOptional({ description: 'Estimated duration in minutes', example: 120 })
+    @IsNumber()
+    @IsPositive()
+    @IsOptional()
+    estimatedDuration?: number;
+
+    @ApiPropertyOptional({ description: 'Terms and conditions' })
+    @IsString()
+    @MaxLength(1000)
+    @IsOptional()
+    terms?: string;
+}
+
 export class RejectCustomRequestDto {
     @ApiPropertyOptional({ description: 'Reason for rejection' })
     @IsOptional()

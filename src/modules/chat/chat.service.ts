@@ -299,6 +299,41 @@ export class ChatService {
         return saved;
     }
 
+    async createOrderConversation(
+        orderId: string,
+        customerId: string,
+        providerId: string,
+        orderTitle: string,
+    ): Promise<Conversation> {
+        const existing = await this.conversationRepo.findOne({
+            where: { orderId },
+        });
+
+        if (existing) {
+            this.logger.log(`Order conversation already exists for order ${orderId}`);
+            return existing;
+        }
+
+        const conversation = this.conversationRepo.create({
+            customerId,
+            providerId,
+            orderId,
+            type: ConversationType.ORDER_CHAT,
+            isActive: true,
+        });
+
+        const saved = await this.conversationRepo.save(conversation);
+
+        await this.sendSystemMessage(
+            saved.id,
+            `Đơn hàng "${orderTitle}" đã hoàn thành!\n` +
+            `Bạn có thể dùng cuộc trò chuyện này để liên lạc thêm, trao đổi về bảo hành, hoặc đánh giá dịch vụ.`,
+        );
+
+        this.logger.log(`Order conversation created: ${saved.id} for order ${orderId}`);
+        return saved;
+    }
+
     async getUserConversations(userId: string): Promise<Conversation[]> {
         return await this.conversationRepo.find({
             where: [{ customerId: userId }, { providerId: userId }],

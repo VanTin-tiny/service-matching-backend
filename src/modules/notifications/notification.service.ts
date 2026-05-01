@@ -189,7 +189,7 @@ export class NotificationService {
             type: NotificationType.ORDER_CREATED,
             title: 'Đơn hàng đã được tạo',
             message: `Thợ đã xác nhận và đơn hàng "${orderTitle}" đã được tạo. Công việc đang được thực hiện!`,
-            metadata: { orderId },
+            metadata: { orderId, providerId },
             actionUrl: `/orders/${orderId}`,
         });
     }
@@ -314,6 +314,21 @@ export class NotificationService {
         });
     }
 
+    async notifyReviewReply(
+        customerId: string,
+        reviewId: string,
+        providerName: string,
+    ): Promise<void> {
+        await this.creationService.createNotification({
+            userId: customerId,
+            type: NotificationType.REVIEW_REPLY_RECEIVED,
+            title: 'Thợ đã phản hồi đánh giá của bạn',
+            message: `${providerName} đã phản hồi đánh giá của bạn.`,
+            metadata: { reviewId, providerName },
+            actionUrl: `/reviews/${reviewId}`,
+        });
+    }
+
     // ============ MESSAGE NOTIFICATIONS ============
 
     async notifyNewMessage(
@@ -390,6 +405,29 @@ export class NotificationService {
                 providerName: data.providerName,
             },
             actionUrl: `/custom-requests/${data.customRequestId}`,
+        });
+    }
+
+    async notifyDirectRequestQuoted(
+        customerId: string,
+        data: DirectRequestNotificationData,
+    ): Promise<void> {
+        const priceText = data.quotedPrice
+            ? ` với giá ${data.quotedPrice.toLocaleString('vi-VN')}đ`
+            : '';
+
+        await this.creationService.createNotification({
+            userId: customerId,
+            type: NotificationType.DIRECT_REQUEST_ACCEPTED,
+            title: 'Thợ đã chấp nhận và gửi báo giá',
+            message: `${data.providerName || 'Thợ'} đã chấp nhận yêu cầu "${data.requestTitle}"${priceText}. Hãy xem báo giá và xác nhận!`,
+            metadata: {
+                customRequestId: data.customRequestId,
+                providerName: data.providerName,
+                quotedPrice: data.quotedPrice,
+                quoteId: data.quoteId,
+            },
+            actionUrl: `/custom-requests/${data.customRequestId}/quote`,
         });
     }
 

@@ -33,6 +33,25 @@ export class CustomRequestNotificationService {
         }
     }
 
+    async notifyRequestAcceptedWithQuote(
+        request: CustomRequest,
+        providerName: string,
+        quotedPrice: number,
+        quoteId: string,
+    ): Promise<void> {
+        try {
+            await this.notificationService.notifyDirectRequestQuoted(request.customerId, {
+                customRequestId: request.id,
+                requestTitle: request.title,
+                providerName,
+                quotedPrice,
+                quoteId,
+            });
+        } catch {
+            this.logger.error(`Failed to notify direct request quoted: ${request.id}`);
+        }
+    }
+
     async notifyRequestRejected(
         request: CustomRequest,
         providerName: string,
