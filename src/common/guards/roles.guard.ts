@@ -1,4 +1,4 @@
-import { ROLES_KEY } from '@/common/decorators/@Roles';
+import { ROLES_KEY } from '@/common/decorators/roles.decorator';
 import { UserRole } from '@/common/enums/user-role.enum';
 
 import { JwtPayload } from '@/modules/auth/interfaces/jwt-payload.interface';

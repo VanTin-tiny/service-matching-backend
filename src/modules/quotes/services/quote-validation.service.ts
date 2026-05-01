@@ -1,7 +1,7 @@
 import { PostCustomer } from '@/modules/posts/entities/post.entity';
 import { PostRepository } from '@/modules/posts/repositories/post.repository';
 import { User } from '@/modules/users/entities/user.entity';
-import { UserRepository } from '@/modules/users/repositorys/user.repository';
+import { UserRepository } from '@/modules/users/repositories/user.repository';
 import {
     BadRequestException,
     ConflictException,

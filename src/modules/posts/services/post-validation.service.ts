@@ -1,5 +1,5 @@
 import { ModerationService } from '@/modules/moderation/moderation.service';
-import { UserRepository } from '@/modules/users/repositorys/user.repository';
+import { UserRepository } from '@/modules/users/repositories/user.repository';
 import {
     BadRequestException,
     ForbiddenException,

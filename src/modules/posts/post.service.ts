@@ -1,6 +1,6 @@
 import { UploadService } from '@/common/upload/upload.service';
 import { JwtPayload } from '@/modules/auth/interfaces/jwt-payload.interface';
-import { UserRepository } from '@/modules/users/repositorys/user.repository';
+import { UserRepository } from '@/modules/users/repositories/user.repository';
 
 import { Injectable, Logger } from '@nestjs/common';
 import {

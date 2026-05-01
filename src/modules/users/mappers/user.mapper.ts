@@ -1,5 +1,5 @@
 import { User } from '@/modules/users/entities/user.entity';
-import { UserMapper } from '@/modules/users/interface/user.interface';
+import { UserMapper } from '@/modules/users/interfaces/user.interface';
 import { BadRequestException } from '@nestjs/common';
 
 export function toUser(user: User): UserMapper {

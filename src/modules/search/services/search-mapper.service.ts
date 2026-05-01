@@ -1,6 +1,6 @@
 import { PostCustomer } from '@/modules/posts/entities/post.entity';
 import { Profile } from '@/modules/profile/entities/profile.entity';
-import { ProviderTrade } from '@/modules/profile/entities/providertrade.entity';
+import { ProviderTrade } from '@/modules/profile/entities/provider-trade.entity';
 import { Trade } from '@/modules/profile/entities/trade.entity';
 import { Injectable } from '@nestjs/common';
 import {

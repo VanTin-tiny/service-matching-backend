@@ -1,7 +1,7 @@
 import { UploadService } from '@/common/upload/upload.service';
 import { JwtPayload } from '@/modules/auth/interfaces/jwt-payload.interface';
-import { toProfile } from '@/modules/profile/mapper/profile-mapper';
-import { toUser } from '@/modules/users/mapper/user.mapper';
+import { toProfile } from '@/modules/profile/mappers/profile.mapper';
+import { toUser } from '@/modules/users/mappers/user.mapper';
 import {
     BadRequestException,
     ConflictException,
@@ -20,7 +20,7 @@ import {
     UpdateContactDto,
     UpdateProfileDto,
 } from '../dtos/profile.dto';
-import { ProfileRepository } from '../repositorys/profile-repository';
+import { ProfileRepository } from '../repositories/profile.repository';
 import { ProfileDomainService } from './profile-domain.service';
 import { ProfileResponseBuilder } from './profile-response-builder.service';
 

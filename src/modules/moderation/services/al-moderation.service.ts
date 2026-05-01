@@ -2,7 +2,6 @@ import { ModerationConfig } from '@/config/moderation.config';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ModerationRequest, ModerationResult } from '../interfaces/moderation.interface';
-import { OllamaModerationService } from './ollama-moderation.service';
 import { QwenModerationService } from './qwen-moderation.service';
 
 
@@ -13,7 +12,6 @@ export class AIModerationService {
 
     constructor(
         private readonly configService: ConfigService,
-        private readonly ollamaService: OllamaModerationService,
         private readonly qwenService: QwenModerationService,
     ) {
         this.config = this.configService.get<ModerationConfig>('moderation')!;
@@ -33,7 +31,6 @@ export class AIModerationService {
 
             case 'ollama':
                 this.logger.debug('Using Ollama provider');
-                return this.ollamaService.moderateContent(request);
 
             default:
                 this.logger.warn(`Unknown provider: ${this.config.provider}, using Qwen as default`);
@@ -58,14 +55,6 @@ export class AIModerationService {
                 };
             }
 
-            if (provider === 'ollama') {
-                const isHealthy = await this.ollamaService.checkHealth();
-                return {
-                    provider: 'ollama',
-                    isHealthy,
-                    message: isHealthy ? 'Ollama service is operational' : 'Ollama service is down',
-                };
-            }
 
             return {
                 provider,

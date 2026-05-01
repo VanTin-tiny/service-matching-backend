@@ -1,4 +1,4 @@
-import { Transactional, TransactionManager } from '@/common/decorators/@Transaction';
+import { Transactional, TransactionManager } from '@/common/decorators/transaction.decorator';
 import {
     InternalServerException
 } from '@/common/exceptions';
@@ -12,7 +12,7 @@ import {
 import { UserRole } from '@/common/enums/user-role.enum';
 import { JwtService } from '@/common/services/jwt.service';
 import { ErrorUtil } from '@/common/utils/error.util';
-import { ProfileRepository } from '@/modules/profile/repositorys/profile-repository';
+import { ProfileRepository } from '@/modules/profile/repositories/profile.repository';
 import { BadRequestException, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { EntityManager } from 'typeorm';
 import { AUTH_ERROR_CODES } from './constants/auth.constants';

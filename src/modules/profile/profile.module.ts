@@ -6,7 +6,7 @@ import { User } from '@/modules/users/entities/user.entity';
 import { Profile } from './entities/profile.entity';
 
 import { ProfileController } from './controllers/profile.controller';
-import { ProfileRepository } from './repositorys/profile-repository';
+import { ProfileRepository } from './repositories/profile.repository';
 import { ProfileDomainService } from './services/profile-domain.service';
 import { ProfileResponseBuilder } from './services/profile-response-builder.service';
 import { ProfileService } from './services/profile.service';

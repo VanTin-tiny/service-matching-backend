@@ -17,12 +17,12 @@ import { Server, Socket } from 'socket.io';
         credentials: true,
     },
 })
-export class NotificationsGateway
+export class NotificationGateway
     implements OnGatewayConnection, OnGatewayDisconnect {
     @WebSocketServer()
     server!: Server;
 
-    private readonly logger = new Logger(NotificationsGateway.name);
+    private readonly logger = new Logger(NotificationGateway.name);
     private userSockets = new Map<string, Set<string>>(); 
 
     constructor(private readonly jwtService: JwtService) { }

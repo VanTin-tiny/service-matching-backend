@@ -2,7 +2,7 @@ import { UserRole } from '@/common/enums/user-role.enum';
 import { PostCustomer } from '@/modules/posts/entities/post.entity';
 import { PostStatus } from '@/modules/posts/enums/post-status.enum';
 import { Profile } from '@/modules/profile/entities/profile.entity';
-import { ProviderTrade } from '@/modules/profile/entities/providertrade.entity';
+import { ProviderTrade } from '@/modules/profile/entities/provider-trade.entity';
 import { Trade } from '@/modules/profile/entities/trade.entity';
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';

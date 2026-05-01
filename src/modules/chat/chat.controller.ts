@@ -17,13 +17,13 @@ import {
     ApiResponse,
     ApiTags,
 } from '@nestjs/swagger';
-import { CurrentUserId } from '../../common/decorators/@CurrentUserId';
+import { CurrentUserId } from '../../common/decorators/current-user-id.decorator';
 import { ChatService } from './chat.service';
 import {
     CreateDirectConversationDto,
     GetMessagesQueryDto,
     SendMessageDto,
-} from './dto/chat.dto';
+} from './dtos/chat.dto';
 
 @ApiTags('Chat')
 @Controller('chat')

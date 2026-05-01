@@ -1,4 +1,8 @@
 node_modules
+dist/
+
+# Build artifacts
+*.tsbuildinfo
 
 .env
 .env.*

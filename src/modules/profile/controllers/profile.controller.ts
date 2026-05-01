@@ -1,4 +1,4 @@
-import { CurrentUser } from '@/common/decorators/@CurrentUser';
+import { CurrentUser } from '@/common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '@/common/guards/jwt-auth.guard';
 import { JwtPayload } from '@/modules/auth/interfaces/jwt-payload.interface';
 import {

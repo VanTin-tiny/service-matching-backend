@@ -1,7 +1,7 @@
-import { Transactional, TransactionManager } from '@/common/decorators/@Transaction';
+import { Transactional, TransactionManager } from '@/common/decorators/transaction.decorator';
 import { InternalServerException } from '@/common/exceptions';
 import { ErrorUtil } from '@/common/utils/error.util';
-import { UserRepository } from '@/modules/users/repositorys/user.repository';
+import { UserRepository } from '@/modules/users/repositories/user.repository';
 import { Injectable, Logger } from '@nestjs/common';
 import * as crypto from 'crypto';
 import { EntityManager } from 'typeorm';

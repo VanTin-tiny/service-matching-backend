@@ -1,4 +1,4 @@
-import { CurrentUserId } from '@/common/decorators/@CurrentUserId';
+import { CurrentUserId } from '@/common/decorators/current-user-id.decorator';
 
 import { BaseResponseDto } from '@/common/dtos/base-response.dto';
 import { JwtAuthGuard } from '@/common/guards/jwt-auth.guard';
