@@ -6,7 +6,7 @@ import {
     OneToMany,
     PrimaryGeneratedColumn,
 } from 'typeorm';
-import { ProviderTrade } from './providertrade.entity';
+import { ProviderTrade } from './provider-trade.entity';
 
 @Entity('trades')
 @Index(['slug'], { unique: true })

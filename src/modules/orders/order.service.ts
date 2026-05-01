@@ -14,7 +14,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
-import { CancelOrderDto, CreateOrderDto } from './dto/order.dto';
+import { CancelOrderDto, CreateOrderDto } from './dtos/order.dto';
 import { Order, OrderStatus, PaymentMethod, PaymentStatus } from './entities/order.entity';
 
 @Injectable()

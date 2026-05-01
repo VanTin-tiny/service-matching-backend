@@ -9,7 +9,7 @@ import { Reflector } from '@nestjs/core';
 import { Observable, throwError } from 'rxjs';
 import { catchError, tap } from 'rxjs/operators';
 import { DataSource, QueryRunner } from 'typeorm';
-import { TRANSACTION_KEY } from '../decorators/@Transaction';
+import { TRANSACTION_KEY } from '../decorators/transaction.decorator';
 
 @Injectable()
 export class TransactionInterceptor implements NestInterceptor {

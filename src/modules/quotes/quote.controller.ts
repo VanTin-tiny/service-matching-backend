@@ -1,4 +1,4 @@
-import { Roles } from '@/common/decorators/@Roles';
+import { Roles } from '@/common/decorators/roles.decorator';
 import { UserRole } from '@/common/enums/user-role.enum';
 import { JwtAuthGuard } from '@/common/guards/jwt-auth.guard';
 import { RolesGuard } from '@/common/guards/roles.guard';
@@ -21,7 +21,7 @@ import {
     ApiResponse,
     ApiTags,
 } from '@nestjs/swagger';
-import { CurrentUserId } from '../../common/decorators/@CurrentUserId';
+import { CurrentUserId } from '../../common/decorators/current-user-id.decorator';
 import {
     CancelQuoteDto,
     CreateQuoteDto,

@@ -1,5 +1,5 @@
 import { ProfileMapper } from '@/modules/profile/interfaces/profile.interface';
-import { UserMapper } from '@/modules/users/interface/user.interface';
+import { UserMapper } from '@/modules/users/interfaces/user.interface';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {

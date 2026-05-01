@@ -1,5 +1,5 @@
-import { CurrentUser } from '@/common/decorators/@CurrentUser';
-import { Roles } from '@/common/decorators/@Roles';
+import { CurrentUser } from '@/common/decorators/current-user.decorator';
+import { Roles } from '@/common/decorators/roles.decorator';
 import { UserRole } from '@/common/enums/user-role.enum';
 import { JwtAuthGuard } from '@/common/guards/jwt-auth.guard';
 import { RolesGuard } from '@/common/guards/roles.guard';

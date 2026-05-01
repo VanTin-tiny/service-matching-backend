@@ -6,7 +6,6 @@ import { ModerationLog } from './entities/moderation-log.entity';
 import { ModerationLogRepository } from './repositories/moderation-log.repository';
 import { AIModerationService } from './services/al-moderation.service';
 import { ModerationService } from './moderation.service';
-import { OllamaModerationService } from './services/ollama-moderation.service';
 import { QwenModerationService } from './services/qwen-moderation.service';
 
 @Module({
@@ -15,7 +14,6 @@ import { QwenModerationService } from './services/qwen-moderation.service';
         TypeOrmModule.forFeature([ModerationLog]),
     ],
     providers: [
-        OllamaModerationService,
         QwenModerationService,
         AIModerationService,
         ModerationService,

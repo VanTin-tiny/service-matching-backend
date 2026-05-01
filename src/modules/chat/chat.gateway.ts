@@ -12,7 +12,7 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { ChatService } from './chat.service';
-import { SendMessageDto } from './dto/chat.dto';
+import { SendMessageDto } from './dtos/chat.dto';
 
 @Injectable()
 @WebSocketGateway({

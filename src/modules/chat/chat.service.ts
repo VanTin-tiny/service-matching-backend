@@ -15,7 +15,7 @@ import { Repository } from 'typeorm';
 import {
     GetMessagesQueryDto,
     SendMessageDto
-} from './dto/chat.dto';
+} from './dtos/chat.dto';
 import { Conversation, ConversationType } from './entities/conversation.entity';
 import { Message, MessageType } from './entities/message.entity';
 

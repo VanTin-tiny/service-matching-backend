@@ -15,7 +15,7 @@ import {
     VIETNAM_PROVINCES,
 } from '../dtos/search.dto';
 import { SearchRepository } from '../repositories/search.repository';
-import { SearchMapperService } from './search mapper.service';
+import { SearchMapperService } from './search-mapper.service';
 
 @Injectable()
 export class SearchService {

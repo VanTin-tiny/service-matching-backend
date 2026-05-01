@@ -1,5 +1,5 @@
 import { PostRepository } from '@/modules/posts/repositories/post.repository';
-import { UserRepository } from '@/modules/users/repositorys/user.repository';
+import { UserRepository } from '@/modules/users/repositories/user.repository';
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import {
     CreateQuoteDto,

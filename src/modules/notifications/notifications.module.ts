@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Notification } from './entities/notification.entity';
-import { NotificationsGateway } from './gateways/notifications.gateway';
+import { NotificationGateway } from './gateways/notification.gateway';
 import { NotificationController } from './notification.controller';
 import { NotificationService } from './notification.service';
 import { NotificationRepository } from './repositories/notification.repository';
@@ -23,7 +23,7 @@ import { NotificationQueryService } from './services/notification-query.service'
     providers: [
         NotificationService,
         NotificationRepository,
-        NotificationsGateway,
+        NotificationGateway,
         NotificationQueryService,
         NotificationCreationService,
         NotificationActionService,
@@ -32,7 +32,7 @@ import { NotificationQueryService } from './services/notification-query.service'
     exports: [
         NotificationService,
         NotificationRepository,
-        NotificationsGateway,
+        NotificationGateway,
 
         NotificationQueryService,
         NotificationCreationService,

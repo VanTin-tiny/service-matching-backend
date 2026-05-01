@@ -7,7 +7,7 @@ import {
 import { User } from '@/modules/users/entities/user.entity';
 import { Injectable } from '@nestjs/common';
 import { EntityManager } from 'typeorm';
-import { UserRepository } from '../../users/repositorys/user.repository';
+import { UserRepository } from '../../users/repositories/user.repository';
 import { PasswordUtil } from '../utils/password.util';
 
 
