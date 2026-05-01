@@ -12,12 +12,23 @@ export class QuoteNotificationService {
         private readonly notificationService: NotificationService,
     ) { }
 
+    private getContextTitle(quote: Quote): string {
+        return quote.post?.title ?? quote.customRequest?.title ?? 'Yêu cầu dịch vụ';
+    }
+
+    private getContextId(quote: Quote): string {
+        return quote.postId ?? quote.customRequestId ?? quote.id;
+    }
+
+    private getCustomerFromQuote(quote: Quote): User | undefined {
+        return quote.post?.customer ?? quote.customRequest?.customer;
+    }
 
     async notifyNewQuote(
         customerId: string,
         quote: Quote,
         provider: User,
-        post: PostCustomer,
+        post: PostCustomer | { id: string; title: string; customerId: string; budget?: number },
     ): Promise<void> {
         try {
             await this.notificationService.notifyNewQuote(customerId, {
@@ -38,14 +49,17 @@ export class QuoteNotificationService {
         customerId: string
     ): Promise<void> {
         try {
-            const customerName = quote.post.customer?.profile?.fullName || 'Khách hàng';
+            const customer = this.getCustomerFromQuote(quote);
+            const customerName = customer?.profile?.fullName || 'Khách hàng';
+            const contextTitle = this.getContextTitle(quote);
+            const contextId = this.getContextId(quote);
 
             await this.notificationService.notifyQuoteAcceptedForChat(
                 quote.providerId,
                 {
                     quoteId: quote.id,
-                    postId: quote.postId,
-                    postTitle: quote.post.title,
+                    postId: contextId,
+                    postTitle: contextTitle,
                     customerName,
                 }
             );
@@ -63,13 +77,15 @@ export class QuoteNotificationService {
         try {
             const providerName = quote.provider?.profile?.fullName || 'Thợ';
             const newPrice = parseFloat(quote.price.toString());
+            const contextTitle = this.getContextTitle(quote);
+            const contextId = this.getContextId(quote);
 
             await this.notificationService.notifyQuoteRevised(
                 customerId,
                 {
                     quoteId: quote.id,
-                    postId: quote.postId,
-                    postTitle: quote.post.title,
+                    postId: contextId,
+                    postTitle: contextTitle,
                     providerName,
                     newPrice,
                     oldPrice,
@@ -88,14 +104,17 @@ export class QuoteNotificationService {
         notes?: string,
     ): Promise<void> {
         try {
-            const customerName = quote.post.customer?.profile?.fullName || 'Khách hàng';
+            const customer = this.getCustomerFromQuote(quote);
+            const customerName = customer?.profile?.fullName || 'Khách hàng';
+            const contextTitle = this.getContextTitle(quote);
+            const contextId = this.getContextId(quote);
 
             await this.notificationService.notifyOrderRequested(
                 quote.providerId,
                 {
                     quoteId: quote.id,
-                    postId: quote.postId,
-                    postTitle: quote.post.title,
+                    postId: contextId,
+                    postTitle: contextTitle,
                     customerName,
                     price: parseFloat(quote.price.toString()),
                     revisionNumber,
@@ -110,10 +129,13 @@ export class QuoteNotificationService {
 
     async notifyQuoteRejected(quote: Quote, reason?: string): Promise<void> {
         try {
+            const contextTitle = this.getContextTitle(quote);
+            const contextId = this.getContextId(quote);
+
             await this.notificationService.notifyQuoteRejected(quote.providerId, {
                 quoteId: quote.id,
-                postId: quote.postId,
-                postTitle: quote.post.title,
+                postId: contextId,
+                postTitle: contextTitle,
                 reason,
             });
         } catch {
@@ -128,13 +150,15 @@ export class QuoteNotificationService {
     ): Promise<void> {
         try {
             const providerName = quote.provider?.profile?.fullName || 'Thợ';
+            const contextTitle = this.getContextTitle(quote);
+            const contextId = this.getContextId(quote);
 
             await this.notificationService.notifyQuoteCancelled(
                 customerId,
                 {
                     quoteId: quote.id,
-                    postId: quote.postId,
-                    postTitle: quote.post.title,
+                    postId: contextId,
+                    postTitle: contextTitle,
                     providerName,
                     reason,
                 }

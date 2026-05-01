@@ -216,6 +216,21 @@ export class QuoteController {
         return await this.quoteService.getPostQuotes(postId, customerId);
     }
 
+    @Get('custom-request/:customRequestId')
+    @Roles(UserRole.CUSTOMER)
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({
+        summary: '[Customer] Lấy tất cả quote của một yêu cầu riêng',
+        description: 'Xem quotes mà thợ đã gửi cho yêu cầu riêng của mình sau khi chấp nhận'
+    })
+    @ApiResponse({ status: 200, description: 'Success' })
+    async getCustomRequestQuotes(
+        @Param('customRequestId') customRequestId: string,
+        @CurrentUserId('id') customerId: string,
+    ) {
+        return await this.quoteService.getCustomRequestQuotes(customRequestId, customerId);
+    }
+
 
     @Get(':id')
     @HttpCode(HttpStatus.OK)

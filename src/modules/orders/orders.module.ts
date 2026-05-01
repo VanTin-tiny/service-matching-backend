@@ -1,3 +1,4 @@
+import { CustomRequest } from '@/modules/custom-requests/entities/custom-request.entity';
 import { ChatModule } from '@/modules/chat/chat.module';
 import { NotificationsModule } from '@/modules/notifications/notifications.module';
 import { PostCustomer } from '@/modules/posts/entities/post.entity';
@@ -11,13 +12,13 @@ import { OrderService } from './order.service';
 
 @Module({
     imports: [
-        TypeOrmModule.forFeature([Order, Quote, PostCustomer]),
+        TypeOrmModule.forFeature([Order, Quote, PostCustomer, CustomRequest]),
         NotificationsModule,
         ChatModule,
-        QuoteModule
+        QuoteModule,
     ],
     controllers: [OrderController],
     providers: [OrderService],
     exports: [OrderService],
 })
-export class OrdersModule { }
+export class OrdersModule {}

@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Notification } from './entities/notification.entity';
 import { NotificationType } from './enums/notification.enum';
-import { QuoteNotificationData } from './interfaces/notification.interface';
+import { DirectRequestNotificationData, QuoteNotificationData } from './interfaces/notification.interface';
 import { NotificationActionService } from './services/notification-action.service';
 import { NotificationCreationService } from './services/notification-creation.service';
 import { NotificationQueryService } from './services/notification-query.service';
@@ -350,6 +350,67 @@ export class NotificationService {
                 metadata,
             });
         }
+    }
+
+    // ============ DIRECT REQUEST NOTIFICATIONS ============
+
+    async notifyDirectRequestReceived(
+        providerId: string,
+        data: DirectRequestNotificationData,
+    ): Promise<void> {
+        const budgetText = data.budget
+            ? ` - Ngân sách: ${data.budget.toLocaleString('vi-VN')}đ`
+            : '';
+
+        await this.creationService.createNotification({
+            userId: providerId,
+            type: NotificationType.DIRECT_REQUEST_RECEIVED,
+            title: 'Yêu cầu dịch vụ mới',
+            message: `${data.customerName || 'Khách hàng'} đã gửi yêu cầu riêng cho bạn: "${data.requestTitle}"${budgetText}`,
+            metadata: {
+                customRequestId: data.customRequestId,
+                customerName: data.customerName,
+                budget: data.budget,
+            },
+            actionUrl: `/custom-requests/${data.customRequestId}`,
+        });
+    }
+
+    async notifyDirectRequestAccepted(
+        customerId: string,
+        data: DirectRequestNotificationData,
+    ): Promise<void> {
+        await this.creationService.createNotification({
+            userId: customerId,
+            type: NotificationType.DIRECT_REQUEST_ACCEPTED,
+            title: 'Yêu cầu được chấp nhận',
+            message: `${data.providerName || 'Thợ'} đã chấp nhận yêu cầu "${data.requestTitle}" của bạn. Hãy chờ thợ gửi báo giá!`,
+            metadata: {
+                customRequestId: data.customRequestId,
+                providerName: data.providerName,
+            },
+            actionUrl: `/custom-requests/${data.customRequestId}`,
+        });
+    }
+
+    async notifyDirectRequestRejected(
+        customerId: string,
+        data: DirectRequestNotificationData,
+    ): Promise<void> {
+        const reasonText = data.reason ? ` Lý do: ${data.reason}` : '';
+
+        await this.creationService.createNotification({
+            userId: customerId,
+            type: NotificationType.DIRECT_REQUEST_REJECTED,
+            title: 'Yêu cầu bị từ chối',
+            message: `${data.providerName || 'Thợ'} đã từ chối yêu cầu "${data.requestTitle}" của bạn.${reasonText}`,
+            metadata: {
+                customRequestId: data.customRequestId,
+                providerName: data.providerName,
+                reason: data.reason,
+            },
+            actionUrl: `/custom-requests/${data.customRequestId}`,
+        });
     }
 
     // ============ QUERY METHODS ============

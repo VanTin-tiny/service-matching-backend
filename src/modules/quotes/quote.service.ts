@@ -29,10 +29,31 @@ export class QuoteService {
         private readonly notificationService: QuoteNotificationService,
     ) { }
 
-    
+
     async createQuote(providerId: string, dto: CreateQuoteDto): Promise<Quote> {
+        if (!dto.postId && !dto.customRequestId) {
+            throw new BadRequestException('Either postId or customRequestId must be provided');
+        }
+
+        if (dto.postId && dto.customRequestId) {
+            throw new BadRequestException('Provide either postId or customRequestId, not both');
+        }
+
         const provider = await this.validationService.validateProvider(providerId);
-        const post = await this.validationService.validatePostForQuote(dto.postId, providerId);
+
+        if (dto.postId) {
+            return await this.createQuoteFromPost(providerId, provider, dto);
+        }
+
+        return await this.createQuoteFromCustomRequest(providerId, provider, dto);
+    }
+
+    private async createQuoteFromPost(
+        providerId: string,
+        provider: any,
+        dto: CreateQuoteDto,
+    ): Promise<Quote> {
+        const post = await this.validationService.validatePostForQuote(dto.postId!, providerId);
 
         this.validationService.validatePrice(dto.price, post.budget);
 
@@ -59,27 +80,78 @@ export class QuoteService {
         return savedQuote;
     }
 
-    
+    private async createQuoteFromCustomRequest(
+        providerId: string,
+        provider: any,
+        dto: CreateQuoteDto,
+    ): Promise<Quote> {
+        const customRequest = await this.validationService.validateCustomRequestForQuote(
+            dto.customRequestId!,
+            providerId,
+        );
+
+        this.validationService.validatePrice(dto.price, customRequest.budget);
+
+        const quote = this.quoteRepo.create({
+            customRequestId: dto.customRequestId,
+            providerId,
+            price: dto.price,
+            description: dto.description,
+            terms: dto.terms,
+            estimatedDuration: dto.estimatedDuration,
+            imageUrls: dto.imageUrls || [],
+        });
+
+        const savedQuote = await this.quoteRepo.save(quote);
+
+        // Notify the customer that a quote has been submitted on their custom request
+        const postLike = {
+            id: customRequest.id,
+            title: customRequest.title,
+            customerId: customRequest.customerId,
+            budget: customRequest.budget,
+        } as any;
+
+        await this.notificationService.notifyNewQuote(
+            customRequest.customerId,
+            savedQuote,
+            provider,
+            postLike,
+        );
+
+        this.logger.log(`Quote created: ${savedQuote.id} for custom request ${customRequest.id}`);
+        return savedQuote;
+    }
+
+
     async acceptQuoteForChat(quoteId: string, customerId: string): Promise<Quote> {
         const quote = await this.queryService.findQuoteWithRelations(quoteId, [
             'post',
+            'post.customer',
             'provider',
+            'customRequest',
         ]);
 
-        this.validationService.validatePostOwnership(quote.post, customerId);
+        this.validationService.validateCustomerAccessToQuote(quote, customerId);
         this.validationService.validateQuoteIsPending(quote);
-        this.validationService.validatePostIsOpen(quote.post);
+
+        if (quote.post) {
+            this.validationService.validatePostIsOpen(quote.post);
+        }
 
         return await this.statusService.acceptForChat(quote, customerId);
     }
 
-    
+
     async reviseQuote(
         quoteId: string,
         providerId: string,
         dto: ReviseQuoteDto,
     ): Promise<Quote> {
-        const quote = await this.queryService.findQuoteWithRelations(quoteId, ['post']);
+        const quote = await this.queryService.findQuoteWithRelations(quoteId, [
+            'post',
+            'customRequest',
+        ]);
 
         this.validationService.validateQuoteOwnership(quote, providerId);
 
@@ -87,7 +159,8 @@ export class QuoteService {
             throw new BadRequestException('Quote cannot be revised at this stage');
         }
 
-        this.validationService.validatePrice(dto.price, quote.post.budget);
+        const budget = quote.post?.budget ?? quote.customRequest?.budget;
+        this.validationService.validatePrice(dto.price, budget);
 
         return await this.statusService.reviseQuote(
             quote,
@@ -99,11 +172,14 @@ export class QuoteService {
         );
     }
 
-    
-    async requestOrder(quoteId: string, customerId: string): Promise<Quote> {
-        const quote = await this.queryService.findQuoteWithRelations(quoteId, ['post']);
 
-        this.validationService.validatePostOwnership(quote.post, customerId);
+    async requestOrder(quoteId: string, customerId: string): Promise<Quote> {
+        const quote = await this.queryService.findQuoteWithRelations(quoteId, [
+            'post',
+            'customRequest',
+        ]);
+
+        this.validationService.validateCustomerAccessToQuote(quote, customerId);
 
         if (!quote.canRequestOrder()) {
             throw new BadRequestException('Cannot request order for this quote');
@@ -112,7 +188,7 @@ export class QuoteService {
         return await this.statusService.requestOrder(quote, customerId);
     }
 
-    
+
     async updateQuote(
         quoteId: string,
         providerId: string,
@@ -121,6 +197,7 @@ export class QuoteService {
         const quote = await this.queryService.findQuoteWithRelations(quoteId, [
             'post',
             'provider',
+            'customRequest',
         ]);
 
         this.validationService.validateQuoteOwnership(quote, providerId);
@@ -136,13 +213,16 @@ export class QuoteService {
         return await this.quoteRepo.save(quote);
     }
 
-    
+
     async cancelQuote(
         quoteId: string,
         providerId: string,
         reason?: string,
     ): Promise<Quote> {
-        const quote = await this.queryService.findQuoteWithRelations(quoteId, ['post']);
+        const quote = await this.queryService.findQuoteWithRelations(quoteId, [
+            'post',
+            'customRequest',
+        ]);
 
         this.validationService.validateQuoteOwnership(quote, providerId);
         this.validationService.validateQuoteCanCancel(quote);
@@ -150,21 +230,24 @@ export class QuoteService {
         return await this.statusService.cancelQuote(quote, reason);
     }
 
-    
+
     async rejectQuote(
         quoteId: string,
         customerId: string,
         reason?: string,
     ): Promise<Quote> {
-        const quote = await this.queryService.findQuoteWithRelations(quoteId, ['post']);
+        const quote = await this.queryService.findQuoteWithRelations(quoteId, [
+            'post',
+            'customRequest',
+        ]);
 
-        this.validationService.validatePostOwnership(quote.post, customerId);
+        this.validationService.validateCustomerAccessToQuote(quote, customerId);
         this.validationService.validateQuoteIsPending(quote);
 
         return await this.statusService.rejectQuote(quote, reason);
     }
 
-    
+
     async getProviderQuotes(
         providerId: string,
         status?: string,
@@ -172,7 +255,7 @@ export class QuoteService {
         return await this.queryService.findProviderQuotes(providerId, status as any);
     }
 
-    
+
     async getPostQuotes(postId: string, customerId: string): Promise<Quote[]> {
         const post = await this.postRepository.findById(postId);
 
@@ -185,12 +268,29 @@ export class QuoteService {
         return await this.queryService.findPostQuotes(postId);
     }
 
-    
+    async getCustomRequestQuotes(customRequestId: string, customerId: string): Promise<Quote[]> {
+        const quotes = await this.quoteRepo.find({
+            where: { customRequestId },
+            relations: ['provider', 'provider.profile'],
+            order: { createdAt: 'DESC' },
+        });
+
+        if (quotes.length > 0 && quotes[0].customRequest) {
+            if (quotes[0].customRequest.customerId !== customerId) {
+                throw new NotFoundException('Custom request not found');
+            }
+        }
+
+        return quotes;
+    }
+
+
     async getQuoteById(quoteId: string, userId: string): Promise<Quote> {
         const quote = await this.queryService.findQuoteWithRelations(quoteId, [
             'post',
             'post.customer',
             'provider',
+            'customRequest',
         ]);
 
         this.validationService.validateQuoteAccess(quote, userId);
@@ -198,9 +298,12 @@ export class QuoteService {
         return quote;
     }
 
-    
+
     async getQuoteRevisionHistory(quoteId: string, userId: string) {
-        const quote = await this.queryService.findQuoteWithRelations(quoteId, ['post']);
+        const quote = await this.queryService.findQuoteWithRelations(quoteId, [
+            'post',
+            'customRequest',
+        ]);
         this.validationService.validateQuoteAccess(quote, userId);
 
         const revisions = await this.revisionService.getRevisionHistory(quoteId);
@@ -213,7 +316,7 @@ export class QuoteService {
         };
     }
 
-    
+
     async deleteQuote(quoteId: string, providerId: string): Promise<void> {
         const quote = await this.queryService.findQuoteById(quoteId);
 

@@ -1,3 +1,5 @@
+import { CustomRequest } from '@/modules/custom-requests/entities/custom-request.entity';
+import { CustomRequestStatus } from '@/modules/custom-requests/enums/custom-request-status.enum';
 import { PostCustomer } from '@/modules/posts/entities/post.entity';
 import { PostRepository } from '@/modules/posts/repositories/post.repository';
 import { User } from '@/modules/users/entities/user.entity';
@@ -9,11 +11,11 @@ import {
     Injectable,
     NotFoundException,
 } from '@nestjs/common';
-import { IsNull, Not } from 'typeorm';
+import { InjectRepository } from '@nestjs/typeorm';
+import { IsNull, Not, Repository } from 'typeorm';
 import { Quote } from '../entities/quote.entity';
 import { QuoteStatus } from '../enums/quote-status.enum';
 import { QuoteRepository } from '../repositories/quote.repository';
-
 
 
 @Injectable()
@@ -22,7 +24,9 @@ export class QuoteValidationService {
         private readonly userRepo: UserRepository,
         private readonly postRepo: PostRepository,
         private readonly quoteRepo: QuoteRepository,
-    ) { }
+        @InjectRepository(CustomRequest)
+        private readonly customRequestRepo: Repository<CustomRequest>,
+    ) {}
 
 
     async validateProvider(providerId: string): Promise<User> {
@@ -71,13 +75,53 @@ export class QuoteValidationService {
         return post;
     }
 
+    async validateCustomRequestForQuote(
+        customRequestId: string,
+        providerId: string,
+    ): Promise<CustomRequest> {
+        const customRequest = await this.customRequestRepo.findOne({
+            where: { id: customRequestId },
+        });
 
-    validatePrice(price: number, postBudget?: number): void {
+        if (!customRequest) {
+            throw new NotFoundException('Custom request not found');
+        }
+
+        if (customRequest.providerId !== providerId) {
+            throw new ForbiddenException('This custom request is not addressed to you');
+        }
+
+        if (customRequest.status !== CustomRequestStatus.ACCEPTED) {
+            throw new BadRequestException(
+                'Custom request must be accepted before you can submit a quote',
+            );
+        }
+
+        const existingQuote = await this.quoteRepo.findOne({
+            where: {
+                customRequestId,
+                providerId,
+                deletedAt: IsNull(),
+                status: Not(QuoteStatus.CANCELLED),
+            },
+        });
+
+        if (existingQuote) {
+            throw new ConflictException(
+                'You have already submitted a quote for this custom request',
+            );
+        }
+
+        return customRequest;
+    }
+
+
+    validatePrice(price: number, budget?: number): void {
         if (price <= 0) {
             throw new BadRequestException('Price must be greater than 0');
         }
 
-        if (postBudget && price > postBudget * 1.5) {
+        if (budget && price > budget * 1.5) {
             throw new BadRequestException(
                 'The offer price exceeded 150% of the customer is budget',
             );
@@ -99,6 +143,24 @@ export class QuoteValidationService {
             throw new ForbiddenException(
                 'You do not have permission to perform this action.',
             );
+        }
+    }
+
+    validateCustomRequestOwnership(customRequest: CustomRequest, customerId: string): void {
+        if (customRequest.customerId !== customerId) {
+            throw new ForbiddenException(
+                'You do not have permission to perform this action.',
+            );
+        }
+    }
+
+    validateCustomerAccessToQuote(quote: Quote, customerId: string): void {
+        if (quote.post) {
+            this.validatePostOwnership(quote.post, customerId);
+        } else if (quote.customRequest) {
+            this.validateCustomRequestOwnership(quote.customRequest, customerId);
+        } else {
+            throw new ForbiddenException('You do not have permission to perform this action.');
         }
     }
 
@@ -137,15 +199,18 @@ export class QuoteValidationService {
 
     validateQuoteAccess(quote: Quote, userId: string): void {
         const isOwner = quote.belongsTo(userId);
-        const isPostOwner = quote.post.belongsTo(userId);
 
-        if (!isOwner && !isPostOwner) {
+        let isCustomer = false;
+        if (quote.post) {
+            isCustomer = quote.post.belongsTo(userId);
+        } else if (quote.customRequest) {
+            isCustomer = quote.customRequest.customerId === userId;
+        }
+
+        if (!isOwner && !isCustomer) {
             throw new ForbiddenException(
                 'You do not have permission to view this quote',
             );
         }
     }
-
-
-
 }

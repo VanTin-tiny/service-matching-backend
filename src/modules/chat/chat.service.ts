@@ -40,7 +40,7 @@ export class ChatService {
     async createConversationFromQuote(quoteId: string): Promise<Conversation> {
         const quote = await this.quoteRepo.findOne({
             where: { id: quoteId },
-            relations: ['post', 'post.customer', 'provider'],
+            relations: ['post', 'post.customer', 'provider', 'customRequest'],
         });
 
         if (!quote) {
@@ -62,24 +62,36 @@ export class ChatService {
             return existing;
         }
 
+        // Determine customerId: from post (public quote) or custom request (direct request quote)
+        const customerId = quote.post?.customerId ?? quote.customRequest?.customerId;
+        if (!customerId) {
+            throw new BadRequestException('Cannot determine customer for this quote');
+        }
+
+        const isDirectRequest = !!quote.customRequestId;
         const conversation = this.conversationRepo.create({
-            customerId: quote.post.customerId,
+            customerId,
             providerId: quote.providerId,
             quoteId,
-            type: ConversationType.QUOTE_BASED,
+            type: isDirectRequest ? ConversationType.DIRECT_REQUEST : ConversationType.QUOTE_BASED,
             isActive: true,
         });
 
         const saved = await this.conversationRepo.save(conversation);
 
+        const contextTitle = isDirectRequest
+            ? (quote.customRequest?.title || 'Yêu cầu riêng')
+            : (quote.post?.title || 'Bài đăng');
+
         await this.sendSystemMessage(
             saved.id,
-            `Cuộc trò chuyện bắt đầu từ chào giá được chấp nhận.\n` +
+            `Cuộc trò chuyện bắt đầu từ báo giá được chấp nhận.\n` +
+            `Yêu cầu: ${contextTitle}\n` +
             `Giá hiện tại: ${parseFloat(quote.price.toString()).toLocaleString('vi-VN')}đ\n` +
             `Thời gian ước tính: ${quote.estimatedDuration || 'Chưa xác định'} phút`
         );
 
-        this.logger.log(`Conversation created from quote: ${saved.id}`);
+        this.logger.log(`Conversation created from quote: ${saved.id} (type: ${conversation.type})`);
         return saved;
     }
 

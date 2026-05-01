@@ -58,3 +58,12 @@ export interface SystemNotificationData {
     severity?: 'info' | 'warning' | 'error';
     actionUrl?: string;
 }
+
+export interface DirectRequestNotificationData {
+    customRequestId: string;
+    requestTitle: string;
+    customerName?: string;
+    providerName?: string;
+    budget?: number;
+    reason?: string;
+}
