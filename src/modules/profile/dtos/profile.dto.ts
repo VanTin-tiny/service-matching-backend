@@ -280,6 +280,26 @@ export class ProfileResponseDto {
     })
     isActive?: boolean | null;
 
+    @ApiPropertyOptional({
+        description: 'Average rating from customer reviews (1-5)',
+        example: 4.75,
+        minimum: 1,
+        maximum: 5,
+    })
+    averageRating?: number;
+
+    @ApiProperty({
+        description: 'Total number of reviews received',
+        example: 24,
+    })
+    reviewCount!: number;
+
+    @ApiProperty({
+        description: 'Number of uploaded certifications',
+        example: 2,
+    })
+    certificationCount!: number;
+
     @ApiProperty({
         description: 'Display name change information and restrictions',
         type: DisplayNameChangeInfoDto
@@ -333,10 +353,30 @@ export class PublicProfileResponseDto {
     bio?: string;
 
     @ApiProperty({
-        description: 'Verification badge status',
+        description: 'Account verification badge (email/phone verified)',
         example: true
     })
     isVerified?: boolean;
+
+    @ApiProperty({
+        description: 'Green checkmark: provider has at least one uploaded certification',
+        example: true,
+    })
+    hasCertification!: boolean;
+
+    @ApiPropertyOptional({
+        description: 'Average rating from customer reviews (1-5). Only present when reviewCount > 0',
+        example: 4.75,
+        minimum: 1,
+        maximum: 5,
+    })
+    averageRating?: number;
+
+    @ApiProperty({
+        description: 'Total number of customer reviews',
+        example: 24,
+    })
+    reviewCount!: number;
 
     @ApiProperty({
         description: 'Member since date',

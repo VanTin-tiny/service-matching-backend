@@ -10,11 +10,15 @@ import { v4 as uuidv4 } from 'uuid';
 
 
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'] as const;
+const ALLOWED_DOCUMENT_MIME_TYPES = ['application/pdf'] as const;
 const BUCKET_NAME = 'images' as const;
+const DOCUMENTS_BUCKET_NAME = 'documents' as const;
 const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
+const MAX_DOCUMENT_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
 const MAX_FILES_PER_UPLOAD = 10;
 
 type AllowedMimeType = (typeof ALLOWED_MIME_TYPES)[number];
+type AllowedDocumentMimeType = (typeof ALLOWED_DOCUMENT_MIME_TYPES)[number];
 
 
 export interface UploadResult {
@@ -134,6 +138,53 @@ export class UploadService {
         return succeeded;
     }
 
+    async uploadDocument(
+        file: Express.Multer.File,
+        folder: string,
+    ): Promise<UploadResult> {
+        this.validateDocument(file);
+
+        const fileName = this.buildFileName(folder, file.originalname);
+
+        const { error } = await this.supabase.storage
+            .from(DOCUMENTS_BUCKET_NAME)
+            .upload(fileName, file.buffer, {
+                contentType: file.mimetype,
+                upsert: false,
+            });
+
+        if (error) {
+            this.logger.error(`Document upload failed for [${fileName}]: ${error.message}`);
+            throw new InternalServerErrorException(`Document upload failed: ${error.message}`);
+        }
+
+        const { data: { publicUrl } } = this.supabase.storage
+            .from(DOCUMENTS_BUCKET_NAME)
+            .getPublicUrl(fileName);
+
+        this.logger.log(`Uploaded document: ${fileName} (${file.size} bytes)`);
+
+        return {
+            publicUrl,
+            fileName,
+            size: file.size,
+            mimeType: file.mimetype,
+        };
+    }
+
+    async deleteDocument(fileName: string): Promise<void> {
+        const { error } = await this.supabase.storage
+            .from(DOCUMENTS_BUCKET_NAME)
+            .remove([fileName]);
+
+        if (error) {
+            this.logger.error(`Document delete failed for [${fileName}]: ${error.message}`);
+            throw new InternalServerErrorException(`Document delete failed: ${error.message}`);
+        }
+
+        this.logger.log(`Deleted document: ${fileName}`);
+    }
+
     async deleteFile(fileName: string): Promise<void> {
         const { error } = await this.supabase.storage
             .from(BUCKET_NAME)
@@ -163,6 +214,24 @@ export class UploadService {
     }
 
     //Private Helpers
+
+    private validateDocument(file: Express.Multer.File): void {
+        if (!file) {
+            throw new BadRequestException('Document file is required');
+        }
+
+        if (!ALLOWED_DOCUMENT_MIME_TYPES.includes(file.mimetype as AllowedDocumentMimeType)) {
+            throw new BadRequestException(
+                `Invalid file type "${file.mimetype}". Only PDF files are allowed`,
+            );
+        }
+
+        if (file.size > MAX_DOCUMENT_SIZE_BYTES) {
+            throw new BadRequestException(
+                `File "${file.originalname}" exceeds max size of ${MAX_DOCUMENT_SIZE_BYTES / 1024 / 1024}MB`,
+            );
+        }
+    }
 
     private validateFile(file: Express.Multer.File): void {
         if (!file) {
