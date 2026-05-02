@@ -41,6 +41,7 @@ export enum NotificationType {
     QUOTE_ACCEPTED_FOR_CHAT = 'quote_accepted_for_chat',
     QUOTE_REVISED = 'quote_revised',
     ORDER_REQUESTED = 'order_requested',
+    ORDER_AWAITING_CONFIRMATION = 'order_awaiting_confirmation',
 }
 
 

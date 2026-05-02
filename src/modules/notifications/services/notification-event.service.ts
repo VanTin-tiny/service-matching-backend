@@ -191,6 +191,48 @@ export class NotificationEventService {
         });
     }
 
+    async notifyOrderAwaitingConfirmation(
+        providerId: string,
+        customerId: string,
+        orderId: string,
+        orderTitle: string,
+    ): Promise<void> {
+        await this.creationService.createNotification({
+            userId: providerId,
+            type: NotificationType.ORDER_AWAITING_CONFIRMATION,
+            title: 'Order confirmation required',
+            message: `A customer has accepted your quote for "${orderTitle}". Please confirm to proceed.`,
+            metadata: { orderId },
+            actionUrl: `/orders/${orderId}`,
+        });
+
+        await this.creationService.createNotification({
+            userId: customerId,
+            type: NotificationType.ORDER_CREATED,
+            title: 'Order created – awaiting technician',
+            message: `Your order "${orderTitle}" was created and is awaiting technician confirmation.`,
+            metadata: { orderId },
+            actionUrl: `/orders/${orderId}`,
+        });
+    }
+
+    async notifyProviderDeclinedOrder(
+        customerId: string,
+        orderId: string,
+        orderTitle: string,
+        reason?: string,
+    ): Promise<void> {
+        const reasonSuffix = reason ? ` Reason: ${reason}` : '';
+        await this.creationService.createNotification({
+            userId: customerId,
+            type: NotificationType.ORDER_CANCELLED,
+            title: 'Technician declined your order',
+            message: `The technician declined to confirm order "${orderTitle}".${reasonSuffix} You may contact another provider.`,
+            metadata: { orderId, reason },
+            actionUrl: `/orders/${orderId}`,
+        });
+    }
+
     async notifyNewReview(
         providerId: string,
         reviewId: string,
