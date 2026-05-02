@@ -125,6 +125,14 @@ export class Profile {
     reviewCount: number = 0;
 
     @Column({
+        name: 'certification_count',
+        type: 'int',
+        default: 0,
+        comment: 'Denormalised count of uploaded certifications',
+    })
+    certificationCount: number = 0;
+
+    @Column({
         type: 'jsonb',
         nullable: true,
         comment: 'Additional profile metadata (preferences, settings, etc.)'

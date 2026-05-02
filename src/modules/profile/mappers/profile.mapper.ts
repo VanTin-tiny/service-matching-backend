@@ -24,6 +24,9 @@ export function toProfile(profile: Profile): ProfileMapper {
         lastDisplayNameChange: profile.lastDisplayNameChange,
         displayNameChangeCount: profile.displayNameChangeCount ?? 0,
         displayNameHistory: profile.displayNameHistory,
+        averageRating: profile.averageRating ? Number(profile.averageRating) : undefined,
+        reviewCount: profile.reviewCount ?? 0,
+        certificationCount: profile.certificationCount ?? 0,
         updatedAt: profile.updatedAt,
         createdAt: profile.createdAt,
     };

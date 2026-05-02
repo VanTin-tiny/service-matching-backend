@@ -18,7 +18,10 @@ export interface ProfileMapper {
     gender?: string;
     lastDisplayNameChange?: Date;
     displayNameChangeCount: number;
-    displayNameHistory?: Record<string, any>; 
+    displayNameHistory?: Record<string, any>;
+    averageRating?: number;
+    reviewCount: number;
+    certificationCount: number;
     updatedAt: Date;
     createdAt: Date;
 }

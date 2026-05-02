@@ -20,7 +20,7 @@ export class ProfileResponseBuilder {
         private readonly profileDomainService: ProfileDomainService,
     ) { }
 
-    
+
     buildProfileResponse(
         user: UserMapper,
         profile: ProfileMapper
@@ -42,6 +42,9 @@ export class ProfileResponseBuilder {
                 gender: profile.gender,
                 isVerified: user.isVerified,
                 isActive: user.isActive,
+                averageRating: profile.averageRating,
+                reviewCount: profile.reviewCount,
+                certificationCount: profile.certificationCount,
                 displayNameChangeInfo: this.buildDisplayNameChangeInfo(profile),
                 createdAt: user.createdAt,
                 updatedAt: profile.updatedAt,
@@ -55,7 +58,7 @@ export class ProfileResponseBuilder {
         }
     }
 
-    
+
     buildPublicProfileResponse(
         user: UserMapper,
         profile: ProfileMapper,
@@ -70,6 +73,9 @@ export class ProfileResponseBuilder {
                 avatarUrl: this.buildAvatarUrl(profile.avatarUrl),
                 bio: profile.bio,
                 isVerified: user.isVerified,
+                hasCertification: profile.certificationCount > 0,
+                averageRating: profile.reviewCount > 0 ? profile.averageRating : undefined,
+                reviewCount: profile.reviewCount,
                 memberSince: user.createdAt,
             };
         } catch (error) {
