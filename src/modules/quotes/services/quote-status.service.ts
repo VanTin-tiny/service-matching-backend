@@ -1,4 +1,5 @@
 import { ChatService } from '@/modules/chat/chat.service';
+import { PostCustomer } from '@/modules/posts/entities/post.entity';
 import { PostRepository } from '@/modules/posts/repositories/post.repository';
 import { Injectable, Logger } from '@nestjs/common';
 import { IsNull, Not } from 'typeorm';
@@ -138,7 +139,16 @@ export class QuoteStatusService {
         return await this.quoteRepo.save(quote);
     }
 
-    
+    async closePostAndRejectOtherQuotes(
+        postId: string,
+        confirmedQuoteId: string,
+        post: PostCustomer,
+    ): Promise<void> {
+        await this.postRepo.closePost(post);
+        await this.rejectOtherQuotes(postId, confirmedQuoteId);
+    }
+
+
     private async rejectOtherQuotes(
         postId: string,
         confirmedQuoteId: string,

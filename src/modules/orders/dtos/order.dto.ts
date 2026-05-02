@@ -3,10 +3,12 @@ import { Type } from 'class-transformer';
 import {
     IsEnum,
     IsISO8601,
+    IsInt,
     IsNumber,
     IsOptional,
     IsString,
     IsUUID,
+    Max,
     MaxLength,
     Min,
 } from 'class-validator';
@@ -93,6 +95,23 @@ export class GetOrdersQueryDto {
     @IsOptional()
     @IsEnum(OrderStatus)
     status?: OrderStatus;
+}
+
+export class PendingConfirmationQueryDto {
+    @ApiPropertyOptional({ description: 'Page number (1-based)', example: 1, default: 1 })
+    @IsOptional()
+    @IsInt()
+    @Min(1)
+    @Type(() => Number)
+    page?: number = 1;
+
+    @ApiPropertyOptional({ description: 'Items per page (max 50)', example: 10, default: 10 })
+    @IsOptional()
+    @IsInt()
+    @Min(1)
+    @Max(50)
+    @Type(() => Number)
+    limit?: number = 10;
 }
 
 

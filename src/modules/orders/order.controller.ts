@@ -22,7 +22,7 @@ import {
     ApiResponse,
     ApiTags,
 } from '@nestjs/swagger';
-import { CancelOrderDto, GetOrdersQueryDto } from './dtos/order.dto';
+import { CancelOrderDto, GetOrdersQueryDto, PendingConfirmationQueryDto } from './dtos/order.dto';
 import { OrderService } from './order.service';
 
 @ApiTags('Orders')
@@ -38,14 +38,16 @@ export class OrderController {
     @Roles(UserRole.CUSTOMER)
     @HttpCode(HttpStatus.CREATED)
     @ApiOperation({
-        summary: '[Customer] Chấp nhận báo giá ngay → Tạo đơn hàng',
+        summary: '[Customer] Accept quote directly → Create PENDING order',
         description:
-            'Khách hàng chấp nhận báo giá (PENDING) ngay lập tức tại mức giá đã báo, hệ thống tự động tạo đơn hàng IN_PROGRESS. ' +
-            'Không cần thảo luận thêm, không cần thợ xác nhận lại.',
+            'Customer accepts a PENDING quote at the exact quoted price (no negotiation). ' +
+            'An order is created immediately in PENDING status and the quote moves to ORDER_REQUESTED. ' +
+            'The technician must confirm via POST /orders/confirm-from-quote/:quoteId before the order becomes IN_PROGRESS. ' +
+            'The technician may also decline via POST /orders/:id/provider-decline.',
     })
-    @ApiResponse({ status: 201, description: 'Order created from direct acceptance' })
-    @ApiResponse({ status: 400, description: 'Quote is not PENDING or already has an order' })
-    @ApiResponse({ status: 403, description: 'Not the customer for this quote' })
+    @ApiResponse({ status: 201, description: 'Order created in PENDING status; awaiting technician confirmation' })
+    @ApiResponse({ status: 400, description: 'Quote is not PENDING or an order already exists for it' })
+    @ApiResponse({ status: 403, description: 'Caller is not the customer for this quote' })
     @ApiResponse({ status: 404, description: 'Quote not found' })
     async acceptQuoteDirect(
         @Param('quoteId') quoteId: string,
@@ -58,26 +60,53 @@ export class OrderController {
 
     @Post('confirm-from-quote/:quoteId')
     @Roles(UserRole.PROVIDER)
-    @HttpCode(HttpStatus.CREATED)
+    @HttpCode(HttpStatus.OK)
     @ApiOperation({
-        summary: '[Provider] Xác nhận làm → Tạo order',
-        description: 'Provider xác nhận sau khi customer nhấn đặt đơn. Order được tạo với trạng thái IN_PROGRESS'
+        summary: '[Provider] Confirm order → IN_PROGRESS',
+        description:
+            'Handles two flows based on whether a PENDING order already exists for the quote:\n\n' +
+            '**Direct-acceptance flow** (customer used accept-quote-direct): ' +
+            'Activates the pre-created PENDING order to IN_PROGRESS.\n\n' +
+            '**Chat-negotiation flow** (quote in ORDER_REQUESTED after chat): ' +
+            'Creates the order directly in IN_PROGRESS.',
     })
-    @ApiResponse({ status: 201, description: 'Order created' })
+    @ApiResponse({ status: 200, description: 'Order confirmed and set to IN_PROGRESS' })
+    @ApiResponse({ status: 400, description: 'Quote is not in ORDER_REQUESTED status, or the pre-existing order was already cancelled' })
+    @ApiResponse({ status: 403, description: 'Caller is not the provider for this quote' })
+    @ApiResponse({ status: 404, description: 'Quote not found' })
     async confirmOrderFromQuote(
         @Param('quoteId') quoteId: string,
         @CurrentUser('id') providerId: string,
     ) {
-        return await this.orderService.createOrderFromQuoteConfirmation(
-            quoteId,
-            providerId,
-        );
+        return await this.orderService.createOrderFromQuoteConfirmation(quoteId, providerId);
+    }
+
+    @Post(':id/provider-decline')
+    @Roles(UserRole.PROVIDER)
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({
+        summary: '[Provider] Decline a PENDING order',
+        description:
+            'Provider declines to confirm a PENDING order that was created via the direct-acceptance flow. ' +
+            'The order is cancelled and the associated quote is reset to CANCELLED. ' +
+            'The customer is notified and may seek another provider.',
+    })
+    @ApiResponse({ status: 200, description: 'Order declined and cancelled' })
+    @ApiResponse({ status: 400, description: 'Order is not in PENDING status or is not quote-based' })
+    @ApiResponse({ status: 403, description: 'Caller is not the provider for this order' })
+    @ApiResponse({ status: 404, description: 'Order not found' })
+    async providerDeclineOrder(
+        @Param('id') orderId: string,
+        @CurrentUser('id') providerId: string,
+        @Body() dto: CancelOrderDto,
+    ) {
+        return await this.orderService.providerDeclineOrder(orderId, providerId, dto);
     }
 
     @Post(':id/provider-complete')
     @Roles(UserRole.PROVIDER)
     @HttpCode(HttpStatus.OK)
-    @ApiOperation({ summary: '[Provider] Thợ xác nhận hoàn thành' })
+    @ApiOperation({ summary: '[Provider] Mark work as done' })
     @ApiResponse({ status: 200, description: 'Success' })
     async providerComplete(
         @Param('id') orderId: string,
@@ -120,6 +149,48 @@ export class OrderController {
     @ApiResponse({ status: 200, description: 'Success' })
     async getOrderStats(@CurrentUser('id') userId: string) {
         return await this.orderService.getOrderStats(userId);
+    }
+
+    @Get('awaiting-my-confirmation')
+    @Roles(UserRole.PROVIDER)
+    @ApiOperation({
+        summary: '[Provider] List orders awaiting confirmation or rejection',
+        description:
+            'Returns a paginated list of PENDING orders that require the authenticated provider ' +
+            'to explicitly confirm or decline. These orders are created when a customer uses ' +
+            'POST /orders/accept-quote-direct/:quoteId (direct-acceptance flow).\n\n' +
+            '**Next actions:**\n' +
+            '- Confirm: `POST /orders/confirm-from-quote/:quoteId` → order becomes IN_PROGRESS\n' +
+            '- Decline: `POST /orders/:id/provider-decline` → order is cancelled and the customer is notified\n\n' +
+            'Results are ordered oldest-first so the most time-sensitive items appear at the top.',
+    })
+    @ApiResponse({
+        status: 200,
+        description: 'Paginated list of PENDING orders awaiting provider confirmation',
+        schema: {
+            properties: {
+                data: { type: 'array', items: { type: 'object' } },
+                meta: {
+                    type: 'object',
+                    properties: {
+                        total: { type: 'number' },
+                        page: { type: 'number' },
+                        limit: { type: 'number' },
+                        totalPages: { type: 'number' },
+                    },
+                },
+            },
+        },
+    })
+    async getOrdersAwaitingConfirmation(
+        @CurrentUser('id') providerId: string,
+        @Query() query: PendingConfirmationQueryDto,
+    ) {
+        return await this.orderService.getOrdersAwaitingProviderConfirmation(
+            providerId,
+            query.page ?? 1,
+            query.limit ?? 10,
+        );
     }
 
     @Get(':id')
