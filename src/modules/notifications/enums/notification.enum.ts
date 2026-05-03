@@ -42,6 +42,17 @@ export enum NotificationType {
     QUOTE_REVISED = 'quote_revised',
     ORDER_REQUESTED = 'order_requested',
     ORDER_AWAITING_CONFIRMATION = 'order_awaiting_confirmation',
+
+    // Subscription & fee lifecycle
+    SUBSCRIPTION_TRIAL_STARTED = 'subscription_trial_started',
+    SUBSCRIPTION_TRIAL_ENDING = 'subscription_trial_ending',
+    SUBSCRIPTION_TRIAL_EXPIRED = 'subscription_trial_expired',
+    SUBSCRIPTION_ACTIVATED = 'subscription_activated',
+    SUBSCRIPTION_RENEWAL_REMINDER = 'subscription_renewal_reminder',
+    SUBSCRIPTION_EXPIRED = 'subscription_expired',
+    SUBSCRIPTION_CANCELLED = 'subscription_cancelled',
+    SUBSCRIPTION_PAYMENT_PENDING = 'subscription_payment_pending',
+    SUBSCRIPTION_PAYMENT_SUCCESS = 'subscription_payment_success',
 }
 
 
