@@ -12,6 +12,7 @@ import { ProfileModule } from '@/modules/profile/profile.module';
 import { QuoteModule } from '@/modules/quotes/quotes.module';
 import { ReviewsModule } from '@/modules/reviews/reviews.module';
 import { SearchModule } from '@/modules/search/search.module';
+import { SubscriptionModule } from '@/modules/subscription/subscription.module';
 import { Module } from '@nestjs/common';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ScheduleModule } from '@nestjs/schedule';
@@ -34,6 +35,7 @@ import { ThrottlerModule } from '@nestjs/throttler';
     CustomRequestsModule,
     ReviewsModule,
     CertificationModule,
+    SubscriptionModule,
     EventEmitterModule.forRoot(),
     ThrottlerModule.forRoot([{
       ttl: 60000,

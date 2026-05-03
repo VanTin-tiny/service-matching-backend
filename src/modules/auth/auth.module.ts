@@ -20,6 +20,7 @@ import { CookieService } from './services/cookie.service';
 import { TokenManagementService } from './services/token-management.service';
 import { UserValidationService } from './services/user-validation.service';
 import { ProfileModule } from '@/modules/profile/profile.module';
+import { SubscriptionModule } from '@/modules/subscription/subscription.module';
 import { ResendMailService } from './services/resend-mail.service';
 import { PasswordResetService } from './services/password-reset.service';
 import { PasswordResetCleanupService } from './services/password-reset-cleanup.service';
@@ -30,6 +31,7 @@ import { PasswordResetCleanupService } from './services/password-reset-cleanup.s
     imports: [
         UsersModule,
         ProfileModule,
+        SubscriptionModule,
         TypeOrmModule.forFeature([RefreshToken,PasswordResetToken]),
     ],
     controllers: [AuthController],

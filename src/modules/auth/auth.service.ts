@@ -13,6 +13,7 @@ import { UserRole } from '@/common/enums/user-role.enum';
 import { JwtService } from '@/common/services/jwt.service';
 import { ErrorUtil } from '@/common/utils/error.util';
 import { ProfileRepository } from '@/modules/profile/repositories/profile.repository';
+import { SubscriptionService } from '@/modules/subscription/services/subscription.service';
 import { BadRequestException, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { EntityManager } from 'typeorm';
 import { AUTH_ERROR_CODES } from './constants/auth.constants';
@@ -41,6 +42,7 @@ export class AuthService {
         private readonly authFactory: AuthenticationFactory,
         private readonly authConfig: AuthConfigService,
         private readonly profileRepo: ProfileRepository,
+        private readonly subscriptionService: SubscriptionService,
     ) { }
 
     // REGISTER 
@@ -88,6 +90,10 @@ export class AuthService {
                 },
                 manager,
             );
+
+            if (role === UserRole.PROVIDER) {
+                await this.subscriptionService.initTrial({ userId: user.id }, manager);
+            }
 
             this.logger.log(`User registered: ${user.id} with role: ${role},Profile created: ${profile.id}`);
 
