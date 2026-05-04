@@ -104,6 +104,30 @@ export class SubscriptionPaymentRepository {
         }
     }
 
+    async findByStripePaymentIntentId(
+        stripePaymentIntentId: string,
+        manager?: EntityManager,
+    ): Promise<SubscriptionPayment | null> {
+        try {
+            return await this.getRepo(manager).findOne({
+                where: { stripePaymentIntentId },
+                relations: ['plan', 'discount'],
+            });
+        } catch (error) {
+            this.logger.error(`Error finding payment by Stripe PI: ${stripePaymentIntentId}`, error);
+            throw error;
+        }
+    }
+
+    async delete(id: string, manager?: EntityManager): Promise<void> {
+        try {
+            await this.getRepo(manager).delete(id);
+        } catch (error) {
+            this.logger.error(`Error deleting payment: ${id}`, error);
+            throw error;
+        }
+    }
+
     async update(id: string, data: Partial<SubscriptionPayment>, manager?: EntityManager): Promise<void> {
         try {
             await this.getRepo(manager).update(id, data);

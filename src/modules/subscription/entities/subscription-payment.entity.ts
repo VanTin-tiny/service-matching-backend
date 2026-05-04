@@ -100,6 +100,9 @@ export class SubscriptionPayment {
     })
     paidAt?: Date;
 
+    @Column({ name: 'stripe_payment_intent_id', type: 'varchar', nullable: true, unique: true })
+    stripePaymentIntentId?: string;
+
     @Column({ type: 'text', nullable: true })
     notes?: string;
 

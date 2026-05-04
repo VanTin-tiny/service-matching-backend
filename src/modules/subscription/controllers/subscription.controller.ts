@@ -7,6 +7,7 @@ import { JwtPayload } from '@/modules/auth/interfaces/jwt-payload.interface';
 import {
     Body,
     Controller,
+    Delete,
     Get,
     HttpCode,
     HttpStatus,
@@ -183,5 +184,25 @@ export class SubscriptionController {
             page: query.page ?? 1,
             limit: query.limit ?? 20,
         };
+    }
+
+    @Delete('my/payments/pending')
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(UserRole.PROVIDER)
+    @HttpCode(HttpStatus.OK)
+    @ApiBearerAuth()
+    @ApiOperation({
+        summary: 'Cancel pending payment',
+        description:
+            'Cancels the current pending payment and its associated Stripe PaymentIntent. ' +
+            'Use this if you want to change your plan or retry with a different card.',
+    })
+    @ApiResponse({ status: HttpStatus.OK, description: 'Pending payment cancelled' })
+    @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'No pending payment found' })
+    async cancelPendingPayment(
+        @CurrentUser() user: JwtPayload,
+    ): Promise<{ success: boolean; message: string }> {
+        await this.paymentService.cancelPendingPayment(user.id);
+        return { success: true, message: 'Pending payment cancelled successfully' };
     }
 }

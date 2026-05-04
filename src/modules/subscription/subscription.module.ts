@@ -3,6 +3,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { SubscriptionAdminController } from './controllers/subscription-admin.controller';
 import { SubscriptionController } from './controllers/subscription.controller';
+import { StripeWebhookController } from './controllers/stripe-webhook.controller';
 import { Discount } from './entities/discount.entity';
 import { SubscriptionPayment } from './entities/subscription-payment.entity';
 import { SubscriptionPlan } from './entities/subscription-plan.entity';
@@ -17,6 +18,8 @@ import { SubscriptionNotificationService } from './services/subscription-notific
 import { SubscriptionPaymentService } from './services/subscription-payment.service';
 import { SubscriptionPlanService } from './services/subscription-plan.service';
 import { SubscriptionService } from './services/subscription.service';
+import { StripeService } from './stripe/stripe.service';
+import { StripeWebhookService } from './stripe/stripe-webhook.service';
 import { SubscriptionSchedulerTask } from './tasks/subscription-scheduler.task';
 
 @Module({
@@ -32,6 +35,7 @@ import { SubscriptionSchedulerTask } from './tasks/subscription-scheduler.task';
     controllers: [
         SubscriptionController,
         SubscriptionAdminController,
+        StripeWebhookController,
     ],
     providers: [
         // Repositories
@@ -39,6 +43,10 @@ import { SubscriptionSchedulerTask } from './tasks/subscription-scheduler.task';
         SubscriptionPlanRepository,
         DiscountRepository,
         SubscriptionPaymentRepository,
+
+        // Stripe
+        StripeService,
+        StripeWebhookService,
 
         // Services
         SubscriptionService,

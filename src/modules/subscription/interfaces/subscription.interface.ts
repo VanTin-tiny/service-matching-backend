@@ -39,4 +39,6 @@ export interface PaymentCreationResult {
     finalAmount: number;
     status: SubscriptionPaymentStatus;
     dueDate: Date;
+    stripePaymentIntentId: string;
+    clientSecret: string;
 }

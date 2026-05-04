@@ -7,7 +7,7 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import cookieParser from 'cookie-parser';
 import { GlobalExceptionFilter } from './common/exceptions/index';
 async function bootstrap() {
-    const app = await NestFactory.create(AppModule);
+    const app = await NestFactory.create(AppModule, { rawBody: true });
     app.useWebSocketAdapter(new IoAdapter(app));
     app.use(cookieParser());
     const httpAdapterHost = app.get(HttpAdapterHost);
