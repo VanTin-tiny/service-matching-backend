@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
 import { DataSource, EntityManager } from 'typeorm';
 import {
     AdminUpdateSubscriptionDto,
@@ -23,6 +23,7 @@ import { SubscriptionRepository } from '../repositories/subscription.repository'
 import { SUBSCRIPTION_CONSTANTS } from '../constants/subscription.constants';
 import { SubscriptionNotificationService } from './subscription-notification.service';
 import { SubscriptionPaymentStatus } from '../enums/subscription-payment-status.enum';
+import { StripeService } from '../stripe/stripe.service';
 
 @Injectable()
 export class SubscriptionService {
@@ -34,6 +35,7 @@ export class SubscriptionService {
         private readonly discountRepo: DiscountRepository,
         private readonly paymentRepo: SubscriptionPaymentRepository,
         private readonly notificationService: SubscriptionNotificationService,
+        private readonly stripeService: StripeService,
         private readonly dataSource: DataSource,
     ) {}
 
@@ -98,47 +100,85 @@ export class SubscriptionService {
     }
 
     async subscribe(userId: string, dto: SubscribeDto): Promise<PaymentCreationResult> {
-        return this.dataSource.transaction(async (manager: EntityManager) => {
-            const subscription = await this.subscriptionRepo.findByUserIdWithLock(userId, manager);
+        // Validate plan & discount outside the transaction so we don't hold a TX
+        // open while making the Stripe API call.
+        const subscription = await this.subscriptionRepo.findByUserId(userId);
+        if (!subscription) throw new SubscriptionNotFoundException();
 
-            if (!subscription) throw new SubscriptionNotFoundException();
+        if (subscription.status === SubscriptionStatus.ACTIVE) {
+            throw new SubscriptionAlreadyActiveException();
+        }
 
-            if (subscription.status === SubscriptionStatus.ACTIVE) {
-                throw new SubscriptionAlreadyActiveException();
-            }
+        const existingPending = await this.paymentRepo.findPendingBySubscriptionId(subscription.id);
+        if (existingPending) throw new PendingPaymentExistsException();
 
-            const existingPending = await this.paymentRepo.findPendingBySubscriptionId(
-                subscription.id,
-                manager,
-            );
-            if (existingPending) throw new PendingPaymentExistsException();
+        const plan = await this.planRepo.findActiveById(dto.planId);
+        if (!plan) throw new SubscriptionPlanNotFoundException(dto.planId);
 
-            const plan = await this.planRepo.findActiveById(dto.planId, manager);
-            if (!plan) throw new SubscriptionPlanNotFoundException(dto.planId);
+        let discountId: string | undefined;
+        let discountAmount = 0;
 
-            let discountId: string | undefined;
-            let discountAmount = 0;
-
-            if (dto.discountCode) {
-                const discount = await this.discountRepo.findByCode(dto.discountCode, manager);
-                if (discount && discount.isValid()) {
-                    const applicable =
-                        !discount.applicableBillingCycle ||
-                        discount.applicableBillingCycle === plan.billingCycle;
-                    if (applicable) {
-                        discountAmount = discount.computeDiscountAmount(Number(plan.price));
-                        discountId = discount.id;
-                        await this.discountRepo.incrementUsage(discount.id, manager);
-                    }
+        if (dto.discountCode) {
+            const discount = await this.discountRepo.findByCode(dto.discountCode);
+            if (discount && discount.isValid()) {
+                const applicable =
+                    !discount.applicableBillingCycle ||
+                    discount.applicableBillingCycle === plan.billingCycle;
+                if (applicable) {
+                    discountAmount = discount.computeDiscountAmount(Number(plan.price));
+                    discountId = discount.id;
                 }
             }
+        }
 
-            const finalAmount = Number(plan.price) - discountAmount;
+        const finalAmount = Number(plan.price) - discountAmount;
+
+        // Create Stripe PaymentIntent before the DB transaction.
+        let stripePaymentIntentId: string;
+        let clientSecret: string;
+
+        try {
+            const paymentIntent = await this.stripeService.createPaymentIntent(finalAmount, {
+                userId,
+                subscriptionId: subscription.id,
+                planId: plan.id,
+                planName: plan.name,
+            });
+            stripePaymentIntentId = paymentIntent.id;
+            clientSecret = paymentIntent.client_secret!;
+        } catch (err) {
+            this.logger.error('Failed to create Stripe PaymentIntent', err);
+            throw new InternalServerErrorException(
+                'Payment provider error. Please try again later.',
+            );
+        }
+
+        return this.dataSource.transaction(async (manager: EntityManager) => {
+            // Re-check for race conditions inside the transaction.
+            const lockedSub = await this.subscriptionRepo.findByUserIdWithLock(userId, manager);
+            if (!lockedSub) throw new SubscriptionNotFoundException();
+            if (lockedSub.status === SubscriptionStatus.ACTIVE) {
+                throw new SubscriptionAlreadyActiveException();
+            }
+            const raceCheck = await this.paymentRepo.findPendingBySubscriptionId(
+                lockedSub.id,
+                manager,
+            );
+            if (raceCheck) {
+                // Cancel the Stripe PI we just created since we can't proceed.
+                this.stripeService.cancelPaymentIntent(stripePaymentIntentId).catch(() => {});
+                throw new PendingPaymentExistsException();
+            }
+
+            if (discountId) {
+                await this.discountRepo.incrementUsage(discountId, manager);
+            }
+
             const dueDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
             const payment = await this.paymentRepo.create(
                 {
-                    subscriptionId: subscription.id,
+                    subscriptionId: lockedSub.id,
                     userId,
                     planId: plan.id,
                     amount: Number(plan.price),
@@ -147,6 +187,7 @@ export class SubscriptionService {
                     finalAmount,
                     status: SubscriptionPaymentStatus.PENDING,
                     dueDate,
+                    stripePaymentIntentId,
                 },
                 manager,
             );
@@ -163,12 +204,14 @@ export class SubscriptionService {
 
             return {
                 paymentId: payment.id,
-                subscriptionId: subscription.id,
+                subscriptionId: lockedSub.id,
                 amount: Number(plan.price),
                 discountAmount,
                 finalAmount,
                 status: payment.status,
                 dueDate,
+                stripePaymentIntentId,
+                clientSecret,
             };
         });
     }

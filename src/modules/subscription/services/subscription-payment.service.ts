@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
 import { DataSource, EntityManager } from 'typeorm';
 import { GetPaymentsQueryDto } from '../dtos/subscription-payment.dto';
 import { SubscriptionPayment } from '../entities/subscription-payment.entity';
@@ -11,6 +11,7 @@ import {
 import { SubscriptionPaymentRepository } from '../repositories/subscription-payment.repository';
 import { SubscriptionRepository } from '../repositories/subscription.repository';
 import { SubscriptionNotificationService } from './subscription-notification.service';
+import { StripeService } from '../stripe/stripe.service';
 
 @Injectable()
 export class SubscriptionPaymentService {
@@ -20,6 +21,7 @@ export class SubscriptionPaymentService {
         private readonly paymentRepo: SubscriptionPaymentRepository,
         private readonly subscriptionRepo: SubscriptionRepository,
         private readonly notificationService: SubscriptionNotificationService,
+        private readonly stripeService: StripeService,
         private readonly dataSource: DataSource,
     ) {}
 
@@ -45,6 +47,33 @@ export class SubscriptionPaymentService {
             query.limit,
         );
         return { payments, total };
+    }
+
+    async cancelPendingPayment(userId: string): Promise<void> {
+        const subscription = await this.subscriptionRepo.findByUserId(userId);
+        if (!subscription) throw new SubscriptionNotFoundException();
+
+        const pending = await this.paymentRepo.findPendingBySubscriptionId(subscription.id);
+        if (!pending) throw new PaymentNotFoundException();
+
+        if (pending.stripePaymentIntentId) {
+            try {
+                await this.stripeService.cancelPaymentIntent(pending.stripePaymentIntentId);
+                this.logger.log(`Stripe PI cancelled: ${pending.stripePaymentIntentId}`);
+            } catch (err) {
+                // Log but do not block — Stripe may have already cancelled it
+                this.logger.warn(
+                    `Could not cancel Stripe PI ${pending.stripePaymentIntentId}: ${(err as Error).message}`,
+                );
+            }
+        }
+
+        await this.paymentRepo.update(pending.id, {
+            status: SubscriptionPaymentStatus.FAILED,
+            notes: 'Cancelled by user',
+        });
+
+        this.logger.log(`Pending payment ${pending.id} cancelled by user ${userId}`);
     }
 
     async confirmPayment(paymentId: string, adminNotes?: string): Promise<SubscriptionPayment> {
@@ -94,7 +123,7 @@ export class SubscriptionPaymentService {
             );
 
             this.logger.log(
-                `Payment confirmed: ${paymentId} → subscription ${subscription.id} active until ${periodEnd.toISOString()}`,
+                `Payment confirmed (admin): ${paymentId} → subscription ${subscription.id} active until ${periodEnd.toISOString()}`,
             );
 
             const planName = plan?.name ?? 'Subscription plan';
@@ -117,6 +146,24 @@ export class SubscriptionPaymentService {
 
             if (payment.status !== SubscriptionPaymentStatus.PAID) {
                 throw new PaymentNotFoundException();
+            }
+
+            // Issue Stripe refund when the payment was made through Stripe
+            if (payment.stripePaymentIntentId) {
+                try {
+                    await this.stripeService.createRefund(payment.stripePaymentIntentId);
+                    this.logger.log(
+                        `Stripe refund created for PaymentIntent: ${payment.stripePaymentIntentId}`,
+                    );
+                } catch (err) {
+                    this.logger.error(
+                        `Failed to create Stripe refund for PI ${payment.stripePaymentIntentId}`,
+                        err,
+                    );
+                    throw new InternalServerErrorException(
+                        'Failed to process refund with payment provider',
+                    );
+                }
             }
 
             await this.paymentRepo.update(
