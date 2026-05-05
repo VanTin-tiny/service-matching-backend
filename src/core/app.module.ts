@@ -10,6 +10,7 @@ import { OrdersModule } from '@/modules/orders/orders.module';
 import { PostsModule } from '@/modules/posts/posts.module';
 import { ProfileModule } from '@/modules/profile/profile.module';
 import { QuoteModule } from '@/modules/quotes/quotes.module';
+import { RedisModule } from '@/modules/redis/redis.module';
 import { ReviewsModule } from '@/modules/reviews/reviews.module';
 import { SearchModule } from '@/modules/search/search.module';
 import { SubscriptionModule } from '@/modules/subscription/subscription.module';
@@ -23,6 +24,7 @@ import { ThrottlerModule } from '@nestjs/throttler';
     ScheduleModule.forRoot(),
     AppConfigModule,
     TypeOrmDatabaseModule,
+    RedisModule,
     AuthModule,
     PostsModule,
     CommonModule,
