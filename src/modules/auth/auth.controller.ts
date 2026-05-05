@@ -39,10 +39,18 @@ import {
     ResetPasswordDto,
     ResetPasswordResponseDto,
 } from './dtos/password-reset.dto';
+import {
+    ForgotPasswordOtpDto,
+    OtpSuccessResponseDto,
+    ResendVerificationDto,
+    ResetPasswordOtpDto,
+    VerifyEmailDto,
+} from './dtos/otp.dto';
 import { DeviceIdValidationPipe } from './pipes/device-id-validation.pipe';
 import { AuthResponseBuilder } from './services/auth-response-builder.service';
 import { CookieService } from './services/cookie.service';
 import { PasswordResetService } from './services/password-reset.service';
+import { OtpService } from './services/otp.service';
 
 
 @Controller('auth')
@@ -51,7 +59,8 @@ export class AuthController {
         private readonly authService: AuthService,
         private readonly cookieService: CookieService,
         private readonly responseBuilder: AuthResponseBuilder,
-        private readonly passwordResetService: PasswordResetService
+        private readonly passwordResetService: PasswordResetService,
+        private readonly otpService: OtpService,
     ) { }
 
     @Get('health')
@@ -69,10 +78,10 @@ export class AuthController {
     @Throttle({ default: { limit: 5, ttl: 60000 } })
     @ApiOperation({
         summary: 'Register a new user',
-        description: 'Send body: RegisterDto',
+        description: 'Creates account and sends a 6-digit OTP to the provided email for verification.',
     })
     @ApiCreatedResponse({
-        description: 'Registration successful',
+        description: 'Registration successful. A verification OTP has been sent to the email.',
         type: RegisterResponseDto,
     })
     @ApiUnauthorizedResponse({
@@ -92,9 +101,118 @@ export class AuthController {
     )
     async register(
         @Body() bodyRegister: RegisterDto,
+        @Ip() ip: string,
     ): Promise<RegisterResponseDto> {
         const result = await this.authService.register(bodyRegister);
+
+        // Fire-and-forget: send verification OTP after successful registration
+        void this.otpService.sendVerificationOtp(result.id, result.email!, ip ?? null);
+
         return this.responseBuilder.buildRegisterResponse(result);
+    }
+
+    // VERIFY EMAIL
+    @Post('verify-email')
+    @ApiTags('Auth - Common')
+    @HttpCode(HttpStatus.OK)
+    @Throttle({ default: { limit: 10, ttl: 900_000 } }) // 10 attempts / 15 min / IP
+    @ApiOperation({
+        summary: 'Verify email with OTP',
+        description:
+            'Submit the 6-digit OTP sent to the registered email to activate the account.',
+    })
+    @ApiOkResponse({ description: 'Email verified successfully', type: OtpSuccessResponseDto })
+    @ApiBadRequestResponse({ description: 'Invalid or expired OTP', type: ErrorResponseDto })
+    @ApiTooManyRequestsResponse({ description: 'Too many attempts' })
+    @UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }))
+    async verifyEmail(@Body() dto: VerifyEmailDto): Promise<OtpSuccessResponseDto> {
+        await this.otpService.verifyEmail(dto.email, dto.otp);
+        return { success: true, message: 'Email verified successfully.' };
+    }
+
+    // RESEND VERIFICATION OTP
+    @Post('resend-verification')
+    @ApiTags('Auth - Common')
+    @HttpCode(HttpStatus.OK)
+    @Throttle({ default: { limit: 3, ttl: 900_000 } }) // 3 requests / 15 min / IP
+    @ApiOperation({
+        summary: 'Resend email verification OTP',
+        description:
+            'Request a new verification OTP. Subject to a 60-second cooldown per account.',
+    })
+    @ApiOkResponse({
+        description: 'If the email is unverified, a new OTP has been sent.',
+        type: OtpSuccessResponseDto,
+    })
+    @ApiTooManyRequestsResponse({ description: 'Cooldown active or too many requests' })
+    @UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }))
+    async resendVerification(
+        @Body() dto: ResendVerificationDto,
+        @Ip() ip: string,
+    ): Promise<OtpSuccessResponseDto> {
+        await this.otpService.resendVerificationOtp(dto.email, ip ?? null);
+        return {
+            success: true,
+            message: 'If this email is registered and unverified, a new OTP has been sent.',
+        };
+    }
+
+    // FORGOT PASSWORD (OTP)
+    @Post('forgot-password-otp')
+    @ApiTags('Auth - Common')
+    @HttpCode(HttpStatus.OK)
+    @Throttle({ default: { limit: 3, ttl: 900_000 } }) // 3 requests / 15 min / IP
+    @ApiOperation({
+        summary: 'Forgot password — send OTP',
+        description:
+            'Sends a 6-digit OTP to the email for password reset. ' +
+            'Always returns 200 OK to prevent user enumeration. ' +
+            'Rate limit: 3 requests / 15 min.',
+    })
+    @ApiOkResponse({
+        description: 'Request processed (does not confirm whether email exists)',
+        type: OtpSuccessResponseDto,
+    })
+    @ApiTooManyRequestsResponse({ description: 'Too many requests, try again later' })
+    @UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }))
+    async forgotPasswordOtp(
+        @Body() dto: ForgotPasswordOtpDto,
+        @Ip() ip: string,
+    ): Promise<OtpSuccessResponseDto> {
+        await this.otpService.sendPasswordResetOtp(dto.email, ip ?? null);
+        return {
+            success: true,
+            message: 'If this email is registered, an OTP has been sent.',
+        };
+    }
+
+    // RESET PASSWORD (OTP)
+    @Post('reset-password-otp')
+    @ApiTags('Auth - Common')
+    @HttpCode(HttpStatus.OK)
+    @Throttle({ default: { limit: 5, ttl: 900_000 } }) // 5 attempts / 15 min / IP
+    @ApiOperation({
+        summary: 'Reset password with OTP',
+        description:
+            'Verify the OTP from email and set a new password. ' +
+            'All active sessions are revoked on success.',
+    })
+    @ApiOkResponse({ description: 'Password reset successfully', type: OtpSuccessResponseDto })
+    @ApiBadRequestResponse({
+        description: 'Invalid OTP / expired / max attempts / same password',
+        type: ErrorResponseDto,
+    })
+    @ApiTooManyRequestsResponse({ description: 'Too many attempts' })
+    @UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }))
+    async resetPasswordOtp(
+        @Body() dto: ResetPasswordOtpDto,
+        @Ip() ip: string,
+    ): Promise<OtpSuccessResponseDto> {
+        await this.otpService.resetPasswordByOtp(dto.email, dto.otp, dto.newPassword, ip ?? null);
+        return {
+            success: true,
+            message: 'Password reset successfully. Please log in with your new password.',
+        };
     }
 
 

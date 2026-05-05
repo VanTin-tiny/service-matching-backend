@@ -14,6 +14,12 @@ export interface SendPasswordChangedEmailPayload {
     changedAt: Date;
 }
 
+export interface SendOtpEmailPayload {
+    toEmail: string;
+    otp: string;
+    expiresInMinutes: number;
+}
+
 @Injectable()
 export class ResendMailService {
     private readonly logger = new Logger(ResendMailService.name);
@@ -81,6 +87,52 @@ export class ResendMailService {
         }
     }
 
+    async sendVerificationOtpEmail(payload: SendOtpEmailPayload): Promise<void> {
+        const { toEmail, otp, expiresInMinutes } = payload;
+        try {
+            const { error } = await this.resend.emails.send({
+                from: `${this.appName} <${this.fromEmail}>`,
+                to: toEmail,
+                subject: `[${this.appName}] Xác thực email của bạn - Mã OTP`,
+                html: this.buildVerificationOtpHtml({ otp, expiresInMinutes, appName: this.appName }),
+            });
+
+            if (error) {
+                this.logger.error(
+                    `Resend failed to send verification OTP to ${toEmail}: ${JSON.stringify(error)}`,
+                );
+                return;
+            }
+
+            this.logger.log(`Verification OTP email sent to ${toEmail}`);
+        } catch (err) {
+            this.logger.error(`Unexpected error sending verification OTP to ${toEmail}`, err);
+        }
+    }
+
+    async sendPasswordResetOtpEmail(payload: SendOtpEmailPayload): Promise<void> {
+        const { toEmail, otp, expiresInMinutes } = payload;
+        try {
+            const { error } = await this.resend.emails.send({
+                from: `${this.appName} <${this.fromEmail}>`,
+                to: toEmail,
+                subject: `[${this.appName}] Đặt lại mật khẩu - Mã OTP`,
+                html: this.buildPasswordResetOtpHtml({ otp, expiresInMinutes, appName: this.appName }),
+            });
+
+            if (error) {
+                this.logger.error(
+                    `Resend failed to send password reset OTP to ${toEmail}: ${JSON.stringify(error)}`,
+                );
+                return;
+            }
+
+            this.logger.log(`Password reset OTP email sent to ${toEmail}`);
+        } catch (err) {
+            this.logger.error(`Unexpected error sending password reset OTP to ${toEmail}`, err);
+        }
+    }
+
     // ─── HTML TEMPLATES ────────────────────────────────────────────────────────
 
     private buildResetEmailHtml(params: {
@@ -116,6 +168,96 @@ export class ResendMailService {
             Nếu bạn không yêu cầu điều này, hãy bỏ qua email này. Mật khẩu của bạn sẽ không thay đổi.<br><br>
             Hoặc copy link này vào trình duyệt:<br>
             <span style="color:#4f46e5;word-break:break-all;">${resetUrl}</span>
+          </p>
+        </td></tr>
+        <tr><td style="background:#f9f9f9;padding:20px;text-align:center;">
+          <p style="color:#aaa;font-size:12px;margin:0;">
+            © ${new Date().getFullYear()} ${appName}. All rights reserved.
+          </p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+    }
+
+    private buildVerificationOtpHtml(params: {
+        otp: string;
+        expiresInMinutes: number;
+        appName: string;
+    }): string {
+        const { otp, expiresInMinutes, appName } = params;
+        return `
+<!DOCTYPE html>
+<html lang="vi">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
+<body style="font-family:Arial,sans-serif;background:#f4f4f4;margin:0;padding:0;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f4;padding:40px 0;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.08);">
+        <tr><td style="background:#1a1a2e;padding:32px;text-align:center;">
+          <h1 style="color:#ffffff;margin:0;font-size:24px;">${appName}</h1>
+        </td></tr>
+        <tr><td style="padding:40px;">
+          <h2 style="color:#1a1a2e;margin:0 0 16px;">Xác thực địa chỉ email</h2>
+          <p style="color:#555;line-height:1.6;margin:0 0 24px;">
+            Cảm ơn bạn đã đăng ký! Vui lòng nhập mã OTP bên dưới để xác thực email của bạn.
+            Mã sẽ hết hạn sau <strong>${expiresInMinutes} phút</strong>.
+          </p>
+          <div style="text-align:center;margin:32px 0;">
+            <div style="display:inline-block;background:#f0f0ff;border:2px solid #4f46e5;border-radius:12px;padding:20px 40px;">
+              <span style="font-size:36px;font-weight:bold;letter-spacing:8px;color:#4f46e5;font-family:monospace;">${otp}</span>
+            </div>
+          </div>
+          <p style="color:#888;font-size:13px;line-height:1.6;margin:24px 0 0;">
+            Không chia sẻ mã này với bất kỳ ai.<br>
+            Nếu bạn không thực hiện đăng ký, hãy bỏ qua email này.
+          </p>
+        </td></tr>
+        <tr><td style="background:#f9f9f9;padding:20px;text-align:center;">
+          <p style="color:#aaa;font-size:12px;margin:0;">
+            © ${new Date().getFullYear()} ${appName}. All rights reserved.
+          </p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+    }
+
+    private buildPasswordResetOtpHtml(params: {
+        otp: string;
+        expiresInMinutes: number;
+        appName: string;
+    }): string {
+        const { otp, expiresInMinutes, appName } = params;
+        return `
+<!DOCTYPE html>
+<html lang="vi">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
+<body style="font-family:Arial,sans-serif;background:#f4f4f4;margin:0;padding:0;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f4;padding:40px 0;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.08);">
+        <tr><td style="background:#1a1a2e;padding:32px;text-align:center;">
+          <h1 style="color:#ffffff;margin:0;font-size:24px;">${appName}</h1>
+        </td></tr>
+        <tr><td style="padding:40px;">
+          <h2 style="color:#1a1a2e;margin:0 0 16px;">Đặt lại mật khẩu</h2>
+          <p style="color:#555;line-height:1.6;margin:0 0 24px;">
+            Chúng tôi nhận được yêu cầu đặt lại mật khẩu. Nhập mã OTP bên dưới để tiếp tục.
+            Mã sẽ hết hạn sau <strong>${expiresInMinutes} phút</strong>.
+          </p>
+          <div style="text-align:center;margin:32px 0;">
+            <div style="display:inline-block;background:#fff5f5;border:2px solid #dc2626;border-radius:12px;padding:20px 40px;">
+              <span style="font-size:36px;font-weight:bold;letter-spacing:8px;color:#dc2626;font-family:monospace;">${otp}</span>
+            </div>
+          </div>
+          <p style="color:#888;font-size:13px;line-height:1.6;margin:24px 0 0;">
+            Không chia sẻ mã này với bất kỳ ai.<br>
+            Nếu bạn không yêu cầu đặt lại mật khẩu, hãy bỏ qua email này và kiểm tra bảo mật tài khoản.
           </p>
         </td></tr>
         <tr><td style="background:#f9f9f9;padding:20px;text-align:center;">
