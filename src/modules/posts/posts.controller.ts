@@ -57,6 +57,32 @@ export class PostController {
         };
     }
 
+    // AUTHENTICATED (any role)
+
+    @Get('my/posts')
+    @UseGuards(JwtAuthGuard)
+    @HttpCode(HttpStatus.OK)
+    @ApiBearerAuth()
+    @ApiOperation({
+        summary: 'Get my posts',
+        description:
+            'Retrieve all posts owned by the currently authenticated user. ' +
+            'Available to all account roles — returns an empty list when the ' +
+            'caller has no posts (e.g. a provider account).',
+    })
+    @ApiResponse({
+        status: HttpStatus.OK,
+        description: 'Posts retrieved successfully',
+        type: FeedResponseDto,
+    })
+    @ApiQuery({ type: GetFeedQueryDto })
+    async getMyPosts(
+        @Query() query: GetFeedQueryDto,
+        @CurrentUser() user: JwtPayload,
+    ): Promise<FeedResponseDto> {
+        return await this.postService.getMyPosts(user, query.limit, query.cursor);
+    }
+
     // PUBLIC
 
     @Get('feed')
@@ -238,30 +264,6 @@ export class PostController {
         @CurrentUser() user: JwtPayload,
     ): Promise<PostResponseDto> {
         return await this.postService.close(id, user);
-    }
-
-    @Get('my/posts')
-    @UseGuards(JwtAuthGuard, RolesGuard)
-    @Roles(UserRole.CUSTOMER)
-    @HttpCode(HttpStatus.OK)
-    @ApiBearerAuth()
-    @ApiOperation({
-        summary: 'Get my posts',
-        description: 'Retrieve all posts created by the current customer',
-    })
-    @ApiResponse({
-        status: HttpStatus.OK,
-        description: 'Posts retrieved successfully',
-        type: FeedResponseDto,
-    })
-
-    @ApiQuery({ type: GetFeedQueryDto })
-    async getMyPosts(
-        @Query() query: GetFeedQueryDto,
-        @CurrentUser() user: JwtPayload,
-    ): Promise<FeedResponseDto> {
-        return await this.postService.getMyPosts(user, query.limit, query.cursor);
-
     }
 
 
