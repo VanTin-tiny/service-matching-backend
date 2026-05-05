@@ -23,6 +23,9 @@ export enum ConversationType {
 @Index(['customerId', 'providerId'])
 @Index(['quoteId'], { unique: true, where: 'quote_id IS NOT NULL' })
 @Index(['lastMessageAt'])
+// Composite indexes to serve ORDER BY last_message_at DESC for each participant column
+@Index(['customerId', 'lastMessageAt'])
+@Index(['providerId', 'lastMessageAt'])
 export class Conversation {
     @PrimaryGeneratedColumn('uuid')
     id!: string;

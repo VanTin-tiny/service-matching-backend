@@ -22,6 +22,10 @@ import { Message, MessageType } from './entities/message.entity';
 @Injectable()
 export class ChatService {
     private readonly logger = new Logger(ChatService.name);
+
+    // Sentinel UUID for system-generated messages (not a real user)
+    private readonly SYSTEM_USER_ID = '00000000-0000-0000-0000-000000000001';
+
     constructor(
         @InjectRepository(Conversation)
         private readonly conversationRepo: Repository<Conversation>,
@@ -33,9 +37,7 @@ export class ChatService {
         private readonly eventEmitter: EventEmitter2,
     ) { }
 
-    
-
-    private readonly SYSTEM_USER_ID = '00000000-0000-0000-0000-000000000001';
+    // ============ CONVERSATION CREATION ============
 
     async createConversationFromQuote(quoteId: string): Promise<Conversation> {
         const quote = await this.quoteRepo.findOne({
@@ -95,7 +97,6 @@ export class ChatService {
         return saved;
     }
 
-    
     async createDirectConversation(
         customerId: string,
         providerId: string
@@ -126,176 +127,22 @@ export class ChatService {
 
         const saved = await this.conversationRepo.save(conversation);
 
+        // sendSystemMessage handles message creation, lastMessageAt update, and event emission
+        await this.sendSystemMessage(
+            saved.id,
+            'Cuộc trò chuyện đã được tạo. Hãy thảo luận về yêu cầu dịch vụ của bạn.',
+        );
 
-
-        const systemMessage = this.messageRepo.create({
-            conversationId: saved.id,
-            senderId: this.SYSTEM_USER_ID,
-            type: MessageType.SYSTEM,
-            content: 'Cuộc trò chuyện đã được tạo. Hãy thảo luận về yêu cầu dịch vụ của bạn.',
-            isRead: false,
-        });
-
-
-        const savedMessage = await this.messageRepo.save(systemMessage);
-
-        saved.lastMessageAt = savedMessage.createdAt;
-        await this.conversationRepo.save(saved);
-
-        this.eventEmitter.emit('message.sent', {
-            conversationId: saved.id,
-            message: savedMessage,
-            receiverId: customerId, // Gửi cho khách
-        });
-
-        this.eventEmitter.emit('message.sent', {
-            conversationId: saved.id,
-            message: savedMessage,
-            receiverId: providerId, // Gửi cho thợ
-        });
-
-        // Gửi notification cho cả 2
-        await this.sendNotificationToBoth(saved, savedMessage, customerId, providerId);
+        // Notify provider of the new conversation
+        await this.notificationService.notifyNewMessage(
+            providerId,
+            customerId,
+            'Khách hàng',
+            'Cuộc trò chuyện mới đã được tạo',
+            saved.id,
+        );
 
         this.logger.log(`Direct conversation created: ${saved.id}`);
-        return saved;
-    }
-
-
-    //method
-
-
-    private async sendNotificationToBoth(
-        conversation: Conversation,
-        message: Message,
-        customerId: string,
-        providerId: string
-    ): Promise<void> {
-        try {
-            // Notification cho khách hàng
-            this.eventEmitter.emit('notification.send', {
-                userId: customerId,
-                type: 'NEW_MESSAGE',
-                title: 'Cuộc trò chuyện mới',
-                body: message.content,
-                data: {
-                    conversationId: conversation.id,
-                    messageId: message.id,
-                },
-            });
-
-            // Notification cho thợ
-            this.eventEmitter.emit('notification.send', {
-                userId: providerId,
-                type: 'NEW_MESSAGE',
-                title: 'Cuộc trò chuyện mới',
-                body: message.content,
-                data: {
-                    conversationId: conversation.id,
-                    messageId: message.id,
-                },
-            });
-        } catch (error) {
-            this.logger.error('Failed to send notifications', error);
-        }
-    }
-
-
-
-
-    async sendMessage(
-        conversationId: string,
-        senderId: string,
-        dto: SendMessageDto
-    ): Promise<Message> {
-        const conversation = await this.conversationRepo.findOne({
-            where: { id: conversationId },
-            relations: ['customer', 'provider'],
-        });
-
-        if (!conversation) {
-            throw new NotFoundException('Conversation not found');
-        }
-
-        if (!conversation.isParticipant(senderId)) {
-            throw new ForbiddenException('You are not a participant in this conversation');
-        }
-
-        if (!conversation.isActive) {
-            throw new BadRequestException('Conversation is closed');
-        }
-
-
-
-        const normalizedSenderId =
-            senderId === 'system' || senderId === MessageType.SYSTEM
-                ? this.SYSTEM_USER_ID
-                : senderId;
-
-        if (!conversation.isParticipant(normalizedSenderId) && normalizedSenderId !== this.SYSTEM_USER_ID) {
-            throw new ForbiddenException('You are not a participant in this conversation');
-        }
-
-
-        // Validate message content
-        this.validateMessageContent(dto);
-
-        // Tạo message
-        const message = this.messageRepo.create({
-            conversationId,
-            senderId,
-            type: dto.type,
-            content: dto.content?.trim(),
-            fileUrls: dto.fileUrls || [],
-            fileNames: dto.fileNames,
-            isRead: false,
-        });
-
-        const saved = await this.messageRepo.save(message);
-
-        // Cập nhật conversation
-        await this.updateConversationAfterMessage(conversation, saved, normalizedSenderId);
-
-        // Emit WebSocket event
-        this.eventEmitter.emit('message.sent', {
-            conversationId,
-            message: saved,
-            receiverId: conversation.getOtherUserId(normalizedSenderId),
-        });
-
-        // Gửi notification
-        await this.sendMessageNotification(conversation, saved, normalizedSenderId);
-
-        return saved;
-    }
-
-    
-    async sendSystemMessage(
-        conversationId: string,
-        content: string
-    ): Promise<Message> {
-        const message = this.messageRepo.create({
-            conversationId,
-            senderId: this.SYSTEM_USER_ID,
-            type: MessageType.SYSTEM,
-            content,
-            isRead: true, // System messages are auto-read
-        });
-
-        const saved = await this.messageRepo.save(message);
-
-        // Cập nhật conversation
-        await this.conversationRepo.update(conversationId, {
-            lastMessageAt: new Date(),
-            lastMessagePreview: content,
-        });
-
-        // Emit event
-        this.eventEmitter.emit('system.message.sent', {
-            conversationId,
-            message: saved,
-        });
-
         return saved;
     }
 
@@ -334,15 +181,115 @@ export class ChatService {
         return saved;
     }
 
-    async getUserConversations(userId: string): Promise<Conversation[]> {
-        return await this.conversationRepo.find({
-            where: [{ customerId: userId }, { providerId: userId }],
-            relations: ['customer', 'customer.profile', 'provider', 'provider.profile', 'quote'],
-            order: { lastMessageAt: 'DESC' },
+    // ============ MESSAGING ============
+
+    async sendMessage(
+        conversationId: string,
+        senderId: string,
+        dto: SendMessageDto
+    ): Promise<Message> {
+        // Load profile relations so sendMessageNotification can read the sender's display name
+        const conversation = await this.conversationRepo.findOne({
+            where: { id: conversationId },
+            relations: ['customer', 'customer.profile', 'provider', 'provider.profile'],
         });
+
+        if (!conversation) {
+            throw new NotFoundException('Conversation not found');
+        }
+
+        if (!conversation.isParticipant(senderId)) {
+            throw new ForbiddenException('You are not a participant in this conversation');
+        }
+
+        if (!conversation.isActive) {
+            throw new BadRequestException('Conversation is closed');
+        }
+
+        this.validateMessageContent(dto);
+
+        const message = this.messageRepo.create({
+            conversationId,
+            senderId,
+            type: dto.type,
+            content: dto.content?.trim(),
+            fileUrls: dto.fileUrls || [],
+            fileNames: dto.fileNames,
+            isRead: false,
+        });
+
+        const saved = await this.messageRepo.save(message);
+
+        await this.updateConversationAfterMessage(conversation, saved, senderId);
+
+        this.eventEmitter.emit('message.sent', {
+            conversationId,
+            message: saved,
+            receiverId: conversation.getOtherUserId(senderId),
+        });
+
+        await this.sendMessageNotification(conversation, saved, senderId);
+
+        return saved;
     }
 
-    
+    async sendSystemMessage(
+        conversationId: string,
+        content: string
+    ): Promise<Message> {
+        const message = this.messageRepo.create({
+            conversationId,
+            senderId: this.SYSTEM_USER_ID,
+            type: MessageType.SYSTEM,
+            content,
+            isRead: true,
+        });
+
+        const saved = await this.messageRepo.save(message);
+
+        await this.conversationRepo.update(conversationId, {
+            lastMessageAt: new Date(),
+            lastMessagePreview: content,
+        });
+
+        this.eventEmitter.emit('system.message.sent', {
+            conversationId,
+            message: saved,
+        });
+
+        return saved;
+    }
+
+    // ============ QUERIES ============
+
+    /**
+     * Lightweight query used by the WebSocket gateway to join conversation rooms on connect.
+     * Returns only IDs — no relation loading.
+     */
+    async getConversationIds(userId: string): Promise<string[]> {
+        const rows = await this.conversationRepo.find({
+            select: { id: true },
+            where: [{ customerId: userId }, { providerId: userId }],
+        });
+        return rows.map(r => r.id);
+    }
+
+    async getUserConversations(
+        userId: string,
+        page: number = 1,
+        limit: number = 20,
+    ): Promise<{ conversations: Conversation[]; total: number }> {
+        const [conversations, total] = await this.conversationRepo.findAndCount({
+            where: [{ customerId: userId }, { providerId: userId }],
+            // Omit 'quote' — list view doesn't need the full quote entity; quoteId column is enough
+            relations: ['customer', 'customer.profile', 'provider', 'provider.profile'],
+            order: { lastMessageAt: 'DESC' },
+            skip: (page - 1) * limit,
+            take: limit,
+        });
+        return { conversations, total };
+    }
+
     async getConversationById(
         conversationId: string,
         userId: string
@@ -380,7 +327,7 @@ export class ChatService {
             throw new ForbiddenException('You are not a participant in this conversation');
         }
 
-        const limit = Math.min(query.limit || 50, 100); // Max 100
+        const limit = Math.min(query.limit || 50, 100);
         const queryBuilder = this.messageRepo
             .createQueryBuilder('message')
             .where('message.conversation_id = :conversationId', { conversationId })
@@ -409,7 +356,6 @@ export class ChatService {
         };
     }
 
-    
     async markMessagesAsRead(
         conversationId: string,
         userId: string
@@ -426,18 +372,17 @@ export class ChatService {
             throw new ForbiddenException('You are not a participant in this conversation');
         }
 
-        // Đánh dấu messages của người khác là đã đọc
+        // Mark messages sent by the OTHER participant as read (exclude system messages)
         await this.messageRepo
             .createQueryBuilder()
             .update(Message)
             .set({ isRead: true, readAt: new Date() })
             .where('conversation_id = :conversationId', { conversationId })
             .andWhere('sender_id != :userId', { userId })
-            .andWhere('sender_id != :system', { system: 'system' })
+            .andWhere('sender_id != :systemId', { systemId: this.SYSTEM_USER_ID })
             .andWhere('is_read = false')
             .execute();
 
-        // Reset unread count
         const isCustomer = userId === conversation.customerId;
         await this.conversationRepo.update(conversationId, {
             ...(isCustomer
@@ -451,7 +396,6 @@ export class ChatService {
         });
     }
 
-    
     async closeConversation(
         conversationId: string,
         userId: string
@@ -468,19 +412,13 @@ export class ChatService {
             throw new ForbiddenException('You are not a participant in this conversation');
         }
 
-        await this.conversationRepo.update(conversationId, {
-            isActive: false,
-        });
+        await this.conversationRepo.update(conversationId, { isActive: false });
 
-        await this.sendSystemMessage(
-            conversationId,
-            'Cuộc trò chuyện đã đóng.'
-        );
+        await this.sendSystemMessage(conversationId, 'Cuộc trò chuyện đã đóng.');
 
         this.logger.log(`Conversation closed: ${conversationId}`);
     }
 
-    
     async deleteConversation(
         conversationId: string,
         userId: string
@@ -502,15 +440,14 @@ export class ChatService {
         this.logger.log(`Conversation deleted: ${conversationId}`);
     }
 
-    
     async getTotalUnreadCount(userId: string): Promise<number> {
         const result = await this.conversationRepo
             .createQueryBuilder('conversation')
             .select(
-                `SUM(CASE 
-                    WHEN conversation.customer_id = :userId THEN conversation.customer_unread_count 
-                    WHEN conversation.provider_id = :userId THEN conversation.provider_unread_count 
-                    ELSE 0 
+                `SUM(CASE
+                    WHEN conversation.customer_id = :userId THEN conversation.customer_unread_count
+                    WHEN conversation.provider_id = :userId THEN conversation.provider_unread_count
+                    ELSE 0
                 END)`,
                 'total'
             )
@@ -522,7 +459,6 @@ export class ChatService {
         return parseInt(result?.total || '0', 10);
     }
 
-    
     async searchMessages(
         userId: string,
         keyword: string,
@@ -532,16 +468,19 @@ export class ChatService {
             throw new BadRequestException('Keyword must be at least 2 characters');
         }
 
+        // Escape ILIKE wildcards to prevent a bare '%' from matching everything (performance DoS)
+        const escaped = keyword.trim().replace(/[\\%_]/g, '\\$&');
+
+        // Single join on conversation — used for both the WHERE clause and the SELECT
         const queryBuilder = this.messageRepo
             .createQueryBuilder('message')
-            .leftJoin('message.conversation', 'conversation')
+            .leftJoinAndSelect('message.conversation', 'conversation')
+            .leftJoinAndSelect('message.sender', 'sender')
             .where(
                 '(conversation.customer_id = :userId OR conversation.provider_id = :userId)',
                 { userId }
             )
-            .andWhere('message.content ILIKE :keyword', {
-                keyword: `%${keyword}%`,
-            })
+            .andWhere('message.content ILIKE :keyword', { keyword: `%${escaped}%` })
             .andWhere('message.type = :type', { type: MessageType.TEXT })
             .orderBy('message.created_at', 'DESC')
             .limit(50);
@@ -552,10 +491,7 @@ export class ChatService {
             });
         }
 
-        return await queryBuilder
-            .leftJoinAndSelect('message.sender', 'sender')
-            .leftJoinAndSelect('message.conversation', 'conv')
-            .getMany();
+        return await queryBuilder.getMany();
     }
 
     // ============ PRIVATE HELPERS ============
@@ -599,15 +535,22 @@ export class ChatService {
         senderId: string
     ): Promise<void> {
         const receiverId = conversation.getOtherUserId(senderId);
-        const senderName =
+
+        // customer.profile / provider.profile are loaded in sendMessage
+        const senderProfile =
             senderId === conversation.customerId
-                ? conversation.customer.profile?.displayName || conversation.customer.profile?.fullName
-                : conversation.provider.profile?.displayName || conversation.provider.profile?.fullName;
+                ? conversation.customer?.profile
+                : conversation.provider?.profile;
+
+        const senderName =
+            senderProfile?.displayName ||
+            senderProfile?.fullName ||
+            'Người dùng';
 
         await this.notificationService.notifyNewMessage(
             receiverId,
             senderId,
-            senderName || 'User',
+            senderName,
             this.getMessagePreview(message),
             conversation.id
         );

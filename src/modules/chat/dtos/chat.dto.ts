@@ -45,6 +45,23 @@ export class CreateDirectConversationDto {
     providerId!: string;
 }
 
+export class GetConversationsQueryDto {
+    @ApiPropertyOptional({ description: 'Số trang', default: 1 })
+    @IsOptional()
+    @IsInt()
+    @Min(1)
+    @Type(() => Number)
+    page?: number = 1;
+
+    @ApiPropertyOptional({ description: 'Số lượng mỗi trang', default: 20 })
+    @IsOptional()
+    @IsInt()
+    @Min(1)
+    @Max(100)
+    @Type(() => Number)
+    limit?: number = 20;
+}
+
 export class GetMessagesQueryDto {
     @ApiPropertyOptional({ description: 'Số lượng messages', default: 50 })
     @IsOptional()
