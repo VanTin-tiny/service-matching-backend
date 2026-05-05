@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { CreateNotification } from '../dtos/notification.dto';
@@ -48,18 +49,30 @@ export class NotificationCreationService {
             actionUrl?: string;
         }>
     ): Promise<void> {
-        const entities = notifications.map(notif =>
-            this.notificationRepo.create({
-                userId: notif.userId,
-                type: notif.type,
-                title: notif.title,
-                message: notif.message,
-                metadata: notif.metadata,
-                actionUrl: notif.actionUrl,
-                isRead: false,
-            })
-        );
+        if (notifications.length === 0) return;
 
-        await this.notificationRepo.insert(entities);
+        // Pre-generate IDs so we can emit events with complete data before DB confirms
+        const now = new Date();
+        const entities = notifications.map(notif => ({
+            id: randomUUID(),
+            userId: notif.userId,
+            type: notif.type,
+            title: notif.title,
+            message: notif.message,
+            metadata: notif.metadata,
+            actionUrl: notif.actionUrl,
+            isRead: false,
+            createdAt: now,
+        }));
+
+        await this.notificationRepo.insert(entities as Partial<Notification>[]);
+
+        // Emit one event per user for real-time WebSocket delivery
+        for (const entity of entities) {
+            this.eventEmitter.emit('notification.created', {
+                userId: entity.userId,
+                notification: entity,
+            });
+        }
     }
 }
