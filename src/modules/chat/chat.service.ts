@@ -18,6 +18,7 @@ import {
 } from './dtos/chat.dto';
 import { Conversation, ConversationType } from './entities/conversation.entity';
 import { Message, MessageType } from './entities/message.entity';
+import { ChatCacheService } from './services/chat-cache.service';
 
 @Injectable()
 export class ChatService {
@@ -35,6 +36,7 @@ export class ChatService {
         private readonly quoteRepo: Repository<Quote>,
         private readonly notificationService: NotificationService,
         private readonly eventEmitter: EventEmitter2,
+        private readonly chatCache: ChatCacheService,
     ) { }
 
     // ============ CONVERSATION CREATION ============
@@ -64,7 +66,6 @@ export class ChatService {
             return existing;
         }
 
-        // Determine customerId: from post (public quote) or custom request (direct request quote)
         const customerId = quote.post?.customerId ?? quote.customRequest?.customerId;
         if (!customerId) {
             throw new BadRequestException('Cannot determine customer for this quote');
@@ -81,6 +82,9 @@ export class ChatService {
 
         const saved = await this.conversationRepo.save(conversation);
 
+        // Bust participant caches before the system message updates lastMessagePreview
+        await this.chatCache.invalidateOnNewConversation(customerId, quote.providerId);
+
         const contextTitle = isDirectRequest
             ? (quote.customRequest?.title || 'Yêu cầu riêng')
             : (quote.post?.title || 'Bài đăng');
@@ -90,7 +94,8 @@ export class ChatService {
             `Cuộc trò chuyện bắt đầu từ báo giá được chấp nhận.\n` +
             `Yêu cầu: ${contextTitle}\n` +
             `Giá hiện tại: ${parseFloat(quote.price.toString()).toLocaleString('vi-VN')}đ\n` +
-            `Thời gian ước tính: ${quote.estimatedDuration || 'Chưa xác định'} phút`
+            `Thời gian ước tính: ${quote.estimatedDuration || 'Chưa xác định'} phút`,
+            { customerId, providerId: quote.providerId },
         );
 
         this.logger.log(`Conversation created from quote: ${saved.id} (type: ${conversation.type})`);
@@ -127,13 +132,14 @@ export class ChatService {
 
         const saved = await this.conversationRepo.save(conversation);
 
-        // sendSystemMessage handles message creation, lastMessageAt update, and event emission
+        await this.chatCache.invalidateOnNewConversation(customerId, providerId);
+
         await this.sendSystemMessage(
             saved.id,
             'Cuộc trò chuyện đã được tạo. Hãy thảo luận về yêu cầu dịch vụ của bạn.',
+            { customerId, providerId },
         );
 
-        // Notify provider of the new conversation
         await this.notificationService.notifyNewMessage(
             providerId,
             customerId,
@@ -171,10 +177,13 @@ export class ChatService {
 
         const saved = await this.conversationRepo.save(conversation);
 
+        await this.chatCache.invalidateOnNewConversation(customerId, providerId);
+
         await this.sendSystemMessage(
             saved.id,
             `Đơn hàng "${orderTitle}" đã hoàn thành!\n` +
             `Bạn có thể dùng cuộc trò chuyện này để liên lạc thêm, trao đổi về bảo hành, hoặc đánh giá dịch vụ.`,
+            { customerId, providerId },
         );
 
         this.logger.log(`Order conversation created: ${saved.id} for order ${orderId}`);
@@ -222,6 +231,13 @@ export class ChatService {
 
         await this.updateConversationAfterMessage(conversation, saved, senderId);
 
+        // Invalidate after DB is fully updated so the next cache population is fresh
+        await this.chatCache.invalidateOnNewMessage(
+            conversationId,
+            conversation.customerId,
+            conversation.providerId,
+        );
+
         this.eventEmitter.emit('message.sent', {
             conversationId,
             message: saved,
@@ -233,9 +249,17 @@ export class ChatService {
         return saved;
     }
 
+    /**
+     * Sends a system message and busts all caches for this conversation.
+     *
+     * @param participants - If provided, also busts participant-scoped caches
+     *   (conversation list pages, unread counts). Pass this whenever the surrounding
+     *   operation has the customerId/providerId available.
+     */
     async sendSystemMessage(
         conversationId: string,
-        content: string
+        content: string,
+        participants?: { customerId: string; providerId: string },
     ): Promise<Message> {
         const message = this.messageRepo.create({
             conversationId,
@@ -257,6 +281,20 @@ export class ChatService {
             message: saved,
         });
 
+        if (participants) {
+            await this.chatCache.invalidateOnNewMessage(
+                conversationId,
+                participants.customerId,
+                participants.providerId,
+            );
+        } else {
+            // Minimal bust when participants are unknown — TTL handles the rest
+            await Promise.all([
+                this.chatCache.invalidatePattern(`svc:chat:v1:msgs:${conversationId}:*`),
+                this.chatCache.del(this.chatCache.keyConversationDetail(conversationId)),
+            ]);
+        }
+
         return saved;
     }
 
@@ -265,13 +303,23 @@ export class ChatService {
     /**
      * Lightweight query used by the WebSocket gateway to join conversation rooms on connect.
      * Returns only IDs — no relation loading.
+     * Cached with a 60-second TTL; newly created conversations are joined on demand
+     * via the join_conversation socket event.
      */
     async getConversationIds(userId: string): Promise<string[]> {
+        const key = this.chatCache.keyConversationIds(userId);
+
+        const cached = await this.chatCache.get<string[]>(key);
+        if (cached) return cached;
+
         const rows = await this.conversationRepo.find({
             select: { id: true },
             where: [{ customerId: userId }, { providerId: userId }],
         });
-        return rows.map(r => r.id);
+        const ids = rows.map(r => r.id);
+
+        await this.chatCache.set(key, ids, this.chatCache.ttl.CONVERSATION_IDS);
+        return ids;
     }
 
     async getUserConversations(
@@ -279,21 +327,39 @@ export class ChatService {
         page: number = 1,
         limit: number = 20,
     ): Promise<{ conversations: Conversation[]; total: number }> {
+        const key = this.chatCache.keyConversationList(userId, page, limit);
+
+        const cached = await this.chatCache.get<{ conversations: Conversation[]; total: number }>(key);
+        if (cached) return cached;
+
         const [conversations, total] = await this.conversationRepo.findAndCount({
             where: [{ customerId: userId }, { providerId: userId }],
-            // Omit 'quote' — list view doesn't need the full quote entity; quoteId column is enough
             relations: ['customer', 'customer.profile', 'provider', 'provider.profile'],
             order: { lastMessageAt: 'DESC' },
             skip: (page - 1) * limit,
             take: limit,
         });
-        return { conversations, total };
+
+        const result = { conversations, total };
+        await this.chatCache.set(key, result, this.chatCache.ttl.CONVERSATION_LIST);
+        return result;
     }
 
     async getConversationById(
         conversationId: string,
         userId: string
     ): Promise<Conversation> {
+        const key = this.chatCache.keyConversationDetail(conversationId);
+
+        const cached = await this.chatCache.get<{ customerId: string; providerId: string } & Record<string, unknown>>(key);
+        if (cached) {
+            // Plain objects from cache lack entity methods; check participant fields directly
+            if (cached.customerId !== userId && cached.providerId !== userId) {
+                throw new ForbiddenException('You are not a participant in this conversation');
+            }
+            return cached as unknown as Conversation;
+        }
+
         const conversation = await this.conversationRepo.findOne({
             where: { id: conversationId },
             relations: ['customer', 'customer.profile', 'provider', 'provider.profile', 'quote'],
@@ -307,6 +373,7 @@ export class ChatService {
             throw new ForbiddenException('You are not a participant in this conversation');
         }
 
+        await this.chatCache.set(key, conversation, this.chatCache.ttl.CONVERSATION_DETAIL);
         return conversation;
     }
 
@@ -315,6 +382,7 @@ export class ChatService {
         userId: string,
         query: GetMessagesQueryDto
     ): Promise<{ messages: Message[]; hasMore: boolean }> {
+        // Participant check — lightweight PK lookup, no relation loading
         const conversation = await this.conversationRepo.findOne({
             where: { id: conversationId },
         });
@@ -328,6 +396,12 @@ export class ChatService {
         }
 
         const limit = Math.min(query.limit || 50, 100);
+        const key = this.chatCache.keyMessages(conversationId, limit, query.before);
+
+        // Message pages are shared across participants (same data, access guarded above)
+        const cached = await this.chatCache.get<{ messages: Message[]; hasMore: boolean }>(key);
+        if (cached) return cached;
+
         const queryBuilder = this.messageRepo
             .createQueryBuilder('message')
             .where('message.conversation_id = :conversationId', { conversationId })
@@ -350,10 +424,15 @@ export class ChatService {
             messages.pop();
         }
 
-        return {
-            messages: messages.reverse(),
-            hasMore,
-        };
+        const result = { messages: messages.reverse(), hasMore };
+
+        // Historical pages (cursor-anchored) are immutable; latest page needs shorter TTL
+        const ttl = query.before
+            ? this.chatCache.ttl.MESSAGES_HISTORY
+            : this.chatCache.ttl.MESSAGES_LATEST;
+        await this.chatCache.set(key, result, ttl);
+
+        return result;
     }
 
     async markMessagesAsRead(
@@ -390,6 +469,8 @@ export class ChatService {
                 : { providerUnreadCount: 0 }),
         });
 
+        await this.chatCache.invalidateOnMessagesRead(conversationId, userId);
+
         this.eventEmitter.emit('messages.read', {
             conversationId,
             userId,
@@ -414,7 +495,17 @@ export class ChatService {
 
         await this.conversationRepo.update(conversationId, { isActive: false });
 
-        await this.sendSystemMessage(conversationId, 'Cuộc trò chuyện đã đóng.');
+        await this.sendSystemMessage(
+            conversationId,
+            'Cuộc trò chuyện đã đóng.',
+            { customerId: conversation.customerId, providerId: conversation.providerId },
+        );
+
+        await this.chatCache.invalidateOnConversationChange(
+            conversationId,
+            conversation.customerId,
+            conversation.providerId,
+        );
 
         this.logger.log(`Conversation closed: ${conversationId}`);
     }
@@ -435,12 +526,25 @@ export class ChatService {
             throw new ForbiddenException('You are not a participant in this conversation');
         }
 
+        // Invalidate before deletion so the DEL keys still exist (avoids SCAN on ghost keys)
+        await this.chatCache.invalidateOnConversationChange(
+            conversationId,
+            conversation.customerId,
+            conversation.providerId,
+        );
+
         await this.conversationRepo.delete(conversationId);
 
         this.logger.log(`Conversation deleted: ${conversationId}`);
     }
 
     async getTotalUnreadCount(userId: string): Promise<number> {
+        const key = this.chatCache.keyUnreadCount(userId);
+
+        // Must use !== null because 0 is a valid cached value (falsy in JS)
+        const cached = await this.chatCache.get<number>(key);
+        if (cached !== null) return cached;
+
         const result = await this.conversationRepo
             .createQueryBuilder('conversation')
             .select(
@@ -456,7 +560,9 @@ export class ChatService {
             })
             .getRawOne();
 
-        return parseInt(result?.total || '0', 10);
+        const count = parseInt(result?.total || '0', 10);
+        await this.chatCache.set(key, count, this.chatCache.ttl.UNREAD_COUNT);
+        return count;
     }
 
     async searchMessages(
@@ -471,7 +577,6 @@ export class ChatService {
         // Escape ILIKE wildcards to prevent a bare '%' from matching everything (performance DoS)
         const escaped = keyword.trim().replace(/[\\%_]/g, '\\$&');
 
-        // Single join on conversation — used for both the WHERE clause and the SELECT
         const queryBuilder = this.messageRepo
             .createQueryBuilder('message')
             .leftJoinAndSelect('message.conversation', 'conversation')
@@ -536,7 +641,6 @@ export class ChatService {
     ): Promise<void> {
         const receiverId = conversation.getOtherUserId(senderId);
 
-        // customer.profile / provider.profile are loaded in sendMessage
         const senderProfile =
             senderId === conversation.customerId
                 ? conversation.customer?.profile

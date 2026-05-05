@@ -9,6 +9,7 @@ import { ChatGateway } from './chat.gateway';
 import { ChatService } from './chat.service';
 import { Conversation } from './entities/conversation.entity';
 import { Message } from './entities/message.entity';
+import { ChatCacheService } from './services/chat-cache.service';
 
 @Module({
     imports: [
@@ -20,7 +21,7 @@ import { Message } from './entities/message.entity';
         NotificationsModule,
     ],
     controllers: [ChatController],
-    providers: [ChatService, ChatGateway],
-    exports: [ChatService, ChatGateway],
+    providers: [ChatService, ChatGateway, ChatCacheService],
+    exports: [ChatService, ChatGateway, ChatCacheService],
 })
 export class ChatModule { }
