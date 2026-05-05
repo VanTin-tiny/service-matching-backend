@@ -1,4 +1,5 @@
 import { ModerationModule } from '@/modules/moderation/moderation.module';
+import { RedisModule } from '@/modules/redis/redis.module';
 import { UsersModule } from '@/modules/users/users.module';
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -10,6 +11,7 @@ import { PostController } from './posts.controller';
 import { PostRepository } from './repositories/post.repository';
 import { SavedPostRepository } from './repositories/saved-post.repository';
 import { PostBusinessService } from './services/post-business.service';
+import { PostCacheService } from './services/post-cache.service';
 import { PostMapperService } from './services/post-mapper.service';
 import { PostValidationService } from './services/post-validation.service';
 import { SavedPostService } from './services/saved-post.service';
@@ -18,7 +20,8 @@ import { SavedPostService } from './services/saved-post.service';
     imports: [
         TypeOrmModule.forFeature([PostCustomer, SavedPost]),
         UsersModule,
-        ModerationModule
+        ModerationModule,
+        RedisModule,
     ],
     controllers: [PostController, SavedPostsController],
     providers: [
@@ -26,6 +29,7 @@ import { SavedPostService } from './services/saved-post.service';
         PostValidationService,
         PostBusinessService,
         PostMapperService,
+        PostCacheService,
         PostRepository,
         SavedPostService,
         SavedPostRepository,
@@ -36,6 +40,7 @@ import { SavedPostService } from './services/saved-post.service';
         PostValidationService,
         PostBusinessService,
         PostMapperService,
+        PostCacheService,
         SavedPostService,
         SavedPostRepository,
     ],

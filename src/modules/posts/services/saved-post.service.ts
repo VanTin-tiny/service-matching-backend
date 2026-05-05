@@ -8,6 +8,7 @@ import {
 import { SavedPost } from '../entities/saved-post.entity';
 import { PostRepository } from '../repositories/post.repository';
 import { SavedPostRepository } from '../repositories/saved-post.repository';
+import { PostCacheService } from './post-cache.service';
 
 @Injectable()
 export class SavedPostService {
@@ -16,9 +17,10 @@ export class SavedPostService {
     constructor(
         private readonly savedPostRepository: SavedPostRepository,
         private readonly postRepository: PostRepository,
+        private readonly cacheService: PostCacheService,
     ) { }
 
-    
+
     async savePost(
         providerId: string,
         postId: string,
@@ -58,15 +60,29 @@ export class SavedPostService {
         }
 
         this.logger.log(`Post ${postId} successfully saved by provider ${providerId}`);
+
+        await this.cacheService.invalidateOnSavedChange(providerId, postId);
+
         return this.mapToResponseDto(savedPost);
     }
 
-    
+
     async getSavedPosts(
         providerId: string,
         limit: number = 10,
         cursor?: string,
     ): Promise<SavedPostsListResponseDto> {
+        const t0 = Date.now();
+
+        const cacheKey = this.cacheService.keySavedList(providerId, limit, cursor);
+        const hit = await this.cacheService.get<SavedPostsListResponseDto>(cacheKey);
+        if (hit) {
+            this.logger.debug(
+                `[saved-list] cache hit providerId=${providerId} limit=${limit} took=${Date.now() - t0}ms`,
+            );
+            return hit;
+        }
+
         this.logger.log(
             `Fetching saved posts for provider ${providerId} - limit: ${limit}, cursor: ${cursor}`,
         );
@@ -80,20 +96,33 @@ export class SavedPostService {
                 parsedCursor,
             );
 
-        return {
+        const result: SavedPostsListResponseDto = {
             data: posts.map(savedPost => this.mapToResponseDto(savedPost)),
             nextCursor,
             total: posts.length,
             hasMore,
         };
+
+        await this.cacheService.set(cacheKey, result, this.cacheService.ttl.SAVED_LIST);
+
+        return result;
     }
 
-   
+
     async isSaved(providerId: string, postId: string): Promise<boolean> {
-        return this.savedPostRepository.isSaved(providerId, postId);
+        const cacheKey = this.cacheService.keySavedCheck(providerId, postId);
+        const hit = await this.cacheService.get<boolean>(cacheKey);
+        if (hit !== null) {
+            return hit;
+        }
+
+        const saved = await this.savedPostRepository.isSaved(providerId, postId);
+        await this.cacheService.set(cacheKey, saved, this.cacheService.ttl.SAVED_CHECK);
+
+        return saved;
     }
 
-   
+
     async unsavePost(
         providerId: string,
         postId: string,
@@ -126,6 +155,9 @@ export class SavedPostService {
         }
 
         this.logger.log(`Post ${postId} successfully unsaved by provider ${providerId}`);
+
+        await this.cacheService.invalidateOnSavedChange(providerId, postId);
+
         return {
             postId,
             success: true,
@@ -133,7 +165,7 @@ export class SavedPostService {
         };
     }
 
-    
+
     async unsavePostById(
         savedPostId: string,
         providerId: string,
@@ -164,6 +196,9 @@ export class SavedPostService {
         }
 
         this.logger.log(`Saved post ${savedPostId} successfully deleted`);
+
+        await this.cacheService.invalidateOnSavedChange(providerId, postId);
+
         return {
             postId,
             success: true,
@@ -171,19 +206,28 @@ export class SavedPostService {
         };
     }
 
-    
+
     async countSavedPosts(providerId: string): Promise<number> {
-        return this.savedPostRepository.countByProvider(providerId);
+        const cacheKey = this.cacheService.keySavedCount(providerId);
+        const hit = await this.cacheService.get<number>(cacheKey);
+        if (hit !== null) {
+            return hit;
+        }
+
+        const count = await this.savedPostRepository.countByProvider(providerId);
+        await this.cacheService.set(cacheKey, count, this.cacheService.ttl.SAVED_COUNT);
+
+        return count;
     }
 
-   
+
     private mapToResponseDto(savedPost: SavedPost): SavedPostResponseDto {
         return plainToInstance(SavedPostResponseDto, savedPost, {
             excludeExtraneousValues: true,
         });
     }
 
-    
+
     private parseCursor(cursor?: string): Date | undefined {
         if (!cursor) return undefined;
 
