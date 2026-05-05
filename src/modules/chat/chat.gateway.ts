@@ -27,8 +27,9 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     server!: Server;
 
     private readonly logger = new Logger(ChatGateway.name);
-    private userSockets = new Map<string, Set<string>>(); // userId -> Set<socketId>
-    private socketUsers = new Map<string, string>(); // socketId -> userId
+    private readonly userSockets = new Map<string, Set<string>>(); // userId → Set<socketId>
+    private readonly socketUsers = new Map<string, string>();       // socketId → userId
+    private static readonly MAX_CONNECTIONS_PER_USER = 5;
 
     constructor(
         private readonly jwtService: JwtService,
@@ -54,7 +55,17 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
                 return;
             }
 
-            // Store connection
+            // Enforce per-user connection limit before registering the socket
+            const existing = this.userSockets.get(userId);
+            if (existing && existing.size >= ChatGateway.MAX_CONNECTIONS_PER_USER) {
+                this.logger.warn(
+                    `User ${userId} exceeded max connections (${ChatGateway.MAX_CONNECTIONS_PER_USER}), rejecting ${client.id}`,
+                );
+                client.emit('error', { message: 'Too many concurrent connections' });
+                client.disconnect();
+                return;
+            }
+
             client.data.userId = userId;
             this.socketUsers.set(client.id, userId);
 
@@ -65,10 +76,9 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
             await client.join(`user:${userId}`);
 
-            const conversations = await this.chatService.getUserConversations(userId);
-            for (const conv of conversations) {
-                await client.join(`conversation:${conv.id}`);
-            }
+            // Fetch only conversation IDs (no heavy relations) and join all rooms in parallel
+            const conversationIds = await this.chatService.getConversationIds(userId);
+            await Promise.all(conversationIds.map(id => client.join(`conversation:${id}`)));
 
             this.logger.log(`Chat client connected: ${client.id} (User: ${userId})`);
 
@@ -97,7 +107,6 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         this.logger.log(`Chat client disconnected: ${client.id} (User: ${userId})`);
     }
 
-   
     @SubscribeMessage('send_message')
     async handleSendMessage(
         @ConnectedSocket() client: Socket,
@@ -118,7 +127,6 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         }
     }
 
-    
     @SubscribeMessage('mark_read')
     async handleMarkRead(
         @ConnectedSocket() client: Socket,
@@ -135,15 +143,20 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         }
     }
 
-    
     @SubscribeMessage('typing')
     handleTyping(
         @ConnectedSocket() client: Socket,
         @MessageBody() data: { conversationId: string; isTyping: boolean }
     ) {
         const userId = client.data.userId;
+        if (!userId) return;
 
-        // Broadcast typing status đến người khác trong conversation
+        // Only allow typing events for rooms the socket has actually joined.
+        // This prevents a connected user from broadcasting to arbitrary conversations.
+        if (!client.rooms.has(`conversation:${data.conversationId}`)) {
+            return;
+        }
+
         client.to(`conversation:${data.conversationId}`).emit('user_typing', {
             conversationId: data.conversationId,
             userId,
@@ -151,7 +164,6 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         });
     }
 
-    
     @SubscribeMessage('join_conversation')
     async handleJoinConversation(
         @ConnectedSocket() client: Socket,
@@ -176,7 +188,6 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         }
     }
 
-    
     @SubscribeMessage('leave_conversation')
     async handleLeaveConversation(
         @ConnectedSocket() client: Socket,
@@ -186,14 +197,12 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         return { success: true };
     }
 
-    
     @OnEvent('message.sent')
     handleMessageSent(payload: {
         conversationId: string;
         message: any;
         receiverId: string;
     }) {
-        // Broadcast message đến conversation room
         this.server
             .to(`conversation:${payload.conversationId}`)
             .emit('new_message', {
@@ -201,49 +210,39 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
                 message: payload.message,
             });
 
-        // Update unread count cho receiver
         this.server.to(`user:${payload.receiverId}`).emit('unread_updated', {
             conversationId: payload.conversationId,
             increment: 1,
         });
 
-        this.logger.log(
-            `Message sent to conversation: ${payload.conversationId}`
-        );
+        this.logger.log(`Message sent to conversation: ${payload.conversationId}`);
     }
 
-    
     @OnEvent('messages.read')
     handleMessagesRead(payload: { conversationId: string; userId: string }) {
-        // Notify sender that their messages were read
         this.server.to(`conversation:${payload.conversationId}`).emit('messages_read', {
             conversationId: payload.conversationId,
             readBy: payload.userId,
         });
     }
 
-    
     isUserOnline(userId: string): boolean {
         const sockets = this.userSockets.get(userId);
         return !!sockets && sockets.size > 0;
     }
 
-    
     sendToUser(userId: string, event: string, data: any) {
         this.server.to(`user:${userId}`).emit(event, data);
     }
 
-    
     sendToConversation(conversationId: string, event: string, data: any) {
         this.server.to(`conversation:${conversationId}`).emit(event, data);
     }
 
-    
     getOnlineUsersCount(): number {
         return this.userSockets.size;
     }
 
-    
     getOnlineUsers(): string[] {
         return Array.from(this.userSockets.keys());
     }

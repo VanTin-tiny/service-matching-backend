@@ -36,7 +36,7 @@ export class Message {
     @Column({ name: 'sender_id' })
     senderId!: string;
 
-    @ManyToOne(() => User, { eager: true })
+    @ManyToOne(() => User, { eager: false })
     @JoinColumn({ name: 'sender_id' })
     sender!: User;
 

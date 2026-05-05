@@ -14,7 +14,7 @@ import { Message } from './entities/message.entity';
     imports: [
         TypeOrmModule.forFeature([Conversation, Message, Quote, CustomRequest]),
         JwtModule.register({
-            secret: process.env.JWT_SECRET || 'your-secret-key',
+            secret: process.env.JWT_SECRET,
             signOptions: { expiresIn: '7d' },
         }),
         NotificationsModule,

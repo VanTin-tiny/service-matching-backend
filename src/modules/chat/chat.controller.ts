@@ -7,6 +7,7 @@ import {
     HttpCode,
     HttpStatus,
     Param,
+    ParseUUIDPipe,
     Post,
     Query,
     UseGuards
@@ -21,6 +22,7 @@ import { CurrentUserId } from '../../common/decorators/current-user-id.decorator
 import { ChatService } from './chat.service';
 import {
     CreateDirectConversationDto,
+    GetConversationsQueryDto,
     GetMessagesQueryDto,
     SendMessageDto,
 } from './dtos/chat.dto';
@@ -33,10 +35,32 @@ export class ChatController {
     constructor(private readonly chatService: ChatService) { }
 
     @Get('conversations')
-    @ApiOperation({ summary: 'Lấy danh sách conversations' })
+    @ApiOperation({ summary: 'Lấy danh sách conversations (có phân trang)' })
     @ApiResponse({ status: 200, description: 'Thành công' })
-    async getConversations(@CurrentUserId('id') userId: string) {
-        return await this.chatService.getUserConversations(userId);
+    async getConversations(
+        @CurrentUserId('id') userId: string,
+        @Query() query: GetConversationsQueryDto,
+    ) {
+        return await this.chatService.getUserConversations(userId, query.page, query.limit);
+    }
+
+    @Get('unread-count')
+    @ApiOperation({ summary: 'Đếm tổng tin nhắn chưa đọc' })
+    @ApiResponse({ status: 200, description: 'Thành công' })
+    async getUnreadCount(@CurrentUserId('id') userId: string) {
+        const count = await this.chatService.getTotalUnreadCount(userId);
+        return { count };
+    }
+
+    @Get('search')
+    @ApiOperation({ summary: 'Tìm kiếm tin nhắn' })
+    @ApiResponse({ status: 200, description: 'Thành công' })
+    async searchMessages(
+        @CurrentUserId('id') userId: string,
+        @Query('keyword') keyword: string,
+        @Query('conversationId') conversationId?: string
+    ) {
+        return await this.chatService.searchMessages(userId, keyword, conversationId);
     }
 
     @Get('conversations/:id')
@@ -44,7 +68,7 @@ export class ChatController {
     @ApiResponse({ status: 200, description: 'Thành công' })
     @ApiResponse({ status: 403, description: 'Không có quyền' })
     async getConversation(
-        @Param('id') conversationId: string,
+        @Param('id', ParseUUIDPipe) conversationId: string,
         @CurrentUserId('id') userId: string
     ) {
         return await this.chatService.getConversationById(conversationId, userId);
@@ -57,17 +81,14 @@ export class ChatController {
         @CurrentUserId('id') customerId: string,
         @Body() dto: CreateDirectConversationDto
     ) {
-        return await this.chatService.createDirectConversation(
-            customerId,
-            dto.providerId
-        );
+        return await this.chatService.createDirectConversation(customerId, dto.providerId);
     }
 
     @Post('conversations/:id/messages')
     @ApiOperation({ summary: 'Gửi tin nhắn' })
     @ApiResponse({ status: 201, description: 'Gửi thành công' })
     async sendMessage(
-        @Param('id') conversationId: string,
+        @Param('id', ParseUUIDPipe) conversationId: string,
         @CurrentUserId('id') userId: string,
         @Body() dto: SendMessageDto
     ) {
@@ -78,7 +99,7 @@ export class ChatController {
     @ApiOperation({ summary: 'Lấy tin nhắn của conversation' })
     @ApiResponse({ status: 200, description: 'Thành công' })
     async getMessages(
-        @Param('id') conversationId: string,
+        @Param('id', ParseUUIDPipe) conversationId: string,
         @CurrentUserId('id') userId: string,
         @Query() query: GetMessagesQueryDto
     ) {
@@ -90,19 +111,11 @@ export class ChatController {
     @ApiOperation({ summary: 'Đánh dấu tin nhắn đã đọc' })
     @ApiResponse({ status: 200, description: 'Thành công' })
     async markAsRead(
-        @Param('id') conversationId: string,
+        @Param('id', ParseUUIDPipe) conversationId: string,
         @CurrentUserId('id') userId: string
     ) {
         await this.chatService.markMessagesAsRead(conversationId, userId);
         return { success: true };
-    }
-
-    @Get('unread-count')
-    @ApiOperation({ summary: 'Đếm tổng tin nhắn chưa đọc' })
-    @ApiResponse({ status: 200, description: 'Thành công' })
-    async getUnreadCount(@CurrentUserId('id') userId: string) {
-        const count = await this.chatService.getTotalUnreadCount(userId);
-        return { count };
     }
 
     @Post('conversations/:id/close')
@@ -110,7 +123,7 @@ export class ChatController {
     @ApiOperation({ summary: 'Đóng conversation' })
     @ApiResponse({ status: 200, description: 'Đóng thành công' })
     async closeConversation(
-        @Param('id') conversationId: string,
+        @Param('id', ParseUUIDPipe) conversationId: string,
         @CurrentUserId('id') userId: string
     ) {
         await this.chatService.closeConversation(conversationId, userId);
@@ -122,24 +135,9 @@ export class ChatController {
     @ApiOperation({ summary: 'Xóa conversation' })
     @ApiResponse({ status: 204, description: 'Xóa thành công' })
     async deleteConversation(
-        @Param('id') conversationId: string,
+        @Param('id', ParseUUIDPipe) conversationId: string,
         @CurrentUserId('id') userId: string
     ) {
         await this.chatService.deleteConversation(conversationId, userId);
-    }
-xxư
-    @Get('search')
-    @ApiOperation({ summary: 'Tìm kiếm tin nhắn' })
-    @ApiResponse({ status: 200, description: 'Thành công' })
-    async searchMessages(
-        @CurrentUserId('id') userId: string,
-        @Query('keyword') keyword: string,
-        @Query('conversationId') conversationId?: string
-    ) {
-        return await this.chatService.searchMessages(
-            userId,
-            keyword,
-            conversationId
-        );
     }
 }
