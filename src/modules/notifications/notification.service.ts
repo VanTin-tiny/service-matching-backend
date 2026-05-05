@@ -164,7 +164,7 @@ export class NotificationService {
 
         await this.creationService.createNotification({
             userId: customerId,
-            type: NotificationType.QUOTE_REJECTED,
+            type: NotificationType.QUOTE_CANCELLED,
             title: 'Thợ đã hủy báo giá',
             message: `${payload.providerName} đã hủy báo giá cho "${payload.postTitle}".${reasonText}`,
             metadata: {
@@ -216,7 +216,7 @@ export class NotificationService {
     ): Promise<void> {
         await this.creationService.createNotification({
             userId: customerId,
-            type: NotificationType.ORDER_IN_PROGRESS,
+            type: NotificationType.ORDER_AWAITING_CONFIRMATION,
             title: 'Thợ đã hoàn thành',
             message: `Thợ đã hoàn thành đơn hàng "${orderTitle}". Vui lòng xác nhận!`,
             metadata: { orderId },
@@ -282,16 +282,16 @@ export class NotificationService {
         postTitle: string,
         postId: string,
     ): Promise<void> {
-        for (const providerId of providerIds) {
-            await this.creationService.createNotification({
+        await this.creationService.createBulkNotifications(
+            providerIds.map(providerId => ({
                 userId: providerId,
                 type: NotificationType.POST_CLOSED,
                 title: 'Post đã đóng',
                 message: `Post "${postTitle}" mà bạn đã chào giá đã được đóng.`,
                 metadata: { postId },
                 actionUrl: `/posts/${postId}`,
-            });
-        }
+            })),
+        );
     }
 
     // ============ REVIEW NOTIFICATIONS ============
@@ -356,15 +356,15 @@ export class NotificationService {
         message: string,
         metadata?: Record<string, any>,
     ): Promise<void> {
-        for (const userId of userIds) {
-            await this.creationService.createNotification({
+        await this.creationService.createBulkNotifications(
+            userIds.map(userId => ({
                 userId,
                 type: NotificationType.SYSTEM_ANNOUNCEMENT,
                 title,
                 message,
                 metadata,
-            });
-        }
+            })),
+        );
     }
 
     // ============ DIRECT REQUEST NOTIFICATIONS ============

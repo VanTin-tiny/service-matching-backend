@@ -23,7 +23,8 @@ export class NotificationGateway
     server!: Server;
 
     private readonly logger = new Logger(NotificationGateway.name);
-    private userSockets = new Map<string, Set<string>>(); 
+    private readonly userSockets = new Map<string, Set<string>>();
+    private static readonly MAX_CONNECTIONS_PER_USER = 5;
 
     constructor(private readonly jwtService: JwtService) { }
 
@@ -48,6 +49,16 @@ export class NotificationGateway
 
             
             client.data.userId = userId;
+
+            const existing = this.userSockets.get(userId);
+            if (existing && existing.size >= NotificationGateway.MAX_CONNECTIONS_PER_USER) {
+                this.logger.warn(
+                    `User ${userId} exceeded max connections (${NotificationGateway.MAX_CONNECTIONS_PER_USER}), rejecting ${client.id}`,
+                );
+                client.emit('error', { message: 'Too many concurrent connections' });
+                client.disconnect();
+                return;
+            }
 
             if (!this.userSockets.has(userId)) {
                 this.userSockets.set(userId, new Set());

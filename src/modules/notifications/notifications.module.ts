@@ -10,12 +10,13 @@ import { NotificationActionService } from './services/notification-action.servic
 import { NotificationCreationService } from './services/notification-creation.service';
 import { NotificationEventService } from './services/notification-event.service';
 import { NotificationQueryService } from './services/notification-query.service';
+import { NotificationCleanupTask } from './tasks/notification-cleanup.task';
 
 @Module({
     imports: [
         TypeOrmModule.forFeature([Notification]),
         JwtModule.register({
-            secret: process.env.JWT_SECRET || 'your-secret-key',
+            secret: process.env.JWT_SECRET,
             signOptions: { expiresIn: '7d' },
         }),
     ],
@@ -28,12 +29,12 @@ import { NotificationQueryService } from './services/notification-query.service'
         NotificationCreationService,
         NotificationActionService,
         NotificationEventService,
+        NotificationCleanupTask,
     ],
     exports: [
         NotificationService,
         NotificationRepository,
         NotificationGateway,
-
         NotificationQueryService,
         NotificationCreationService,
         NotificationActionService,

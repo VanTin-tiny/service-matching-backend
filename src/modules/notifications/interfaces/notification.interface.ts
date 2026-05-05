@@ -6,18 +6,6 @@ export interface QuoteNotificationData {
     price?: number;
     postTitle: string;
     reason?: string;
-}
-
-
-
-export interface QuoteNotificationData {
-    postId: string;
-    quoteId: string;
-    providerName?: string;
-    customerName?: string;
-    price?: number;
-    postTitle: string;
-    reason?: string;
     revisionNumber?: number;
     notes?: string;
 }
