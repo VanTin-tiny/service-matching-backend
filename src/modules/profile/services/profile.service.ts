@@ -21,6 +21,7 @@ import {
     UpdateProfileDto,
 } from '../dtos/profile.dto';
 import { ProfileRepository } from '../repositories/profile.repository';
+import { ProfileCacheService } from './profile-cache.service';
 import { ProfileDomainService } from './profile-domain.service';
 import { ProfileResponseBuilder } from './profile-response-builder.service';
 
@@ -34,8 +35,8 @@ export class ProfileService {
         private readonly profileBuilder: ProfileResponseBuilder,
         private readonly profileDomainService: ProfileDomainService,
         private readonly dataSource: DataSource,
-        private readonly uploadService: UploadService
-
+        private readonly uploadService: UploadService,
+        private readonly cacheService: ProfileCacheService,
     ) { }
 
 
@@ -51,9 +52,7 @@ export class ProfileService {
             if (!file) {
                 throw new BadRequestException('Avatar file is required');
             }
-            // 1. upload ảnh
             const { publicUrl: avatarUrl } = await this.uploadService.uploadSingle(file, 'avatars');
-            // 2. update DB
             const updatedProfile = await this.profileRepo.updateAvatar(
                 jwtUser.id,
                 avatarUrl,
@@ -70,7 +69,11 @@ export class ProfileService {
             const userMapper = toUser(user!);
             const profileMapper = toProfile(updatedProfile);
 
-            return this.profileBuilder.buildProfileResponse(userMapper, profileMapper);
+            const result = this.profileBuilder.buildProfileResponse(userMapper, profileMapper);
+
+            await this.cacheService.invalidateOnProfileWrite(jwtUser.id);
+
+            return result;
 
         } catch (error) {
             await queryRunner.rollbackTransaction();
@@ -81,6 +84,13 @@ export class ProfileService {
     }
 
     async getMyProfile(jwtUser: JwtPayload): Promise<ProfileResponseDto> {
+        const cacheKey = this.cacheService.keyMyProfile(jwtUser.id);
+        const hit = await this.cacheService.get<ProfileResponseDto>(cacheKey);
+        if (hit) {
+            this.logger.debug(`[profile:me] cache hit userId=${jwtUser.id}`);
+            return hit;
+        }
+
         try {
             const user = await this.profileRepo.findUserWithProfile(jwtUser.id);
 
@@ -99,7 +109,11 @@ export class ProfileService {
             const userMapper = toUser(user);
             const profileMapper = toProfile(user.profile);
 
-            return this.profileBuilder.buildProfileResponse(userMapper, profileMapper);
+            const result = this.profileBuilder.buildProfileResponse(userMapper, profileMapper);
+
+            await this.cacheService.set(cacheKey, result, this.cacheService.ttl.MY_PROFILE);
+
+            return result;
         } catch (error) {
             if (error instanceof NotFoundException) {
                 throw error;
@@ -115,6 +129,13 @@ export class ProfileService {
 
 
     async getPublicProfile(userId: string): Promise<PublicProfileResponseDto> {
+        const cacheKey = this.cacheService.keyPublicProfile(userId);
+        const hit = await this.cacheService.get<PublicProfileResponseDto>(cacheKey);
+        if (hit) {
+            this.logger.debug(`[profile:public] cache hit userId=${userId}`);
+            return hit;
+        }
+
         try {
             const user = await this.profileRepo.findUserWithProfile(userId);
 
@@ -142,10 +163,14 @@ export class ProfileService {
             const userMapper = toUser(user);
             const profileMapper = toProfile(user.profile);
 
-            return this.profileBuilder.buildPublicProfileResponse(
+            const result = this.profileBuilder.buildPublicProfileResponse(
                 userMapper,
                 profileMapper
             );
+
+            await this.cacheService.set(cacheKey, result, this.cacheService.ttl.PUBLIC_PROFILE);
+
+            return result;
         } catch (error) {
             if (error instanceof NotFoundException) {
                 throw error;
@@ -202,7 +227,11 @@ export class ProfileService {
             const userMapper = toUser(user);
             const profileMapper = toProfile(user.profile);
 
-            return this.profileBuilder.buildProfileResponse(userMapper, profileMapper);
+            const result = this.profileBuilder.buildProfileResponse(userMapper, profileMapper);
+
+            await this.cacheService.invalidateOnProfileWrite(jwtUser.id);
+
+            return result;
 
         } catch (error) {
             await queryRunner.rollbackTransaction();
@@ -289,7 +318,12 @@ export class ProfileService {
             const userMapper = toUser(updatedUser);
             const profileMapper = toProfile(user.profile!);
 
-            return this.profileBuilder.buildProfileResponse(userMapper, profileMapper);
+            const result = this.profileBuilder.buildProfileResponse(userMapper, profileMapper);
+
+            // Email/phone are private — only bust the owner's private profile cache.
+            await this.cacheService.invalidateOnContactWrite(jwtUser.id);
+
+            return result;
 
         } catch (error) {
             await queryRunner.rollbackTransaction();
@@ -371,6 +405,9 @@ export class ProfileService {
                 `(Count: ${updatedProfile.displayNameChangeCount})`,
             );
 
+            // Display name appears in search results and public profile — full bust.
+            await this.cacheService.invalidateOnProfileWrite(jwtUser.id);
+
             return {
                 success: true,
                 message: 'Display name changed successfully',
@@ -428,7 +465,11 @@ export class ProfileService {
             const userMapper = toUser(user!);
             const profileMapper = toProfile(updatedProfile);
 
-            return this.profileBuilder.buildProfileResponse(userMapper, profileMapper);
+            const result = this.profileBuilder.buildProfileResponse(userMapper, profileMapper);
+
+            await this.cacheService.invalidateOnProfileWrite(jwtUser.id);
+
+            return result;
 
         } catch (error) {
             await queryRunner.rollbackTransaction();
@@ -456,6 +497,9 @@ export class ProfileService {
             await queryRunner.commitTransaction();
 
             this.logger.log(`Account deleted for user: ${jwtUser.id}`);
+
+            await this.cacheService.invalidateOnDeleteAccount(jwtUser.id);
+
             return {
                 success: true,
                 message: 'Account deleted successfully',
@@ -480,6 +524,13 @@ export class ProfileService {
         limit: number = 20,
         offset: number = 0,
     ): Promise<{ profiles: PublicProfileResponseDto[]; total: number }> {
+        const cacheKey = this.cacheService.keySearch(searchTerm, limit, offset);
+        const hit = await this.cacheService.get<{ profiles: PublicProfileResponseDto[]; total: number }>(cacheKey);
+        if (hit) {
+            this.logger.debug(`[profile:search] cache hit term="${searchTerm}" limit=${limit} offset=${offset}`);
+            return hit;
+        }
+
         try {
             const [profiles, total] = await this.profileRepo.searchProfilesByDisplayName(
                 searchTerm,
@@ -497,7 +548,11 @@ export class ProfileService {
                 );
             });
 
-            return { profiles: mappedProfiles, total };
+            const result = { profiles: mappedProfiles, total };
+
+            await this.cacheService.set(cacheKey, result, this.cacheService.ttl.SEARCH);
+
+            return result;
 
         } catch (error) {
             this.logger.error(`Failed to search profiles: ${searchTerm}`, error);
