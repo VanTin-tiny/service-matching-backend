@@ -9,9 +9,11 @@ import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { RefreshToken } from './entities/refresh-token.entity';
 import { PasswordResetToken } from './entities/password-reset-token.entity';
+import { EmailOtp } from './entities/email-otp.entity';
 
 import { RefreshTokenRepository } from './repositories/refresh-token.repository';
 import { PasswordResetTokenRepository } from './repositories/password-reset-token.repository';
+import { EmailOtpRepository } from './repositories/email-otp.repository';
 
 import { AuthConfigService } from './services/auth-config.service';
 import { AuthResponseBuilder } from './services/auth-response-builder.service';
@@ -24,6 +26,7 @@ import { SubscriptionModule } from '@/modules/subscription/subscription.module';
 import { ResendMailService } from './services/resend-mail.service';
 import { PasswordResetService } from './services/password-reset.service';
 import { PasswordResetCleanupService } from './services/password-reset-cleanup.service';
+import { OtpService } from './services/otp.service';
 
 
 
@@ -32,7 +35,7 @@ import { PasswordResetCleanupService } from './services/password-reset-cleanup.s
         UsersModule,
         ProfileModule,
         SubscriptionModule,
-        TypeOrmModule.forFeature([RefreshToken,PasswordResetToken]),
+        TypeOrmModule.forFeature([RefreshToken, PasswordResetToken, EmailOtp]),
     ],
     controllers: [AuthController],
     providers: [
@@ -44,10 +47,12 @@ import { PasswordResetCleanupService } from './services/password-reset-cleanup.s
         CookieService,
         AuthResponseBuilder,
         RefreshTokenRepository,
-        PasswordResetTokenRepository,    
-    ResendMailService,              
-    PasswordResetService,            
-    PasswordResetCleanupService,
+        PasswordResetTokenRepository,
+        EmailOtpRepository,
+        ResendMailService,
+        PasswordResetService,
+        PasswordResetCleanupService,
+        OtpService,
         {
             provide: APP_INTERCEPTOR,
             useClass: CorrelationIdInterceptor,
@@ -61,7 +66,6 @@ import { PasswordResetCleanupService } from './services/password-reset-cleanup.s
             useClass: TransactionInterceptor,
         },
     ],
-    exports: [AuthService, TokenManagementService,
-        UserValidationService,],
+    exports: [AuthService, TokenManagementService, UserValidationService, OtpService],
 })
 export class AuthModule { }
