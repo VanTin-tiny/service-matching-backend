@@ -5,20 +5,17 @@ import { CreateNotification } from '../dtos/notification.dto';
 import { Notification } from '../entities/notification.entity';
 import { NotificationRepository } from '../repositories/notification.repository';
 import { NotificationType } from '../enums/notification.enum';
-
-
+import { NotificationCacheService } from './notification-cache.service';
 
 @Injectable()
 export class NotificationCreationService {
     constructor(
         private readonly notificationRepo: NotificationRepository,
         private readonly eventEmitter: EventEmitter2,
+        private readonly cache: NotificationCacheService,
     ) { }
 
-
-    async createNotification(data:
-        CreateNotification
-    ): Promise<Notification> {
+    async createNotification(data: CreateNotification): Promise<Notification> {
         const notification = this.notificationRepo.create({
             userId: data.userId!,
             type: data.type!,
@@ -30,6 +27,9 @@ export class NotificationCreationService {
         });
 
         const saved = await this.notificationRepo.save(notification);
+
+        // Bust before emitting so any handler that re-reads will get fresh data
+        await this.cache.invalidateForUser(data.userId!);
 
         this.eventEmitter.emit('notification.created', {
             userId: data.userId,
@@ -66,6 +66,10 @@ export class NotificationCreationService {
         }));
 
         await this.notificationRepo.insert(entities as Partial<Notification>[]);
+
+        // Bust caches for all affected users in a single parallel pass
+        const affectedUserIds = entities.map(e => e.userId);
+        await this.cache.invalidateForUsers(affectedUserIds);
 
         // Emit one event per user for real-time WebSocket delivery
         for (const entity of entities) {

@@ -7,6 +7,7 @@ import { NotificationController } from './notification.controller';
 import { NotificationService } from './notification.service';
 import { NotificationRepository } from './repositories/notification.repository';
 import { NotificationActionService } from './services/notification-action.service';
+import { NotificationCacheService } from './services/notification-cache.service';
 import { NotificationCreationService } from './services/notification-creation.service';
 import { NotificationEventService } from './services/notification-event.service';
 import { NotificationQueryService } from './services/notification-query.service';
@@ -25,6 +26,7 @@ import { NotificationCleanupTask } from './tasks/notification-cleanup.task';
         NotificationService,
         NotificationRepository,
         NotificationGateway,
+        NotificationCacheService,
         NotificationQueryService,
         NotificationCreationService,
         NotificationActionService,
@@ -35,6 +37,7 @@ import { NotificationCleanupTask } from './tasks/notification-cleanup.task';
         NotificationService,
         NotificationRepository,
         NotificationGateway,
+        NotificationCacheService,
         NotificationQueryService,
         NotificationCreationService,
         NotificationActionService,
