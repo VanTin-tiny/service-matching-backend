@@ -32,9 +32,9 @@ export class CreateSubscriptionPlanDto {
     @IsEnum(BillingCycle)
     billingCycle!: BillingCycle;
 
-    @ApiProperty({ example: 99000, description: 'Price in VND' })
+    @ApiProperty({ example: 99000, description: 'Price in VND (minimum 15,000 ₫ — Stripe floor)' })
     @IsNumber()
-    @IsPositive()
+    @Min(15_000, { message: 'Giá gói phải từ 15,000 ₫ trở lên (yêu cầu tối thiểu của Stripe)' })
     price!: number;
 
     @ApiPropertyOptional({ type: [String], example: ['Post service requests', 'Accept quotes', 'Chat with customers'] })
@@ -63,10 +63,10 @@ export class UpdateSubscriptionPlanDto {
     @IsString()
     description?: string;
 
-    @ApiPropertyOptional({ description: 'Price in VND' })
+    @ApiPropertyOptional({ description: 'Price in VND (minimum 15,000 ₫)' })
     @IsOptional()
     @IsNumber()
-    @IsPositive()
+    @Min(15_000, { message: 'Giá gói phải từ 15,000 ₫ trở lên' })
     price?: number;
 
     @ApiPropertyOptional({ type: [String] })

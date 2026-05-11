@@ -1,6 +1,7 @@
 import { CommonModule } from '@/common/common.module';
 import { AppConfigModule } from '@/config/config.module';
 import { TypeOrmDatabaseModule } from '@/database/typeorm.module';
+import { AdminModule } from '@/modules/admin/admin.module';
 import { AuthModule } from '@/modules/auth/auth.module';
 import { CertificationModule } from '@/modules/certifications/certification.module';
 import { ChatModule } from '@/modules/chat/chat.module';
@@ -38,6 +39,7 @@ import { ThrottlerModule } from '@nestjs/throttler';
     ReviewsModule,
     CertificationModule,
     SubscriptionModule,
+    AdminModule,
     EventEmitterModule.forRoot(),
     ThrottlerModule.forRoot([{
       ttl: 60000,
