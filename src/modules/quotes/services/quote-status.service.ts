@@ -21,6 +21,10 @@ export class QuoteStatusService {
     async acceptForChat(quote: Quote, customerId: string): Promise<Quote> {
         this.logger.log(`Customer ${customerId} accepting quote ${quote.id} for chat`);
 
+        const previousStatus = quote.status;
+        const previousAcceptedAt = quote.acceptedAt;
+        const previousChatOpenedAt = quote.chatOpenedAt;
+
         await this.revisionService.createRevision(
             quote,
             quote.providerId,
@@ -33,7 +37,17 @@ export class QuoteStatusService {
 
         const savedQuote = await this.quoteRepo.save(quote);
 
-        await this.chatService.createConversationFromQuote(quote.id);
+        try {
+            await this.chatService.createConversationFromQuote(quote.id);
+        } catch (err) {
+            this.logger.error(`Failed to create conversation for quote ${quote.id}: ${(err as any)?.message}`);
+            // Roll back status so the quote doesn't get stuck in a partially-accepted state
+            quote.status = previousStatus;
+            quote.acceptedAt = previousAcceptedAt;
+            quote.chatOpenedAt = previousChatOpenedAt;
+            await this.quoteRepo.save(quote);
+            throw err;
+        }
 
         await this.notificationService.notifyQuoteAcceptedForChat(
             savedQuote,
@@ -54,6 +68,8 @@ export class QuoteStatusService {
     ): Promise<Quote> {
         this.logger.log(`Provider revising quote ${quote.id}, new price: ${newPrice}`);
 
+        quote.revisionCount += 1;
+
         await this.revisionService.createRevision(
             quote,
             quote.providerId,
@@ -66,7 +82,6 @@ export class QuoteStatusService {
         if (newEstimatedDuration !== undefined) quote.estimatedDuration = newEstimatedDuration;
 
         quote.status = QuoteStatus.REVISING;
-        quote.revisionCount += 1;
 
         const savedQuote = await this.quoteRepo.save(quote);
 

@@ -91,9 +91,9 @@ export class QuoteValidationService {
             throw new ForbiddenException('This custom request is not addressed to you');
         }
 
-        if (customRequest.status !== CustomRequestStatus.ACCEPTED) {
+        if (customRequest.status === CustomRequestStatus.REJECTED) {
             throw new BadRequestException(
-                'Custom request must be accepted before you can submit a quote',
+                'Cannot submit a quote for a rejected custom request',
             );
         }
 
@@ -113,6 +113,26 @@ export class QuoteValidationService {
         }
 
         return customRequest;
+    }
+
+    async checkCustomRequestOwnership(
+        customRequestId: string,
+        customerId: string,
+    ): Promise<void> {
+        const customRequest = await this.customRequestRepo.findOne({
+            where: { id: customRequestId },
+            select: ['id', 'customerId'],
+        });
+
+        if (!customRequest) {
+            throw new NotFoundException('Custom request not found');
+        }
+
+        if (customRequest.customerId !== customerId) {
+            throw new ForbiddenException(
+                'You do not have permission to view these quotes',
+            );
+        }
     }
 
 
