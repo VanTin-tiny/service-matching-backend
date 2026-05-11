@@ -301,6 +301,12 @@ export class ProfileResponseDto {
     certificationCount!: number;
 
     @ApiProperty({
+        description: 'Green checkmark: provider has uploaded at least one certification',
+        example: true,
+    })
+    hasCertification!: boolean;
+
+    @ApiProperty({
         description: 'Display name change information and restrictions',
         type: DisplayNameChangeInfoDto
     })

@@ -45,6 +45,7 @@ export class ProfileResponseBuilder {
                 averageRating: profile.averageRating,
                 reviewCount: profile.reviewCount,
                 certificationCount: profile.certificationCount,
+                hasCertification: (profile.certificationCount ?? 0) > 0,
                 displayNameChangeInfo: this.buildDisplayNameChangeInfo(profile),
                 createdAt: user.createdAt,
                 updatedAt: profile.updatedAt,

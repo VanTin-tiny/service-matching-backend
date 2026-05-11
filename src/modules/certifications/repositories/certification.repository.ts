@@ -105,4 +105,25 @@ export class CertificationRepository {
             throw error;
         }
     }
+
+    async updateStatus(
+        id: string,
+        status: CertificationStatus,
+        rejectionReason?: string,
+        manager?: EntityManager,
+    ): Promise<Certification | null> {
+        try {
+            const update: Partial<Certification> = { verificationStatus: status };
+            if (rejectionReason !== undefined) {
+                update.rejectionReason = rejectionReason;
+            } else if (status !== CertificationStatus.REJECTED) {
+                update.rejectionReason = undefined;
+            }
+            await this.getRepo(manager).update(id, update);
+            return this.getRepo(manager).findOne({ where: { id } });
+        } catch (error) {
+            this.logger.error(`Error updating status of certification: ${id}`, error);
+            throw error;
+        }
+    }
 }
