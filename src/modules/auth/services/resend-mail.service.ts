@@ -1,6 +1,7 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Resend } from 'resend';
+import * as nodemailer from 'nodemailer';
+import { Transporter } from 'nodemailer';
 
 export interface SendResetEmailPayload {
     toEmail: string;
@@ -21,115 +22,95 @@ export interface SendOtpEmailPayload {
 }
 
 @Injectable()
-export class ResendMailService {
+export class ResendMailService implements OnModuleInit {
     private readonly logger = new Logger(ResendMailService.name);
-    private readonly resend: Resend;
+    private transporter: Transporter;
     private readonly fromEmail: string;
     private readonly appName: string;
 
     constructor(private readonly configService: ConfigService) {
-        const apiKey = this.configService.getOrThrow<string>('RESEND_API_KEY');
-        this.fromEmail = this.configService.getOrThrow<string>('RESEND_FROM_EMAIL');
-        this.appName = this.configService.get<string>('APP_NAME', 'MyApp');
-        this.resend = new Resend(apiKey);
+        const gmailUser = this.configService.getOrThrow<string>('GMAIL_USER');
+        const gmailPass = this.configService.getOrThrow<string>('GMAIL_APP_PASSWORD');
+        this.fromEmail = gmailUser;
+        this.appName = this.configService.get<string>('APP_NAME', 'ServiceMatch');
+
+        this.transporter = nodemailer.createTransport({
+            host: 'smtp.gmail.com',
+            port: 465,
+            secure: true,
+            auth: { user: gmailUser, pass: gmailPass },
+            pool: true,
+            maxConnections: 5,
+            maxMessages: 100,
+        });
     }
 
-    
+    async onModuleInit(): Promise<void> {
+        try {
+            await this.transporter.verify();
+            this.logger.log('Gmail SMTP connection verified successfully');
+        } catch (err: any) {
+            this.logger.error(`Gmail SMTP connection failed: ${err?.message}`);
+        }
+    }
+
     async sendResetPasswordEmail(payload: SendResetEmailPayload): Promise<void> {
         const { toEmail, resetUrl, expiresInMinutes } = payload;
-
         try {
-            const { error } = await this.resend.emails.send({
-                from: `${this.appName} <${this.fromEmail}>`,
+            await this.transporter.sendMail({
+                from: `"${this.appName}" <${this.fromEmail}>`,
                 to: toEmail,
                 subject: `[${this.appName}] Đặt lại mật khẩu của bạn`,
                 html: this.buildResetEmailHtml({ resetUrl, expiresInMinutes, appName: this.appName }),
             });
-
-            if (error) {
-                this.logger.error(
-                    `Resend failed to send reset email to ${toEmail}: ${JSON.stringify(error)}`,
-                );
-                return;
-            }
-
             this.logger.log(`Reset password email sent to ${toEmail}`);
-        } catch (err) {
-            this.logger.error(`Unexpected error sending reset email to ${toEmail}`, err);
+        } catch (err: any) {
+            this.logger.error(`Failed to send reset email to ${toEmail}: ${err?.message}`);
         }
     }
 
-    
     async sendPasswordChangedEmail(payload: SendPasswordChangedEmailPayload): Promise<void> {
         const { toEmail, ipAddress, changedAt } = payload;
-
         try {
-            const { error } = await this.resend.emails.send({
-                from: `${this.appName} <${this.fromEmail}>`,
+            await this.transporter.sendMail({
+                from: `"${this.appName}" <${this.fromEmail}>`,
                 to: toEmail,
                 subject: `[${this.appName}] Mật khẩu của bạn đã được thay đổi`,
                 html: this.buildPasswordChangedHtml({ ipAddress, changedAt, appName: this.appName }),
             });
-
-            if (error) {
-                this.logger.error(
-                    `Resend failed to send password-changed email to ${toEmail}: ${JSON.stringify(error)}`,
-                );
-                return;
-            }
-
             this.logger.log(`Password changed notification sent to ${toEmail}`);
-        } catch (err) {
-            this.logger.error(
-                `Unexpected error sending password-changed email to ${toEmail}`,
-                err,
-            );
+        } catch (err: any) {
+            this.logger.error(`Failed to send password-changed email to ${toEmail}: ${err?.message}`);
         }
     }
 
     async sendVerificationOtpEmail(payload: SendOtpEmailPayload): Promise<void> {
         const { toEmail, otp, expiresInMinutes } = payload;
         try {
-            const { error } = await this.resend.emails.send({
-                from: `${this.appName} <${this.fromEmail}>`,
+            await this.transporter.sendMail({
+                from: `"${this.appName}" <${this.fromEmail}>`,
                 to: toEmail,
                 subject: `[${this.appName}] Xác thực email của bạn - Mã OTP`,
                 html: this.buildVerificationOtpHtml({ otp, expiresInMinutes, appName: this.appName }),
             });
-
-            if (error) {
-                this.logger.error(
-                    `Resend failed to send verification OTP to ${toEmail}: ${JSON.stringify(error)}`,
-                );
-                return;
-            }
-
             this.logger.log(`Verification OTP email sent to ${toEmail}`);
-        } catch (err) {
-            this.logger.error(`Unexpected error sending verification OTP to ${toEmail}`, err);
+        } catch (err: any) {
+            this.logger.error(`Failed to send verification OTP to ${toEmail}: ${err?.message}`);
         }
     }
 
     async sendPasswordResetOtpEmail(payload: SendOtpEmailPayload): Promise<void> {
         const { toEmail, otp, expiresInMinutes } = payload;
         try {
-            const { error } = await this.resend.emails.send({
-                from: `${this.appName} <${this.fromEmail}>`,
+            await this.transporter.sendMail({
+                from: `"${this.appName}" <${this.fromEmail}>`,
                 to: toEmail,
                 subject: `[${this.appName}] Đặt lại mật khẩu - Mã OTP`,
                 html: this.buildPasswordResetOtpHtml({ otp, expiresInMinutes, appName: this.appName }),
             });
-
-            if (error) {
-                this.logger.error(
-                    `Resend failed to send password reset OTP to ${toEmail}: ${JSON.stringify(error)}`,
-                );
-                return;
-            }
-
             this.logger.log(`Password reset OTP email sent to ${toEmail}`);
-        } catch (err) {
-            this.logger.error(`Unexpected error sending password reset OTP to ${toEmail}`, err);
+        } catch (err: any) {
+            this.logger.error(`Failed to send password reset OTP to ${toEmail}: ${err?.message}`);
         }
     }
 
