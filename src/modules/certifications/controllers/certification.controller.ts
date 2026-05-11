@@ -13,6 +13,7 @@ import {
     HttpStatus,
     Param,
     ParseUUIDPipe,
+    Patch,
     Post,
     UploadedFile,
     UseGuards,
@@ -31,6 +32,7 @@ import {
     CertificationListResponseDto,
     CertificationResponseDto,
     PublicCertificationListResponseDto,
+    RejectCertificationDto,
     UploadCertificationDto,
 } from '../dtos/certification.dto';
 import { CertificationService } from '../services/certification.service';
@@ -131,5 +133,46 @@ export class CertificationController {
         @Param('id', ParseUUIDPipe) certId: string,
     ): Promise<{ success: boolean; message: string }> {
         return this.certService.deleteCertification(user.id, certId);
+    }
+
+    @Patch(':id/verify')
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(UserRole.ADMIN)
+    @HttpCode(HttpStatus.OK)
+    @ApiBearerAuth()
+    @ApiParam({ name: 'id', description: 'Certification UUID' })
+    @ApiOperation({
+        summary: '[Admin] Approve a certification',
+        description:
+            'Sets the certification status to **verified**. ' +
+            'Only admins may call this endpoint.',
+    })
+    @ApiResponse({ status: HttpStatus.OK, type: CertificationResponseDto })
+    @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Certification not found' })
+    async verifyCertification(
+        @Param('id', ParseUUIDPipe) certId: string,
+    ): Promise<CertificationResponseDto> {
+        return this.certService.verifyCertification(certId);
+    }
+
+    @Patch(':id/reject')
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(UserRole.ADMIN)
+    @HttpCode(HttpStatus.OK)
+    @ApiBearerAuth()
+    @ApiParam({ name: 'id', description: 'Certification UUID' })
+    @ApiOperation({
+        summary: '[Admin] Reject a certification',
+        description:
+            'Sets the certification status to **rejected** with a mandatory reason. ' +
+            'Only admins may call this endpoint.',
+    })
+    @ApiResponse({ status: HttpStatus.OK, type: CertificationResponseDto })
+    @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Certification not found' })
+    async rejectCertification(
+        @Param('id', ParseUUIDPipe) certId: string,
+        @Body() dto: RejectCertificationDto,
+    ): Promise<CertificationResponseDto> {
+        return this.certService.rejectCertification(certId, dto);
     }
 }

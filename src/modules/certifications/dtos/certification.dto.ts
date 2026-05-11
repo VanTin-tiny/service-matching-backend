@@ -135,3 +135,15 @@ export class PublicCertificationListResponseDto {
     @ApiProperty({ example: 3 })
     total!: number;
 }
+
+export class RejectCertificationDto {
+    @ApiProperty({
+        description: 'Reason for rejection — shown to the provider',
+        example: 'File không đọc được hoặc thông tin không hợp lệ',
+        maxLength: 500,
+    })
+    @IsString()
+    @IsNotEmpty({ message: 'Rejection reason is required' })
+    @MaxLength(500)
+    reason!: string;
+}

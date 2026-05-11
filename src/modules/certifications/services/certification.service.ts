@@ -14,6 +14,7 @@ import {
     CertificationResponseDto,
     PublicCertificationDto,
     PublicCertificationListResponseDto,
+    RejectCertificationDto,
     UploadCertificationDto,
 } from '../dtos/certification.dto';
 import { Certification } from '../entities/certification.entity';
@@ -172,6 +173,33 @@ export class CertificationService {
         } finally {
             await qr.release();
         }
+    }
+
+    async verifyCertification(certId: string): Promise<CertificationResponseDto> {
+        const cert = await this.certRepo.findById(certId);
+        if (!cert) {
+            throw new NotFoundException('Certification not found');
+        }
+        const updated = await this.certRepo.updateStatus(certId, CertificationStatus.VERIFIED);
+        this.logger.log(`Certification verified by admin: ${certId}`);
+        return this.toResponseDto(updated!);
+    }
+
+    async rejectCertification(
+        certId: string,
+        dto: RejectCertificationDto,
+    ): Promise<CertificationResponseDto> {
+        const cert = await this.certRepo.findById(certId);
+        if (!cert) {
+            throw new NotFoundException('Certification not found');
+        }
+        const updated = await this.certRepo.updateStatus(
+            certId,
+            CertificationStatus.REJECTED,
+            dto.reason,
+        );
+        this.logger.log(`Certification rejected by admin: ${certId}`);
+        return this.toResponseDto(updated!);
     }
 
     private toResponseDto(cert: Certification): CertificationResponseDto {
