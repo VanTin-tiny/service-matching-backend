@@ -33,12 +33,12 @@ export class Message {
     @JoinColumn({ name: 'conversation_id' })
     conversation!: Conversation;
 
-    @Column({ name: 'sender_id' })
-    senderId!: string;
+    @Column({ name: 'sender_id', nullable: true })
+    senderId?: string;
 
-    @ManyToOne(() => User, { eager: false })
+    @ManyToOne(() => User, { eager: false, nullable: true, onDelete: 'SET NULL' })
     @JoinColumn({ name: 'sender_id' })
-    sender!: User;
+    sender?: User;
 
     @Column({
         type: 'enum',
