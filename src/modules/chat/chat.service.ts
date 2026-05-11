@@ -57,69 +57,71 @@ export class ChatService {
             );
         }
 
-        const existing = await this.conversationRepo.findOne({
-            where: { quoteId },
-        });
-
-        if (existing) {
-            this.logger.log(`Conversation already exists for quote ${quoteId}`);
-            return existing;
-        }
-
         const customerId = quote.post?.customerId ?? quote.customRequest?.customerId;
         if (!customerId) {
             throw new BadRequestException('Cannot determine customer for this quote');
         }
 
+        const providerId = quote.providerId;
+        const contextTitle = quote.customRequest?.title ?? quote.post?.title ?? 'Yêu cầu dịch vụ';
+        const systemMsg =
+            `Báo giá được chấp nhận.\n` +
+            `Yêu cầu: ${contextTitle}\n` +
+            `Giá: ${parseFloat(quote.price.toString()).toLocaleString('vi-VN')}đ\n` +
+            `Thời gian ước tính: ${quote.estimatedDuration || 'Chưa xác định'} phút`;
+
+        const existing = await this.findConversationBetween(customerId, providerId);
+        if (existing) {
+            this.logger.log(`Reusing conversation ${existing.id} for quote ${quoteId}`);
+            await this.ensureActive(existing);
+            if (existing.quoteId !== quoteId) {
+                await this.conversationRepo.update(existing.id, { quoteId });
+                existing.quoteId = quoteId;
+            }
+            await this.sendSystemMessage(existing.id, systemMsg, { customerId, providerId });
+            return existing;
+        }
+
         const isDirectRequest = !!quote.customRequestId;
         const conversation = this.conversationRepo.create({
             customerId,
-            providerId: quote.providerId,
+            providerId,
             quoteId,
             type: isDirectRequest ? ConversationType.DIRECT_REQUEST : ConversationType.QUOTE_BASED,
             isActive: true,
         });
 
-        const saved = await this.conversationRepo.save(conversation);
-
-        // Bust participant caches before the system message updates lastMessagePreview
-        await this.chatCache.invalidateOnNewConversation(customerId, quote.providerId);
-
-        const contextTitle = isDirectRequest
-            ? (quote.customRequest?.title || 'Yêu cầu riêng')
-            : (quote.post?.title || 'Bài đăng');
-
-        await this.sendSystemMessage(
-            saved.id,
-            `Cuộc trò chuyện bắt đầu từ báo giá được chấp nhận.\n` +
-            `Yêu cầu: ${contextTitle}\n` +
-            `Giá hiện tại: ${parseFloat(quote.price.toString()).toLocaleString('vi-VN')}đ\n` +
-            `Thời gian ước tính: ${quote.estimatedDuration || 'Chưa xác định'} phút`,
-            { customerId, providerId: quote.providerId },
-        );
-
-        this.logger.log(`Conversation created from quote: ${saved.id} (type: ${conversation.type})`);
-        return saved;
+        try {
+            const saved = await this.conversationRepo.save(conversation);
+            await this.chatCache.invalidateOnNewConversation(customerId, providerId);
+            await this.sendSystemMessage(saved.id, systemMsg, { customerId, providerId });
+            this.logger.log(`Conversation created from quote: ${saved.id}`);
+            return saved;
+        } catch (err: any) {
+            if (err?.code === '23505') {
+                const winner = await this.findConversationBetween(customerId, providerId);
+                if (winner) {
+                    this.logger.warn(`Race condition resolved: reusing conversation ${winner.id}`);
+                    await this.sendSystemMessage(winner.id, systemMsg, { customerId, providerId });
+                    return winner;
+                }
+            }
+            throw err;
+        }
     }
 
     async createDirectConversation(
         customerId: string,
-        providerId: string
+        providerId: string,
     ): Promise<Conversation> {
         if (customerId === providerId) {
             throw new BadRequestException('Cannot create conversation with yourself');
         }
 
-        const existing = await this.conversationRepo.findOne({
-            where: {
-                customerId,
-                providerId,
-                type: ConversationType.DIRECT_REQUEST,
-            },
-        });
-
+        const existing = await this.findConversationBetween(customerId, providerId);
         if (existing) {
-            this.logger.log(`Direct conversation already exists: ${existing.id}`);
+            this.logger.log(`Conversation already exists between users: ${existing.id}`);
+            await this.ensureActive(existing);
             return existing;
         }
 
@@ -130,26 +132,41 @@ export class ChatService {
             isActive: true,
         });
 
-        const saved = await this.conversationRepo.save(conversation);
+        try {
+            const saved = await this.conversationRepo.save(conversation);
 
-        await this.chatCache.invalidateOnNewConversation(customerId, providerId);
+            await this.chatCache.invalidateOnNewConversation(customerId, providerId);
 
-        await this.sendSystemMessage(
-            saved.id,
-            'Cuộc trò chuyện đã được tạo. Hãy thảo luận về yêu cầu dịch vụ của bạn.',
-            { customerId, providerId },
-        );
+            await this.sendSystemMessage(
+                saved.id,
+                'Cuộc trò chuyện đã được tạo. Hãy thảo luận về yêu cầu dịch vụ của bạn.',
+                { customerId, providerId },
+            );
 
-        await this.notificationService.notifyNewMessage(
-            providerId,
-            customerId,
-            'Khách hàng',
-            'Cuộc trò chuyện mới đã được tạo',
-            saved.id,
-        );
+            await this.notificationService.notifyNewMessage(
+                providerId,
+                customerId,
+                'Khách hàng',
+                'Cuộc trò chuyện mới đã được tạo',
+                saved.id,
+            );
 
-        this.logger.log(`Direct conversation created: ${saved.id}`);
-        return saved;
+            this.logger.log(`Direct conversation created: ${saved.id}`);
+            return saved;
+        } catch (err: any) {
+            // PostgreSQL unique-constraint violation (23505): concurrent inserts both
+            // passed the app-level check above.  Return the winner row instead.
+            if (err?.code === '23505') {
+                const winner = await this.findConversationBetween(customerId, providerId);
+                if (winner) {
+                    this.logger.warn(
+                        `Race condition resolved: reusing conversation ${winner.id} (${customerId}, ${providerId})`,
+                    );
+                    return winner;
+                }
+            }
+            throw err;
+        }
     }
 
     async createOrderConversation(
@@ -158,12 +175,15 @@ export class ChatService {
         providerId: string,
         orderTitle: string,
     ): Promise<Conversation> {
-        const existing = await this.conversationRepo.findOne({
-            where: { orderId },
-        });
+        const systemMsg =
+            `Đơn hàng "${orderTitle}" đã hoàn thành!\n` +
+            `Bạn có thể dùng cuộc trò chuyện này để liên lạc thêm, trao đổi về bảo hành, hoặc đánh giá dịch vụ.`;
 
+        const existing = await this.findConversationBetween(customerId, providerId);
         if (existing) {
-            this.logger.log(`Order conversation already exists for order ${orderId}`);
+            this.logger.log(`Reusing conversation ${existing.id} for order ${orderId}`);
+            await this.ensureActive(existing);
+            await this.sendSystemMessage(existing.id, systemMsg, { customerId, providerId });
             return existing;
         }
 
@@ -175,19 +195,42 @@ export class ChatService {
             isActive: true,
         });
 
-        const saved = await this.conversationRepo.save(conversation);
+        try {
+            const saved = await this.conversationRepo.save(conversation);
+            await this.chatCache.invalidateOnNewConversation(customerId, providerId);
+            await this.sendSystemMessage(saved.id, systemMsg, { customerId, providerId });
+            this.logger.log(`Order conversation created: ${saved.id} for order ${orderId}`);
+            return saved;
+        } catch (err: any) {
+            if (err?.code === '23505') {
+                const winner = await this.findConversationBetween(customerId, providerId);
+                if (winner) {
+                    this.logger.warn(`Race condition resolved: reusing conversation ${winner.id}`);
+                    await this.sendSystemMessage(winner.id, systemMsg, { customerId, providerId });
+                    return winner;
+                }
+            }
+            throw err;
+        }
+    }
 
-        await this.chatCache.invalidateOnNewConversation(customerId, providerId);
+    /** Returns the single conversation between a customer and provider, or null. */
+    private async findConversationBetween(
+        customerId: string,
+        providerId: string,
+    ): Promise<Conversation | null> {
+        return this.conversationRepo.findOne({ where: { customerId, providerId } });
+    }
 
-        await this.sendSystemMessage(
-            saved.id,
-            `Đơn hàng "${orderTitle}" đã hoàn thành!\n` +
-            `Bạn có thể dùng cuộc trò chuyện này để liên lạc thêm, trao đổi về bảo hành, hoặc đánh giá dịch vụ.`,
-            { customerId, providerId },
-        );
-
-        this.logger.log(`Order conversation created: ${saved.id} for order ${orderId}`);
-        return saved;
+    /**
+     * Reopens a closed conversation so it can receive new messages.
+     * Mutates the in-memory object so callers don't need to reload from DB.
+     */
+    private async ensureActive(conversation: Conversation): Promise<void> {
+        if (!conversation.isActive) {
+            await this.conversationRepo.update(conversation.id, { isActive: true });
+            conversation.isActive = true;
+        }
     }
 
     // ============ MESSAGING ============
@@ -263,7 +306,7 @@ export class ChatService {
     ): Promise<Message> {
         const message = this.messageRepo.create({
             conversationId,
-            senderId: this.SYSTEM_USER_ID,
+            senderId: undefined,  // null in DB — system messages have no real sender
             type: MessageType.SYSTEM,
             content,
             isRead: true,
@@ -451,14 +494,14 @@ export class ChatService {
             throw new ForbiddenException('You are not a participant in this conversation');
         }
 
-        // Mark messages sent by the OTHER participant as read (exclude system messages)
+        // Mark messages sent by the OTHER participant as read (exclude system messages, which have sender_id = NULL)
         await this.messageRepo
             .createQueryBuilder()
             .update(Message)
             .set({ isRead: true, readAt: new Date() })
             .where('conversation_id = :conversationId', { conversationId })
+            .andWhere('sender_id IS NOT NULL')
             .andWhere('sender_id != :userId', { userId })
-            .andWhere('sender_id != :systemId', { systemId: this.SYSTEM_USER_ID })
             .andWhere('is_read = false')
             .execute();
 
