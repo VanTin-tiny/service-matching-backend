@@ -1,8 +1,15 @@
+import { CustomRequest } from '@/modules/custom-requests/entities/custom-request.entity';
+import { CustomRequestStatus } from '@/modules/custom-requests/enums/custom-request-status.enum';
 import { PostRepository } from '@/modules/posts/repositories/post.repository';
 import { UserRepository } from '@/modules/users/repositories/user.repository';
-import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import {
     CreateQuoteDto,
+    PostQuoteGroupResponseDto,
+    QuoteRevisionItemDto,
+    QuoteWithRevisionsResponseDto,
     ReviseQuoteDto,
     UpdateQuoteDto
 } from './dtos/quote.dto';
@@ -27,6 +34,8 @@ export class QuoteService {
         private readonly queryService: QuoteQueryService,
         private readonly revisionService: QuoteRevisionService,
         private readonly notificationService: QuoteNotificationService,
+        @InjectRepository(CustomRequest)
+        private readonly customRequestRepo: Repository<CustomRequest>,
     ) { }
 
 
@@ -89,6 +98,15 @@ export class QuoteService {
             dto.customRequestId!,
             providerId,
         );
+
+        if (customRequest.status === CustomRequestStatus.PENDING) {
+            await this.customRequestRepo.update(customRequest.id, {
+                status: CustomRequestStatus.ACCEPTED,
+                acceptedAt: new Date(),
+            });
+            customRequest.status = CustomRequestStatus.ACCEPTED;
+            customRequest.acceptedAt = new Date();
+        }
 
         this.validationService.validatePrice(dto.price, customRequest.budget);
 
@@ -277,19 +295,13 @@ export class QuoteService {
     }
 
     async getCustomRequestQuotes(customRequestId: string, customerId: string): Promise<Quote[]> {
-        const quotes = await this.quoteRepo.find({
+        await this.validationService.checkCustomRequestOwnership(customRequestId, customerId);
+
+        return await this.quoteRepo.find({
             where: { customRequestId },
             relations: ['provider', 'provider.profile'],
             order: { createdAt: 'DESC' },
         });
-
-        if (quotes.length > 0 && quotes[0].customRequest) {
-            if (quotes[0].customRequest.customerId !== customerId) {
-                throw new NotFoundException('Custom request not found');
-            }
-        }
-
-        return quotes;
     }
 
 
@@ -307,21 +319,93 @@ export class QuoteService {
     }
 
 
-    async getQuoteRevisionHistory(quoteId: string, userId: string) {
+    async getQuoteRevisionHistory(quoteId: string, userId: string): Promise<QuoteWithRevisionsResponseDto> {
         const quote = await this.queryService.findQuoteWithRelations(quoteId, [
             'post',
             'customRequest',
         ]);
         this.validationService.validateQuoteAccess(quote, userId);
 
-        const revisions = await this.revisionService.getRevisionHistory(quoteId);
-        const priceChanges = await this.revisionService.getPriceChanges(quoteId);
+        const revisions = await this.revisionService.getRevisionHistoryWithPriceChanges(quoteId);
 
         return {
-            quote,
+            id: quote.id,
+            status: quote.status,
+            currentPrice: parseFloat(quote.price.toString()),
+            revisionCount: quote.revisionCount,
+            postId: quote.postId,
+            customRequestId: quote.customRequestId,
+            providerId: quote.providerId,
+            chatOpenedAt: quote.chatOpenedAt,
+            orderRequestedAt: quote.orderRequestedAt,
             revisions,
-            priceChanges,
+            createdAt: quote.createdAt,
+            updatedAt: quote.updatedAt,
         };
+    }
+
+
+    async getQuotesBetweenUsers(
+        requesterId: string,
+        customerId: string,
+        providerId: string,
+    ): Promise<PostQuoteGroupResponseDto[]> {
+        if (requesterId !== customerId && requesterId !== providerId) {
+            throw new ForbiddenException('Access denied');
+        }
+
+        const quotes = await this.queryService.findQuotesBetweenUsers(customerId, providerId);
+
+        return quotes.map((quote) => {
+            const sortedRevisions = (quote.revisions ?? []).slice().sort(
+                (a, b) => a.revisionNumber - b.revisionNumber,
+            );
+
+            const revisions: QuoteRevisionItemDto[] = sortedRevisions.map((rev, index) => {
+                const currentPrice = parseFloat(rev.price.toString());
+                let priceChange: number | undefined;
+                let percentChange: number | undefined;
+                if (index > 0) {
+                    const previousPrice = parseFloat(sortedRevisions[index - 1].price.toString());
+                    priceChange = currentPrice - previousPrice;
+                    percentChange = ((currentPrice - previousPrice) / previousPrice) * 100;
+                }
+                return {
+                    id: rev.id,
+                    revisionNumber: rev.revisionNumber,
+                    price: currentPrice,
+                    description: rev.description,
+                    terms: rev.terms,
+                    estimatedDuration: rev.estimatedDuration,
+                    imageUrls: rev.imageUrls ?? [],
+                    changeReason: rev.changeReason,
+                    priceChange,
+                    percentChange,
+                    usedForOrderId: rev.usedForOrderId,
+                    createdAt: rev.createdAt,
+                };
+            });
+
+            return {
+                postId: quote.postId ?? quote.customRequestId ?? '',
+                postTitle: quote.post?.title ?? quote.customRequest?.title ?? 'Báo giá',
+                quoteId: quote.id,
+                quote: {
+                    id: quote.id,
+                    status: quote.status,
+                    currentPrice: parseFloat(quote.price.toString()),
+                    revisionCount: quote.revisionCount,
+                    postId: quote.postId,
+                    customRequestId: quote.customRequestId,
+                    providerId: quote.providerId,
+                    chatOpenedAt: quote.chatOpenedAt,
+                    orderRequestedAt: quote.orderRequestedAt,
+                    revisions,
+                    createdAt: quote.createdAt,
+                    updatedAt: quote.updatedAt,
+                },
+            };
+        });
     }
 
 

@@ -14,6 +14,7 @@ import {
     Post,
     Query,
     UseGuards,
+    BadRequestException,
 } from '@nestjs/common';
 import {
     ApiBearerAuth,
@@ -25,7 +26,9 @@ import { CurrentUserId } from '../../common/decorators/current-user-id.decorator
 import {
     CancelQuoteDto,
     CreateQuoteDto,
+    PostQuoteGroupResponseDto,
     QuoteResponseDto,
+    QuoteWithRevisionsResponseDto,
     RejectQuoteDto,
     ReviseQuoteDto,
     UpdateQuoteDto,
@@ -158,6 +161,7 @@ export class QuoteController {
         @CurrentUserId('id') customerId: string,
     ) {
         return await this.quoteService.acceptQuoteForChat(quoteId, customerId);
+
     }
 
     @Post(':id/request-order')
@@ -229,6 +233,28 @@ export class QuoteController {
     }
 
 
+    @Get('between-users')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({
+        summary: 'Lấy tất cả báo giá giữa customer và provider',
+        description:
+            'Trả về tất cả bài đăng từ cũ nhất đến mới nhất kèm báo giá tương ứng. ' +
+            'Cả customer lẫn provider đều có thể gọi endpoint này.',
+    })
+    @ApiResponse({ status: 200, type: [PostQuoteGroupResponseDto] })
+    @ApiResponse({ status: 400, description: 'Missing customerId or providerId' })
+    @ApiResponse({ status: 403, description: 'Requester is neither customer nor provider' })
+    async getQuotesBetweenUsers(
+        @CurrentUserId('id') requesterId: string,
+        @Query('customerId') customerId: string,
+        @Query('providerId') providerId: string,
+    ): Promise<PostQuoteGroupResponseDto[]> {
+        if (!customerId || !providerId) {
+            throw new BadRequestException('customerId and providerId are required');
+        }
+        return await this.quoteService.getQuotesBetweenUsers(requesterId, customerId, providerId);
+    }
+
     @Get(':id')
     @HttpCode(HttpStatus.OK)
     @ApiOperation({
@@ -248,10 +274,11 @@ export class QuoteController {
     @HttpCode(HttpStatus.OK)
     @ApiOperation({
         summary: 'Xem quote với toàn bộ lịch sử revisions',
-        description: 'Dùng cho chat để hiển thị lịch sử chào giá. Customer có thể chọn revision để tạo order.'
+        description: 'Dùng cho chat để hiển thị lịch sử chào giá từ cũ nhất đến mới nhất. Cả customer lẫn technician đều có thể truy cập.'
     })
-    @ApiResponse({ status: 200, description: 'Success' })
+    @ApiResponse({ status: 200, description: 'Success', type: QuoteWithRevisionsResponseDto })
     @ApiResponse({ status: 403, description: 'No access' })
+    @ApiResponse({ status: 404, description: 'Quote not found' })
     async getQuoteWithRevisions(
         @Param('id') quoteId: string,
         @CurrentUserId('id') userId: string,
