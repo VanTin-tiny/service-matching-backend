@@ -106,7 +106,7 @@ export class AuthController {
         const result = await this.authService.register(bodyRegister);
 
         // Fire-and-forget: send verification OTP after successful registration
-        // void this.otpService.sendVerificationOtp(result.id, result.email!, ip ?? null);
+        void this.otpService.sendVerificationOtp(result.id, result.email!, ip ?? null);
 
         return this.responseBuilder.buildRegisterResponse(result);
     }
