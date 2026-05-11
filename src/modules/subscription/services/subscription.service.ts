@@ -1,4 +1,5 @@
-import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
+import { randomUUID } from 'crypto';
 import { DataSource, EntityManager } from 'typeorm';
 import {
     AdminUpdateSubscriptionDto,
@@ -100,8 +101,6 @@ export class SubscriptionService {
     }
 
     async subscribe(userId: string, dto: SubscribeDto): Promise<PaymentCreationResult> {
-        // Validate plan & discount outside the transaction so we don't hold a TX
-        // open while making the Stripe API call.
         const subscription = await this.subscriptionRepo.findByUserId(userId);
         if (!subscription) throw new SubscriptionNotFoundException();
 
@@ -109,8 +108,54 @@ export class SubscriptionService {
             throw new SubscriptionAlreadyActiveException();
         }
 
+        // If a PENDING payment already exists, resume it rather than creating a
+        // duplicate. This handles page-refresh and double-click scenarios gracefully.
         const existingPending = await this.paymentRepo.findPendingBySubscriptionId(subscription.id);
-        if (existingPending) throw new PendingPaymentExistsException();
+        if (existingPending) {
+            if (existingPending.stripePaymentIntentId) {
+                try {
+                    const pi = await this.stripeService.retrievePaymentIntent(
+                        existingPending.stripePaymentIntentId,
+                    );
+                    // PI is still actionable — hand the client_secret back so the frontend
+                    // can complete the existing payment without creating a new one.
+                    if (pi.status !== 'succeeded' && pi.status !== 'canceled') {
+                        this.logger.log(
+                            `Resuming pending payment ${existingPending.id} for user ${userId} (PI status: ${pi.status})`,
+                        );
+                        return {
+                            paymentId: existingPending.id,
+                            subscriptionId: subscription.id,
+                            amount: Number(existingPending.amount),
+                            discountAmount: Number(existingPending.discountAmount),
+                            finalAmount: Number(existingPending.finalAmount),
+                            status: existingPending.status,
+                            dueDate: existingPending.dueDate!,
+                            stripePaymentIntentId: pi.id,
+                            clientSecret: pi.client_secret!,
+                        };
+                    }
+                    // PI already reached a terminal state but the webhook hasn't updated
+                    // the DB record yet (rare but possible). Auto-resolve it so a fresh
+                    // payment can proceed immediately.
+                    await this.paymentRepo.update(existingPending.id, {
+                        status: SubscriptionPaymentStatus.FAILED,
+                        notes: `Auto-resolved: Stripe PI status was '${pi.status}' while DB record was still PENDING`,
+                    });
+                    this.logger.warn(
+                        `Auto-resolved stale pending payment ${existingPending.id} (Stripe PI: ${pi.status})`,
+                    );
+                } catch (err) {
+                    this.logger.error(
+                        `Failed to retrieve Stripe PI ${existingPending.stripePaymentIntentId}`,
+                        err,
+                    );
+                    throw new PendingPaymentExistsException();
+                }
+            } else {
+                throw new PendingPaymentExistsException();
+            }
+        }
 
         const plan = await this.planRepo.findActiveById(dto.planId);
         if (!plan) throw new SubscriptionPlanNotFoundException(dto.planId);
@@ -133,31 +178,39 @@ export class SubscriptionService {
 
         const finalAmount = Number(plan.price) - discountAmount;
 
-        // Create Stripe PaymentIntent before the DB transaction.
+        // Per-attempt idempotency key: Stripe deduplicates concurrent double-clicks
+        // within its short window, while allowing fresh retries after a failure.
+        // A day-scoped key was previously used but caused duplicate-PI errors when
+        // the same PI was reused after the prior payment record had been marked FAILED.
+        const idempotencyKey = `sub-${userId}-${plan.id}-${randomUUID()}`;
+
         let stripePaymentIntentId: string;
         let clientSecret: string;
 
         try {
-            const paymentIntent = await this.stripeService.createPaymentIntent(finalAmount, {
-                userId,
-                subscriptionId: subscription.id,
-                planId: plan.id,
-                planName: plan.name,
-            });
+            const paymentIntent = await this.stripeService.createPaymentIntent(
+                finalAmount,
+                {
+                    userId,
+                    subscriptionId: subscription.id,
+                    planId: plan.id,
+                    planName: plan.name,
+                },
+                idempotencyKey,
+            );
             stripePaymentIntentId = paymentIntent.id;
             clientSecret = paymentIntent.client_secret!;
-        } catch (err) {
+        } catch (err: any) {
             this.logger.error('Failed to create Stripe PaymentIntent', err);
-            throw new InternalServerErrorException(
-                'Payment provider error. Please try again later.',
-            );
+            throw err;
         }
 
         return this.dataSource.transaction(async (manager: EntityManager) => {
-            // Re-check for race conditions inside the transaction.
+            // Re-check inside the transaction to guard against concurrent requests.
             const lockedSub = await this.subscriptionRepo.findByUserIdWithLock(userId, manager);
             if (!lockedSub) throw new SubscriptionNotFoundException();
             if (lockedSub.status === SubscriptionStatus.ACTIVE) {
+                this.stripeService.cancelPaymentIntent(stripePaymentIntentId).catch(() => {});
                 throw new SubscriptionAlreadyActiveException();
             }
             const raceCheck = await this.paymentRepo.findPendingBySubscriptionId(
@@ -165,7 +218,6 @@ export class SubscriptionService {
                 manager,
             );
             if (raceCheck) {
-                // Cancel the Stripe PI we just created since we can't proceed.
                 this.stripeService.cancelPaymentIntent(stripePaymentIntentId).catch(() => {});
                 throw new PendingPaymentExistsException();
             }
