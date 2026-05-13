@@ -4,8 +4,10 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { User } from '@/modules/users/entities/user.entity';
 import { Profile } from './entities/profile.entity';
+import { UserReport } from '@/modules/admin/entities/user-report.entity';
 
 import { ProfileController } from './controllers/profile.controller';
+import { UserReportController } from './controllers/user-report.controller';
 import { ProfileRepository } from './repositories/profile.repository';
 import { ProfileCacheService } from './services/profile-cache.service';
 import { ProfileDomainService } from './services/profile-domain.service';
@@ -14,10 +16,10 @@ import { ProfileService } from './services/profile.service';
 
 @Module({
     imports: [
-        TypeOrmModule.forFeature([Profile, User]),
+        TypeOrmModule.forFeature([Profile, User, UserReport]),
         ConfigModule,
     ],
-    controllers: [ProfileController],
+    controllers: [ProfileController, UserReportController],
     providers: [
         ProfileService,
         ProfileCacheService,
