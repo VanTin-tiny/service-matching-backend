@@ -227,6 +227,24 @@ export class SubscriptionAdminController {
         return this.subscriptionService.adminUpdateSubscription(id, dto) as any;
     }
 
+    @Delete('subscriptions/:id')
+    @HttpCode(HttpStatus.OK)
+    @ApiParam({ name: 'id', description: 'Subscription UUID' })
+    @ApiOperation({
+        summary: 'Revoke (cancel) an assigned subscription for a provider',
+        description: 'Admin can forcefully cancel any active subscription. The provider loses access immediately.',
+    })
+    @ApiResponse({ status: HttpStatus.OK })
+    async deleteSubscription(
+        @Param('id', ParseUUIDPipe) id: string,
+    ): Promise<{ success: boolean; message: string }> {
+        await this.subscriptionService.adminUpdateSubscription(id, {
+            status: 'cancelled' as any,
+            autoRenew: false,
+        });
+        return { success: true, message: 'Subscription revoked successfully' };
+    }
+
     // ─── Payments ────────────────────────────────────────────────────────────
 
     @Get('payments')
