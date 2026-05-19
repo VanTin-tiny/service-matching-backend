@@ -17,8 +17,8 @@ export class NotificationEventService {
         await this.creationService.createNotification({
             userId: customerId,
             type: NotificationType.NEW_QUOTE_RECEIVED,
-            title: 'new quote',
-            message: `${data.providerName} sent a quote ${data.price?.toLocaleString('vi-VN')}đ for post "${data.postTitle}"`,
+            title: 'Báo giá mới',
+            message: `${data.providerName} đã gửi báo giá ${data.price?.toLocaleString('vi-VN')}đ cho bài đăng "${data.postTitle}"`,
             metadata: {
                 postId: data.postId,
                 quoteId: data.quoteId,
@@ -36,8 +36,8 @@ export class NotificationEventService {
         await this.creationService.createNotification({
             userId: providerId,
             type: NotificationType.QUOTE_ACCEPTED,
-            title: 'Quote accepted',
-            message: `Happy! Your quote for "${data.postTitle}" has been accepted`,
+            title: 'Báo giá được chấp nhận',
+            message: `Chúc mừng! Báo giá của bạn cho bài "${data.postTitle}" đã được chấp nhận`,
             metadata: {
                 postId: data.postId,
                 quoteId: data.quoteId,
@@ -50,13 +50,13 @@ export class NotificationEventService {
         providerId: string,
         data: QuoteNotificationData,
     ): Promise<void> {
-        const reasonText = data.reason ? `: ${data.reason}` : '';
+        const reasonText = data.reason ? `. Lý do: ${data.reason}` : '';
 
         await this.creationService.createNotification({
             userId: providerId,
             type: NotificationType.QUOTE_REJECTED,
-            title: 'Quote was rejected',
-            message: `Your quote for "${data.postTitle}" has been rejected${reasonText}`,
+            title: 'Báo giá bị từ chối',
+            message: `Báo giá của bạn cho bài "${data.postTitle}" đã bị từ chối${reasonText}`,
             metadata: {
                 postId: data.postId,
                 quoteId: data.quoteId,
@@ -76,8 +76,8 @@ export class NotificationEventService {
                 this.creationService.createNotification({
                     userId: providerId,
                     type: NotificationType.POST_CLOSED,
-                    title: 'Post is closed',
-                    message: `Post "${postTitle}" you bid on has been closed.`,
+                    title: 'Bài đăng đã đóng',
+                    message: `Bài đăng "${postTitle}" bạn đã báo giá đã được đóng.`,
                     metadata: { postId },
                     actionUrl: `/posts/${postId}`,
                 })
@@ -94,8 +94,8 @@ export class NotificationEventService {
         await this.creationService.createNotification({
             userId: providerId,
             type: NotificationType.ORDER_CREATED,
-            title: 'new order',
-            message: `you have new order: "${orderTitle}"`,
+            title: 'Đơn hàng mới',
+            message: `Bạn có đơn hàng mới: "${orderTitle}"`,
             metadata: { orderId },
             actionUrl: `/orders/${orderId}`,
         });
@@ -103,8 +103,8 @@ export class NotificationEventService {
         await this.creationService.createNotification({
             userId: customerId,
             type: NotificationType.ORDER_CREATED,
-            title: 'Order has been created',
-            message: `Order "${orderTitle}" was created successfully`,
+            title: 'Đơn hàng đã được tạo',
+            message: `Đơn hàng "${orderTitle}" đã được tạo thành công`,
             metadata: { orderId },
             actionUrl: `/orders/${orderId}`,
         });
@@ -118,8 +118,8 @@ export class NotificationEventService {
         await this.creationService.createNotification({
             userId: customerId,
             type: NotificationType.ORDER_IN_PROGRESS,
-            title: 'Order in progress',
-            message: `Provider has started working on order: "${orderTitle}"`,
+            title: 'Đơn hàng đang thực hiện',
+            message: `Thợ đã bắt đầu thực hiện đơn hàng: "${orderTitle}"`,
             metadata: { orderId },
             actionUrl: `/orders/${orderId}`,
         });
@@ -133,8 +133,8 @@ export class NotificationEventService {
         await this.creationService.createNotification({
             userId: customerId,
             type: NotificationType.ORDER_IN_PROGRESS,
-            title: 'Provider completed work',
-            message: `Provider has completed order: "${orderTitle}". Please confirm!`,
+            title: 'Thợ đã hoàn thành công việc',
+            message: `Thợ đã hoàn thành đơn hàng: "${orderTitle}". Vui lòng xác nhận!`,
             metadata: { orderId },
             actionUrl: `/orders/${orderId}`,
         });
@@ -147,13 +147,13 @@ export class NotificationEventService {
         isProvider: boolean,
     ): Promise<void> {
         const message = isProvider
-            ? `Order "${orderTitle}" has been completed. Please wait for payment.`
-            : `Order "${orderTitle}" has been completed. Thank you for using our service!`;
+            ? `Đơn hàng "${orderTitle}" đã hoàn thành. Vui lòng chờ thanh toán.`
+            : `Đơn hàng "${orderTitle}" đã hoàn thành. Cảm ơn bạn đã sử dụng dịch vụ!`;
 
         await this.creationService.createNotification({
             userId,
             type: NotificationType.ORDER_COMPLETED,
-            title: 'Order completed',
+            title: 'Đơn hàng hoàn thành',
             message,
             metadata: { orderId, isProvider },
             actionUrl: `/orders/${orderId}`,
@@ -169,8 +169,8 @@ export class NotificationEventService {
         await this.creationService.createNotification({
             userId,
             type: NotificationType.ORDER_CANCELLED,
-            title: 'Order cancelled',
-            message: `Order "${orderTitle}" has been cancelled. Reason: ${reason}`,
+            title: 'Đơn hàng đã bị hủy',
+            message: `Đơn hàng "${orderTitle}" đã bị hủy. Lý do: ${reason}`,
             metadata: { orderId, reason },
             actionUrl: `/orders/${orderId}`,
         });
@@ -184,8 +184,8 @@ export class NotificationEventService {
         await this.creationService.createNotification({
             userId: providerId,
             type: NotificationType.PAYMENT_RECEIVED,
-            title: 'Payment received',
-            message: `You have received payment of ${amount.toLocaleString('vi-VN')} VNĐ`,
+            title: 'Đã nhận thanh toán',
+            message: `Bạn đã nhận được thanh toán ${amount.toLocaleString('vi-VN')}đ`,
             metadata: { orderId, amount },
             actionUrl: `/orders/${orderId}`,
         });
@@ -200,8 +200,8 @@ export class NotificationEventService {
         await this.creationService.createNotification({
             userId: providerId,
             type: NotificationType.ORDER_AWAITING_CONFIRMATION,
-            title: 'Order confirmation required',
-            message: `A customer has accepted your quote for "${orderTitle}". Please confirm to proceed.`,
+            title: 'Cần xác nhận đơn hàng',
+            message: `Khách hàng đã chấp nhận báo giá của bạn cho "${orderTitle}". Vui lòng xác nhận để tiến hành.`,
             metadata: { orderId },
             actionUrl: `/orders/${orderId}`,
         });
@@ -209,8 +209,8 @@ export class NotificationEventService {
         await this.creationService.createNotification({
             userId: customerId,
             type: NotificationType.ORDER_CREATED,
-            title: 'Order created – awaiting technician',
-            message: `Your order "${orderTitle}" was created and is awaiting technician confirmation.`,
+            title: 'Đơn hàng đã tạo – chờ thợ xác nhận',
+            message: `Đơn hàng "${orderTitle}" đã được tạo và đang chờ thợ xác nhận.`,
             metadata: { orderId },
             actionUrl: `/orders/${orderId}`,
         });
@@ -222,12 +222,12 @@ export class NotificationEventService {
         orderTitle: string,
         reason?: string,
     ): Promise<void> {
-        const reasonSuffix = reason ? ` Reason: ${reason}` : '';
+        const reasonSuffix = reason ? ` Lý do: ${reason}` : '';
         await this.creationService.createNotification({
             userId: customerId,
             type: NotificationType.ORDER_CANCELLED,
-            title: 'Technician declined your order',
-            message: `The technician declined to confirm order "${orderTitle}".${reasonSuffix} You may contact another provider.`,
+            title: 'Thợ đã từ chối đơn hàng',
+            message: `Thợ đã từ chối xác nhận đơn hàng "${orderTitle}".${reasonSuffix} Bạn có thể liên hệ thợ khác.`,
             metadata: { orderId, reason },
             actionUrl: `/orders/${orderId}`,
         });
@@ -242,8 +242,8 @@ export class NotificationEventService {
         await this.creationService.createNotification({
             userId: providerId,
             type: NotificationType.NEW_REVIEW_RECEIVED,
-            title: 'New review',
-            message: `${customerName} rated you ${rating} star`,
+            title: 'Đánh giá mới',
+            message: `${customerName} đã đánh giá bạn ${rating} sao`,
             metadata: { reviewId, rating },
             actionUrl: `/reviews/${reviewId}`,
         });
@@ -259,7 +259,7 @@ export class NotificationEventService {
         await this.creationService.createNotification({
             userId,
             type: NotificationType.NEW_MESSAGE,
-            title: 'New message',
+            title: 'Tin nhắn mới',
             message: `${senderName}: ${messagePreview}`,
             metadata: { senderId, chatId },
             actionUrl: `/chats/${chatId}`,
