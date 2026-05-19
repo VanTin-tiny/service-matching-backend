@@ -239,6 +239,23 @@ export class PostService {
     }
 
 
+    async getPostsByUserId(
+        userId: string,
+        limit = 10,
+        cursor?: string,
+    ): Promise<FeedResponseDto> {
+        const parsedCursor = this.validationService.validateAndParseCursor(cursor);
+        const { posts, hasMore, nextCursor } =
+            await this.businessService.getCustomerPosts(userId, limit, parsedCursor);
+        return {
+            data: posts.map(post => this.mapperService.toResponseDto(post)),
+            nextCursor,
+            total: posts.length,
+            hasMore,
+        };
+    }
+
+
     async createPost(
         providerId: string,
         jwtUser: JwtPayload,

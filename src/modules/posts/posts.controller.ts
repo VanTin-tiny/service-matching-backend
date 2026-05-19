@@ -110,6 +110,20 @@ export class PostController {
         return await this.postService.getFeed(query.limit, query.cursor);
     }
 
+    @Get('user/:userId')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({
+        summary: 'Get public posts by user',
+        description: 'Retrieve posts created by a specific customer (public, no auth required).',
+    })
+    @ApiResponse({ status: HttpStatus.OK, type: FeedResponseDto })
+    async getPostsByUser(
+        @Param('userId', ParseUUIDPipe) userId: string,
+        @Query() query: GetFeedQueryDto,
+    ): Promise<FeedResponseDto> {
+        return this.postService.getPostsByUserId(userId, query.limit, query.cursor);
+    }
+
     @Get(':id')
     @HttpCode(HttpStatus.OK)
     @ApiOperation({
