@@ -119,7 +119,8 @@ export class SearchService {
         this.logger.log(
             `[providers] name="${dto.displayName ?? ''}" ` +
                 `province="${dto.province ?? ''}" ` +
-                `trades=[${(dto.tradeSlugs ?? []).join(',')}]`,
+                `trades=[${(dto.tradeSlugs ?? []).join(',')}] ` +
+                `mainOccupation="${dto.mainOccupation ?? ''}"`,
         );
 
         const { rows, total } = await this.repo.searchProviders(dto);

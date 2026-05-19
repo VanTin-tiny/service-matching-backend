@@ -40,6 +40,7 @@ export class SearchMapperService {
 
 
     toProviderResult(row: ProviderRow): ProviderSearchResultDto {
+        const reviewCount = row.reviewCount ?? 0;
         return {
             id: row.user.id,
             displayName: row.displayName,
@@ -47,8 +48,14 @@ export class SearchMapperService {
             bio: row.bio ? this.truncate(row.bio, 120) : undefined,
             address: row.address,
             province: this.extractProvince(row.address),
+            mainOccupation: row.mainOccupation,
             trades: this.mapTrades(row.user.providerTrades ?? []),
             isVerified: row.user.isVerified ?? false,
+            averageRating: reviewCount > 0 && row.averageRating != null
+                ? Number(row.averageRating)
+                : undefined,
+            reviewCount,
+            hasCertification: (row.certificationCount ?? 0) > 0,
             memberSince: row.user.createdAt,
         };
     }

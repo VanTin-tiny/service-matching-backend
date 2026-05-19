@@ -323,6 +323,14 @@ export class ProviderSearchQueryDto {
     @Transform(slugArrayTransform)
     tradeSlugs?: string[];
 
+    @ApiPropertyOptional({
+        description: 'Lọc theo nghề chính của thợ (slug). VD: giu-tre, tho-dien',
+        example: 'tho-dien',
+    })
+    @IsString()
+    @IsOptional()
+    mainOccupation?: string;
+
     @ApiPropertyOptional({ enum: ProviderSortBy, default: ProviderSortBy.CREATED_AT })
     @IsEnum(ProviderSortBy)
     @IsOptional()
@@ -368,11 +376,28 @@ export class ProviderSearchResultDto {
     @ApiPropertyOptional({ example: 'TP. Hồ Chí Minh' })
     province?: string;
 
+    @ApiPropertyOptional({ example: 'tho-dien', description: 'Nghề chính của thợ (slug)' })
+    mainOccupation?: string;
+
     @ApiProperty({ type: [TradeDto], description: 'Nghề của thợ kèm số năm kinh nghiệm' })
     trades!: TradeDto[];
 
     @ApiProperty({ example: true })
     isVerified!: boolean;
+
+    @ApiPropertyOptional({
+        description: 'Điểm đánh giá trung bình (1–5). Chỉ có khi reviewCount > 0',
+        example: 4.8,
+        minimum: 1,
+        maximum: 5,
+    })
+    averageRating?: number;
+
+    @ApiProperty({ description: 'Tổng số đánh giá', example: 12 })
+    reviewCount!: number;
+
+    @ApiProperty({ description: 'Thợ đã tải ít nhất một chứng chỉ', example: true })
+    hasCertification!: boolean;
 
     @ApiProperty({ example: '2025-01-01T00:00:00Z' })
     memberSince!: Date;
