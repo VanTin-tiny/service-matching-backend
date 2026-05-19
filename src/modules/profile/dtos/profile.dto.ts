@@ -1,10 +1,12 @@
 import { UserRole } from '@/common/enums/user-role.enum';
+import { OCCUPATION_VALUES } from '@/modules/profile/constants/occupations.constant';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
     IsDate,
     IsEmail,
     IsEnum,
+    IsIn,
     IsNotEmpty,
     IsOptional,
     IsString,
@@ -86,6 +88,15 @@ export class UpdateProfileDto {
     })
     @IsOptional()
     gender?: string;
+
+    @ApiPropertyOptional({
+        description: 'Primary freelance occupation (slug from fixed list)',
+        example: 'giu-tre',
+    })
+    @IsString()
+    @IsIn(OCCUPATION_VALUES, { message: 'mainOccupation must be a valid occupation value' })
+    @IsOptional()
+    mainOccupation?: string;
 }
 
 
@@ -268,6 +279,12 @@ export class ProfileResponseDto {
     })
     gender?: string;
 
+    @ApiPropertyOptional({
+        description: 'Primary freelance occupation (slug)',
+        example: 'giu-tre',
+    })
+    mainOccupation?: string;
+
     @ApiProperty({
         description: 'Email/phone verification status',
         example: true
@@ -357,6 +374,18 @@ export class PublicProfileResponseDto {
         example: 'Professional electrician'
     })
     bio?: string;
+
+    @ApiPropertyOptional({
+        description: 'Primary freelance occupation (slug)',
+        example: 'giu-tre',
+    })
+    mainOccupation?: string;
+
+    @ApiPropertyOptional({
+        description: 'Address / work area',
+        example: '123 Nguyễn Văn Linh, Hải Châu, Đà Nẵng',
+    })
+    address?: string;
 
     @ApiProperty({
         description: 'Account verification badge (email/phone verified)',

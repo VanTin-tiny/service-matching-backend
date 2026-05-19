@@ -80,6 +80,14 @@ export class Profile {
     gender?: string;
 
     @Column({
+        name: 'main_occupation',
+        length: 100,
+        nullable: true,
+        comment: 'Primary freelance occupation slug (from fixed list)',
+    })
+    mainOccupation?: string;
+
+    @Column({
         name: 'last_display_name_change',
         type: 'timestamp with time zone',
         nullable: true,

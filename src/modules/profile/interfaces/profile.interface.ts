@@ -16,6 +16,7 @@ export interface ProfileMapper {
     address?: string;
     birthday?: Date;
     gender?: string;
+    mainOccupation?: string;
     lastDisplayNameChange?: Date;
     displayNameChangeCount: number;
     displayNameHistory?: Record<string, any>;
