@@ -21,6 +21,7 @@ export function toProfile(profile: Profile): ProfileMapper {
         address: profile.address,
         birthday: profile.birthday,
         gender: profile.gender,
+        mainOccupation: profile.mainOccupation,
         lastDisplayNameChange: profile.lastDisplayNameChange,
         displayNameChangeCount: profile.displayNameChangeCount ?? 0,
         displayNameHistory: profile.displayNameHistory,
