@@ -5,7 +5,7 @@ import { Profile } from '@/modules/profile/entities/profile.entity';
 import { ProviderTrade } from '@/modules/profile/entities/provider-trade.entity';
 import { Trade } from '@/modules/profile/entities/trade.entity';
 import { User } from '@/modules/users/entities/user.entity';
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Brackets, Repository, SelectQueryBuilder } from 'typeorm';
 import {
@@ -41,8 +41,6 @@ function escapeTradeNameCol(colSql: string): string {
 
 @Injectable()
 export class SearchRepository {
-    private readonly logger = new Logger(SearchRepository.name);
-
     constructor(
         @InjectRepository(PostCustomer)
         private readonly postRepo: Repository<PostCustomer>,
@@ -156,6 +154,12 @@ export class SearchRepository {
             );
         }
 
+        if (dto.mainOccupation?.trim()) {
+            qb.andWhere('profile.mainOccupation = :mainOcc', {
+                mainOcc: dto.mainOccupation.trim(),
+            });
+        }
+
         const sortMap: Record<ProviderSortBy, string> = {
             [ProviderSortBy.DISPLAY_NAME]: 'profile.displayName',
             [ProviderSortBy.CREATED_AT]: 'user.createdAt',
@@ -249,7 +253,7 @@ export class SearchRepository {
                             SELECT 1
                             FROM   provider_trades _gpt
                             INNER JOIN trades      _gt ON _gt.id = _gpt.trade_id
-                            WHERE  _gpt.provider_id = user.id
+                            WHERE  _gpt.provider_id = "user".id
                               AND  _gt.is_active     = true
                               AND  (
                                        unaccent(${escapedGtName})

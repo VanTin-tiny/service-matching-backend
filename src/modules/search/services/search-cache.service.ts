@@ -82,6 +82,7 @@ export class SearchCacheService {
             this.norm(dto.displayName ?? '-'),
             dto.province ?? '-',
             slugs,
+            dto.mainOccupation ?? '-',
             dto.sortBy ?? 'createdAt',
             dto.order ?? 'desc',
             dto.limit ?? 20,
