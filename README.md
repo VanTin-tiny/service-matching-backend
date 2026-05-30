@@ -2,6 +2,10 @@
 
 A production-ready REST + WebSocket backend that connects **customers** who need home or professional services with **providers** (technicians and tradespeople). Built with NestJS, PostgreSQL, Redis, and an AI-powered Vietnamese content moderation layer.
 
+## Live Demo
+
+- Live API: http://service-matching.duckdns.org
+
 ---
 
 ## Table of Contents
