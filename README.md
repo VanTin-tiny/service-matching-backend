@@ -4,7 +4,7 @@ A production-ready REST + WebSocket backend that connects **customers** who need
 
 ## Live Demo
 
-- Live API: http://service-matching.duckdns.org
+- Live API: https://service-matching-backend-production.up.railway.app
 
 ---
 
